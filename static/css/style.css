@@ -1,0 +1,565 @@
+/* ========================================
+   TALON MAIN STYLES (WITHOUT SIDEBAR)
+   File: static/css/style.css
+   ======================================== */
+
+/* Reset e Stili Generali */
+body { 
+    font-family: sans-serif; 
+    margin: 0; 
+    background-color: #f8f9fa; 
+}
+
+a { 
+    text-decoration: none; 
+    color: inherit; 
+}
+
+/* --- Header della pagina --- */
+.page-header { 
+    position: sticky; 
+    top: 0; 
+    z-index: 990;
+    padding: 20px; 
+    border-bottom: 2px solid #e0e0e0; 
+    background-color: #ffffff; 
+}
+
+.page-header h1 { 
+    margin: 0; 
+    font-size: 1.8em; 
+    font-style: italic; 
+    color: #0D1B2A; 
+}
+
+.page-header h2 { 
+    margin: 0; 
+    font-size: 1em; 
+    font-weight: normal; 
+    color: #495057; 
+}
+
+.main-content { 
+    padding: 20px; 
+    max-width: 1200px; 
+    margin-left: auto; 
+    margin-right: auto; 
+}
+
+/* --- Stili per Organigramma --- */
+.tree, .tree ul { 
+    list-style-type: none; 
+    padding: 0; 
+    margin: 0; 
+    position: relative; 
+}
+
+.tree ul { 
+    padding-left: 25px; 
+    display: none; 
+}
+
+.tree li.expanded > ul { 
+    display: block; 
+}
+
+.tree li { 
+    position: relative; 
+    padding-left: 25px; 
+    padding-top: 5px; 
+}
+
+.node-content {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    padding: 8px; 
+    border-radius: 5px; 
+    background-color: #ffffff; 
+    border: 1px solid #e0e0e0;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.node-content:hover { 
+    background-color: #f5f5f5; 
+}
+
+.toggle-btn {
+    cursor: pointer; 
+    width: 20px; 
+    height: 20px; 
+    display: flex; 
+    align-items: center;
+    justify-content: center; 
+    font-size: 1.2em; 
+    margin-right: 5px;
+    flex-shrink: 0; 
+    color: #888; 
+    user-select: none;
+}
+
+.toggle-btn::before { 
+    content: '+'; 
+}
+
+.expanded > .node-content .toggle-btn::before { 
+    content: '−'; 
+}
+
+.tree li::before, 
+.tree li::after { 
+    content: ''; 
+    position: absolute; 
+    background-color: #ccc; 
+}
+
+.tree li::before { 
+    top: 22px; 
+    left: 0; 
+    width: 25px; 
+    height: 1px; 
+}
+
+.tree li::after { 
+    top: 0; 
+    left: 0; 
+    width: 1px; 
+    height: 100%; 
+}
+
+.tree li:last-child::after { 
+    height: 22px; 
+}
+
+.tree > li::before, 
+.tree > li::after { 
+    display: none; 
+}
+
+.ente-name { 
+    flex-grow: 1; 
+}
+
+.ente-name a {
+    text-decoration: none; 
+    color: #0D1B2A; 
+    display: block; 
+    padding: 5px 0;
+    transition: transform 0.2s ease-in-out, color 0.2s ease-in-out;
+    transform-origin: left center;
+}
+
+.ente-name a:hover { 
+    color: #0056b3; 
+    transform: scale(1.02); 
+}
+
+/* --- Stili per Form --- */
+.form-container { 
+    max-width: 600px; 
+    padding: 20px; 
+    border: 1px solid #ccc; 
+    border-radius: 8px; 
+    background-color: #f9f9f9; 
+}
+
+.form-group { 
+    margin-bottom: 15px; 
+}
+
+.form-container label { 
+    display: block; 
+    margin-bottom: 5px; 
+    font-weight: bold; 
+}
+
+.form-container input, 
+.form-container select, 
+.form-container textarea { 
+    width: 100%; 
+    padding: 8px; 
+    box-sizing: border-box; 
+    text-transform: uppercase; 
+    font-family: sans-serif; 
+}
+
+.form-container button[type="submit"] { 
+    padding: 10px 20px; 
+    background-color: #0D1B2A; 
+    color: white; 
+    border: none; 
+    cursor: pointer; 
+    border-radius: 4px; 
+    transition: background-color 0.2s;
+}
+
+.form-container button[type="submit"]:hover {
+    background-color: #1a2b3a;
+}
+
+.cancel-link { 
+    display: inline-block; 
+    margin-top: 15px;
+    color: #007bff;
+    transition: color 0.2s ease-in-out, text-decoration 0.2s ease-in-out;
+}
+
+.cancel-link:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* --- Stili per Switch --- */
+.talon-switch {
+    position: relative; 
+    display: inline-block; 
+    width: 40px; 
+    height: 20px; 
+    vertical-align: middle;
+}
+
+.talon-switch input { 
+    opacity: 0; 
+    width: 0; 
+    height: 0; 
+}
+
+.talon-slider {
+    position: absolute; 
+    cursor: pointer; 
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    bottom: 0;
+    background-color: #ccc; 
+    transition: .4s; 
+    border-radius: 20px;
+}
+
+.talon-slider:before {
+    position: absolute; 
+    content: ""; 
+    height: 14px; 
+    width: 14px; 
+    left: 3px; 
+    bottom: 3px;
+    background-color: white; 
+    transition: .4s; 
+    border-radius: 50%;
+}
+
+input:checked + .talon-slider { 
+    background-color: #2196F3; 
+}
+
+input:checked + .talon-slider:before { 
+    transform: translateX(20px); 
+}
+
+/* --- Stili per Pagina Descrizione --- */
+.detail-card {
+    background-color: #ffffff; 
+    border: 1px solid #e0e0e0;
+    border-radius: 8px; 
+    padding: 25px; 
+    max-width: 800px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.detail-header {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    border-bottom: 2px solid #f0f0f0; 
+    padding-bottom: 15px; 
+    margin-bottom: 20px;
+}
+
+.detail-header h3 { 
+    margin: 0; 
+    font-size: 1.5em; 
+}
+
+.btn-modifica {
+    background-color: #007bff; 
+    color: white; 
+    padding: 10px 20px;
+    border-radius: 5px; 
+    text-transform: uppercase; 
+    font-weight: bold; 
+    font-size: 0.9em;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-modifica:hover {
+    background-color: #0056b3;
+}
+
+.detail-grid { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr; 
+    gap: 20px; 
+}
+
+.detail-item { 
+    margin-bottom: 15px; 
+}
+
+.detail-item dt { 
+    font-weight: bold; 
+    color: #6c757d; 
+    margin-bottom: 5px; 
+}
+
+.detail-item dd { 
+    margin-left: 0; 
+    font-size: 1.1em; 
+}
+
+/* --- Stili per Tabelle e Ricerca --- */
+.styled-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+}
+
+.styled-table th, 
+.styled-table td { 
+    padding: 12px; 
+    border-bottom: 1px solid #ddd; 
+    text-align: left; 
+}
+
+.styled-table th { 
+    background-color: #f2f2f2; 
+    font-weight: bold;
+}
+
+.styled-table tbody tr {
+    transition: background-color 0.2s;
+}
+
+.styled-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.styled-table .clickable-row { 
+    cursor: pointer; 
+}
+
+.styled-table .clickable-row:hover { 
+    background-color: #f5f5f5; 
+}
+
+.styled-table .clickable-row td {
+    transition: transform 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+.styled-table .clickable-row:hover td { 
+    color: #0056b3; 
+}
+
+.styled-table .clickable-row:hover td:first-child {
+    transform: scale(1.02);
+    transform-origin: left center;
+}
+
+.list-container {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.search-bar {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.search-bar input[type="search"] {
+    width: 100%;
+    padding: 15px 20px 15px 50px; 
+    font-size: 1.2em;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-sizing: border-box;
+    text-transform: uppercase;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="%23999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>');
+    background-repeat: no-repeat;
+    background-position: 15px center;
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.search-bar input[type="search"]:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.4);
+}
+
+/* --- Stili per Selettori con Ricerca --- */
+.searchable-select { 
+    position: relative; 
+}
+
+.searchable-select-display {
+    width: 100%; 
+    padding: 8px; 
+    box-sizing: border-box; 
+    text-transform: uppercase;
+    font-family: sans-serif; 
+    border: 1px solid #ccc; 
+    border-radius: 4px;
+    background-color: #fff; 
+    cursor: pointer; 
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    transition: border-color 0.2s;
+}
+
+.searchable-select-display:hover {
+    border-color: #999;
+}
+
+.searchable-select-display::after { 
+    content: '▼'; 
+    font-size: 0.8em; 
+}
+
+.searchable-select-dropdown {
+    position: absolute; 
+    top: 100%; 
+    left: 0; 
+    right: 0;
+    background-color: #fff; 
+    border: 1px solid #ccc; 
+    border-top: none;
+    border-radius: 0 0 4px 4px; 
+    z-index: 1010; 
+    max-height: 250px;
+    overflow-y: auto; 
+    display: none;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.searchable-select-dropdown.open { 
+    display: block; 
+}
+
+.searchable-select-search {
+    width: 100%; 
+    padding: 10px; 
+    box-sizing: border-box; 
+    border: none;
+    border-bottom: 1px solid #ccc; 
+    text-transform: uppercase;
+}
+
+.searchable-select-search:focus {
+    outline: none;
+    background-color: #f8f9fa;
+}
+
+.searchable-select-options { 
+    list-style-type: none; 
+    padding: 0; 
+    margin: 0; 
+}
+
+.searchable-select-options li { 
+    padding: 10px 12px; 
+    cursor: pointer; 
+    text-transform: uppercase; 
+    transition: background-color 0.2s;
+}
+
+.searchable-select-options li:hover { 
+    background-color: #f0f0f0; 
+}
+
+.searchable-select-options li.group-label {
+    font-weight: bold; 
+    color: #888; 
+    background-color: #f9f9f9; 
+    cursor: default;
+}
+
+.searchable-select-options li.group-label:hover {
+    background-color: #f9f9f9;
+}
+
+.searchable-select-options li.sub-option { 
+    padding-left: 25px; 
+}
+
+.searchable-select-options li .option-details {
+    font-size: 0.8em;
+    color: #777;
+    text-transform: none;
+    display: block;
+    margin-top: 2px;
+}
+
+/* Disattiva tutte le transizioni temporaneamente */
+.no-transition,
+.no-transition * {
+    transition: none !important;
+}
+
+.styled-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.styled-table th,
+.styled-table td {
+  padding: 10px;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.styled-table th {
+  white-space: nowrap;
+  padding: 12px;
+  background-color: #f2f2f2;
+  font-weight: bold;
+  position: relative;
+  text-align: left;
+}
+
+.styled-table td {
+  word-wrap: break-word;
+}
+
+.styled-table td:first-child {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.list-container {
+  width: 100%;
+  margin: 0 auto;
+  overflow-x: auto;
+}
+
+/* Frecce di ordinamento nelle intestazioni */
+.styled-table .th-arrow {
+    font-size: 0.75em;   /* leggermente più piccole */
+    color: #777;         /* grigio medio */
+    margin-left: 4px;    /* spazio dal testo, opzionale */
+}
+
+/* Colore un po' più accentuato quando la colonna è ordinata */
+.styled-table th.sorted-asc  .th-arrow,
+.styled-table th.sorted-desc .th-arrow {
+    color: #555;
+}
+
+/* --- Allineamento riga GETRA (4 campi) ------------------------------ */
+.getra-row label{
+    display:block;          /* già block, ma esplicito */
+    min-height:2.5rem;      /* ≈ 2 righe di testo -> tutti i label alta uguale */
+}

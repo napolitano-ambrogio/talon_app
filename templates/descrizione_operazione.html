@@ -1,0 +1,29 @@
+{% extends "layouts/_base.html" %}
+{% block title %}Dettaglio Operazione - TALON{% endblock %}
+{% block content %}
+    <div class="detail-card">
+        <div class="detail-header">
+            <h3>Dettaglio Operazione</h3>
+            <a href="{{ url_for('operazioni.lista_operazioni') }}" class="cancel-link" style="font-size: 0.9em;">&larr; Torna all'elenco</a>
+        </div>
+        <dl class="detail-grid">
+            <div>
+                <div class="detail-item"><dt>Nome Breve (Acronimo)</dt><dd>{{ operazione.nome_breve or 'N/D' }}</dd></div>
+                <div class="detail-item"><dt>Nome Missione</dt><dd>{{ operazione.nome_missione }}</dd></div>
+                <div class="detail-item"><dt>Teatro Operativo</dt><dd>{{ operazione.teatro_operativo or 'N/D' }}</dd></div>
+                <div class="detail-item"><dt>Nazione</dt><dd>{{ operazione.nazione or 'N/D' }}</dd></div>
+            </div>
+            <div>
+                <div class="detail-item"><dt>Periodo Mandato</dt><dd>Dal: {{ operazione.data_inizio.split('-') | reverse | join('/') if operazione.data_inizio else 'N/D' }}<br>Al: {{ operazione.data_fine.split('-') | reverse | join('/') if operazione.data_fine else 'In corso' }}</dd></div>
+                <div class="detail-item"><dt>Descrizione</dt><dd>{{ operazione.descrizione or 'Nessuna' }}</dd></div>
+            </div>
+        </dl>
+        <hr style="margin-top: 30px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+            <a href="{{ url_for('operazioni.modifica_operazione_form', id=operazione.id) }}" class="btn-modifica">Modifica</a>
+            <form action="{{ url_for('operazioni.elimina_operazione', id=operazione.id) }}" method="POST" onsubmit="return confirm('Sei sicuro di voler eliminare questa operazione?') && confirm('ATTENZIONE: Confermi definitivamente l\'eliminazione?');" style="margin: 0;">
+                <button type="submit" style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">Elimina</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

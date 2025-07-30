@@ -1,0 +1,302 @@
+{% extends "layouts/_base.html" %}
+
+{% block title %}Modifica Attività - TALON{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h1>Modifica Attività</h1>
+    
+    <form action="{{ url_for('attivita.aggiorna_attivita', id=attivita.id) }}" method="POST">
+        
+        <h3>Dati Principali</h3>
+        <div class="form-group">
+            <label for="ente_svolgimento_id">Ente che svolge l'attività:</label>
+            <div class="searchable-select" data-select-id="ente_svolgimento_id"></div>
+            <select name="ente_svolgimento_id" id="ente_svolgimento_id" style="display: none;" required>
+                {% for ente in enti_militari %}
+                    <option value="{{ ente.id }}" {% if ente.id == attivita.ente_svolgimento_id %}selected{% endif %}>{{ ente.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="tipologia_id">Tipo di Attività:</label>
+            <div class="searchable-select" data-select-id="tipologia_id"></div>
+            <select name="tipologia_id" id="tipologia_id" style="display: none;" required>
+                {% for categoria, sottocategorie in tipologie.items() %}
+                    <optgroup label="{{ categoria }}">
+                        {% for sub in sottocategorie %}
+                            <option value="{{ sub.id }}" {% if sub.id == attivita.tipologia_id %}selected{% endif %}>{{ sub.nome }}</option>
+                        {% endfor %}
+                    </optgroup>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="operazione_id">Operazione:</label>
+            <div class="searchable-select" data-select-id="operazione_id"></div>
+            <select name="operazione_id" id="operazione_id" style="display: none;">
+                <option value="">-- Seleziona un'operazione (se applicabile) --</option>
+                {% for op in operazioni %}
+                    <option value="{{ op.id }}"
+                            data-details="{{ op.nome_breve }} {{ op.teatro_operativo }}"
+                            {% if op.id == attivita.operazione_id %}selected{% endif %}>
+                        {{ op.nome_missione }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="data_inizio">Data Inizio / Data Unica:</label>
+            <input type="date" id="data_inizio" name="data_inizio" value="{{ attivita.data_inizio }}" required>
+        </div>
+        <div class="form-group">
+            <label for="data_fine">Data Fine (opzionale):</label>
+            <input type="date" id="data_fine" name="data_fine" value="{{ attivita.data_fine or '' }}">
+        </div>
+        <div class="form-group">
+            <label for="descrizione">Descrizione Generica:</label>
+            <textarea id="descrizione" name="descrizione" rows="3">{{ attivita.descrizione or '' }}</textarea>
+        </div>
+
+        <!-- SEZIONE DETTAGLI TRASPORTI -->
+        <div id="dettagli-trasporti" style="display: none;">
+            <hr>
+            <h3>Dettagli Movimenti e Trasporti</h3>
+            <div class="form-group">
+                <label for="tipologia_carico">Tipologia di Carico:</label>
+                <input type="text" id="tipologia_carico" name="tipologia_carico" value="{{ dettagli_trasporti.tipologia_carico or '' }}">
+            </div>
+            <div class="form-group" style="display: flex; gap: 10px;">
+                <div style="flex-grow: 1;">
+                    <label for="quantita">Quantità:</label>
+                    <input type="number" step="any" id="quantita" name="quantita" value="{{ dettagli_trasporti.quantita or '' }}">
+                </div>
+                <div>
+                    <label for="unita_di_misura">Unità di Misura:</label>
+                    <input type="text" id="unita_di_misura" name="unita_di_misura" value="{{ dettagli_trasporti.unita_di_misura or '' }}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="mezzo_impiegato">Mezzo Impiegato (Targa/Matricola):</label>
+                <input type="text" id="mezzo_impiegato" name="mezzo_impiegato" value="{{ dettagli_trasporti.mezzo_impiegato or '' }}">
+            </div>
+        </div>
+        
+        <!-- SEZIONE DETTAGLI MANTENIMENTO -->
+        <div id="dettagli-mantenimento" style="display: none;">
+            <hr>
+            <h3>Dettagli Mantenimento e Squadre a Contatto</h3>
+            <div class="form-group">
+                <label for="tipo_intervento">Tipo Intervento:</label>
+                <select id="tipo_intervento" name="tipo_intervento">
+                    <option value="" {% if not dettagli_mantenimento.tipo_intervento %}selected{% endif %}>-- Seleziona --</option>
+                    <option value="INTERVENTO PRESSO LA FASCIA LOGISTICA DEL SOSTEGNO" {% if dettagli_mantenimento.tipo_intervento == 'INTERVENTO PRESSO LA FASCIA LOGISTICA DEL SOSTEGNO' %}selected{% endif %}>INTERVENTO PRESSO LA FASCIA LOGISTICA DEL SOSTEGNO</option>
+                    <option value="SQUADRA A CONTATTO SUL TERRITORIO NAZIONALE" {% if dettagli_mantenimento.tipo_intervento == 'SQUADRA A CONTATTO SUL TERRITORIO NAZIONALE' %}selected{% endif %}>SQUADRA A CONTATTO SUL TERRITORIO NAZIONALE</option>
+                    <option value="SQUADRA A CONTATTO IN TE.OP." {% if dettagli_mantenimento.tipo_intervento == 'SQUADRA A CONTATTO IN TE.OP.' %}selected{% endif %}>SQUADRA A CONTATTO IN TE.OP.</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="attivita_svolta">Attività Svolta:</label>
+                <select id="attivita_svolta" name="attivita_svolta">
+                    <option value="" {% if not dettagli_mantenimento.attivita_svolta %}selected{% endif %}>-- Seleziona --</option>
+                    <option value="CONTROLLI E VERIFICHE TECNICHE" {% if dettagli_mantenimento.attivita_svolta == 'CONTROLLI E VERIFICHE TECNICHE' %}selected{% endif %}>CONTROLLI E VERIFICHE TECNICHE</option>
+                    <option value="MANUTENZIONE PREVENTIVA" {% if dettagli_mantenimento.attivita_svolta == 'MANUTENZIONE PREVENTIVA' %}selected{% endif %}>MANUTENZIONE PREVENTIVA</option>
+                    <option value="MANUTENZIONE CORRETTIVA" {% if dettagli_mantenimento.attivita_svolta == 'MANUTENZIONE CORRETTIVA' %}selected{% endif %}>MANUTENZIONE CORRETTIVA</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="piattaforma_materiale">Piattaforma/Sistema/Materiale su cui si è intervenuti:</label>
+                <input type="text" id="piattaforma_materiale" name="piattaforma_materiale" value="{{ dettagli_mantenimento.piattaforma_materiale or '' }}">
+            </div>
+        </div>
+
+        <!-- SEZIONE DETTAGLI RIFORNIMENTI -->
+        <div id="dettagli-rifornimenti" style="display: none;">
+            <hr>
+            <h3>Dettagli Rifornimenti</h3>
+            <div class="form-group">
+                <label for="tipologia_rifornimento">Tipologia di Rifornimento:</label>
+                <select id="tipologia_rifornimento" name="tipologia_rifornimento">
+                    <option value="" {% if not dettagli_rifornimenti.tipologia_rifornimento %}selected{% endif %}>-- Seleziona --</option>
+                    <option value="CARBURANTE" {% if dettagli_rifornimenti.tipologia_rifornimento == 'CARBURANTE' %}selected{% endif %}>CARBURANTE</option>
+                    <option value="ASSEGNAZIONE MEZZI" {% if dettagli_rifornimenti.tipologia_rifornimento == 'ASSEGNAZIONE MEZZI' %}selected{% endif %}>ASSEGNAZIONE MEZZI</option>
+                    <option value="ASSEGNAZIONE MATERIALE" {% if dettagli_rifornimenti.tipologia_rifornimento == 'ASSEGNAZIONE MATERIALE' %}selected{% endif %}>ASSEGNAZIONE MATERIALE</option>
+                    <option value="RAZIONI VIVERI DA COMBATTIMENTO" {% if dettagli_rifornimenti.tipologia_rifornimento == 'RAZIONI VIVERI DA COMBATTIMENTO' %}selected{% endif %}>RAZIONI VIVERI DA COMBATTIMENTO</option>
+                    <option value="ALTRO" {% if dettagli_rifornimenti.tipologia_rifornimento == 'ALTRO' %}selected{% endif %}>ALTRO</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="dettaglio_materiale">Dettaglio (Tipo carburante, mezzo, materiale, altro):</label>
+                <input type="text" id="dettaglio_materiale" name="dettaglio_materiale" value="{{ dettagli_rifornimenti.dettaglio_materiale or '' }}">
+            </div>
+            <div class="form-group" style="display: flex; gap: 10px;">
+                <div style="flex-grow: 1;">
+                    <label for="quantita_rifornimento">Quantità:</label>
+                    <input type="number" step="any" id="quantita_rifornimento" name="quantita_rifornimento" value="{{ dettagli_rifornimenti.quantita or '' }}">
+                </div>
+                <div>
+                    <label for="unita_di_misura_rifornimento">Unità di Misura:</label>
+                    <input type="text" id="unita_di_misura_rifornimento" name="unita_di_misura_rifornimento" value="{{ dettagli_rifornimenti.unita_di_misura or '' }}">
+                </div>
+            </div>
+        </div>
+
+        <!-- SEZIONE DETTAGLI GETRA -->
+        <div id="dettagli-getra" style="display: none;">
+            <hr>
+            <h3>Dettagli Gestione Transito (GETRA)</h3>
+
+            <div class="form-group">
+                <label for="tipo_vettore">Tipo vettore:</label>
+                <select id="tipo_vettore" name="tipo_vettore">
+                    <option value="" {% if not dettagli_getra.tipo_vettore %}selected{% endif %}>-- Seleziona --</option>
+                    <option value="SAFOPS"   {% if dettagli_getra.tipo_vettore == 'SAFOPS'   %}selected{% endif %}>SAFOPS – descrizione (inserire testo)</option>
+                    <option value="SCPOPS"   {% if dettagli_getra.tipo_vettore == 'SCPOPS'   %}selected{% endif %}>SCPOPS – descrizione (inserire testo)</option>
+                    <option value="SCSOPS"   {% if dettagli_getra.tipo_vettore == 'SCSOPS'   %}selected{% endif %}>SCSOPS – descrizione (inserire testo)</option>
+                    <option value="SCTOPS"   {% if dettagli_getra.tipo_vettore == 'SCTOPS'   %}selected{% endif %}>SCTOPS – descrizione (inserire testo)</option>
+                    <option value="SCPTROPS" {% if dettagli_getra.tipo_vettore == 'SCPTROPS' %}selected{% endif %}>SCPTROPS – descrizione (inserire testo)</option>
+                    <option value="SCPEXE"   {% if dettagli_getra.tipo_vettore == 'SCPEXE'   %}selected{% endif %}>SCPEXE – descrizione (inserire testo)</option>
+                    <option value="SAFMEDE"  {% if dettagli_getra.tipo_vettore == 'SAFMEDE'  %}selected{% endif %}>SAFMEDE – descrizione (inserire testo)</option>
+                    <option value="SNOPS"    {% if dettagli_getra.tipo_vettore == 'SNOPS'    %}selected{% endif %}>SNOPS – descrizione (inserire testo)</option>
+                    <option value="UAFMEDE"  {% if dettagli_getra.tipo_vettore == 'UAFMEDE'  %}selected{% endif %}>UAFMEDE – descrizione (inserire testo)</option>
+                    <option value="UCPEXE"   {% if dettagli_getra.tipo_vettore == 'UCPEXE'   %}selected{% endif %}>UCPEXE – descrizione (inserire testo)</option>
+                    <option value="ULAFOPS"  {% if dettagli_getra.tipo_vettore == 'ULAFOPS'  %}selected{% endif %}>ULAFOPS – descrizione (inserire testo)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="seriale_vettore">Seriale:</label>
+                <input type="text" id="seriale_vettore" name="seriale_vettore"
+                    value="{{ dettagli_getra.seriale_vettore or '' }}">
+            </div>
+
+            <!-- Riga a 4 colonne: Personale · Mezzi · Quantità · UM -->
+            <div class="getra-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+
+                <!-- Personale movimentato -->
+                <div style="flex:1">
+                    <label for="numero_personale">Personale movimentato:</label>
+                    <input type="number" id="numero_personale" name="numero_personale"
+                        value="{{ dettagli_getra.numero_personale or '' }}"
+                        min="0" class="form-control">
+                </div>
+
+                <!-- Mezzi movimentati -->
+                <div style="flex:1">
+                    <label for="numero_mezzi">Mezzi movimentati:</label>
+                    <input type="number" id="numero_mezzi" name="numero_mezzi"
+                        value="{{ dettagli_getra.numero_mezzi or '' }}"
+                        min="0" class="form-control">
+                </div>
+
+                <!-- Quantità -->
+                <div style="flex:1">
+                    <label for="volume">Quantità<br>o volume:</label>
+                    <input type="number" id="volume" name="volume"
+                        value="{{ dettagli_getra.volume or '' }}"
+                        min="0" step="any" class="form-control">
+                </div>
+
+                <!-- Unità di misura -->
+                <div style="flex:1">
+                    <label for="unita_di_misura_getra">Unità di<br>misura:</label>
+                    <select id="unita_di_misura_getra" name="unita_di_misura_getra"
+                            class="form-select">
+                        <option value=""    {% if not dettagli_getra.unita_di_misura %}selected{% endif %}>--</option>
+                        <option value="KG"      {% if dettagli_getra.unita_di_misura == 'KG' %}selected{% endif %}>Kg</option>
+                        <option value="M_LIN"   {% if dettagli_getra.unita_di_misura == 'M_LIN' %}selected{% endif %}>Metri lineari</option>
+                        <option value="M3"      {% if dettagli_getra.unita_di_misura == 'M3' %}selected{% endif %}>Metri cubi</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <hr>
+        <h3>Località</h3>
+        <div class="form-group">
+            <label for="partenza_id">Luogo Partenza:</label>
+            <div class="searchable-select" data-select-id="partenza_id"></div>
+            <select name="partenza_id" id="partenza_id" style="display: none;">
+                <option value="">-- Seleziona (se applicabile) --</option>
+                <optgroup label="ENTI MILITARI">
+                    {% for ente in enti_militari %}
+                        <option value="militare-{{ ente.id }}" data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})" {% if ente.id == attivita.partenza_militare_id %}selected{% endif %}>{{ ente.nome }}</option>
+                    {% endfor %}
+                </optgroup>
+                <optgroup label="ENTI CIVILI">
+                    {% for ente in enti_civili %}
+                        <option value="civile-{{ ente.id }}" data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}) - {{ ente.nazione or '' }}" {% if ente.id == attivita.partenza_civile_id %}selected{% endif %}>{{ ente.nome }}</option>
+                    {% endfor %}
+                </optgroup>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="destinazione_id">Luogo Destinazione:</label>
+            <div class="searchable-select" data-select-id="destinazione_id"></div>
+            <select name="destinazione_id" id="destinazione_id" style="display: none;">
+                <option value="">-- Seleziona (se applicabile) --</option>
+                <optgroup label="ENTI MILITARI">
+                    {% for ente in enti_militari %}
+                        <option value="militare-{{ ente.id }}" data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})" {% if ente.id == attivita.destinazione_militare_id %}selected{% endif %}>{{ ente.nome }}</option>
+                    {% endfor %}
+                </optgroup>
+                <optgroup label="ENTI CIVILI">
+                    {% for ente in enti_civili %}
+                        <option value="civile-{{ ente.id }}" data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}) - {{ ente.nazione or '' }}" {% if ente.id == attivita.destinazione_civile_id %}selected{% endif %}>{{ ente.nome }}</option>
+                    {% endfor %}
+                </optgroup>
+            </select>
+        </div>
+
+        <hr>
+        <h3>Risorse e Note</h3>
+        <div class="form-group" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+            <div><label for="personale_ufficiali">Ufficiali:</label><input type="number" id="personale_ufficiali" name="personale_ufficiali" value="{{ attivita.personale_ufficiali }}" min="0"></div>
+            <div><label for="personale_sottufficiali">Sottufficiali:</label><input type="number" id="personale_sottufficiali" name="personale_sottufficiali" value="{{ attivita.personale_sottufficiali }}" min="0"></div>
+            <div><label for="personale_graduati">Graduati/VFP:</label><input type="number" id="personale_graduati" name="personale_graduati" value="{{ attivita.personale_graduati }}" min="0"></div>
+            <div><label for="personale_civili">Civili:</label><input type="number" id="personale_civili" name="personale_civili" value="{{ attivita.personale_civili }}" min="0"></div>
+        </div>
+        <div class="form-group"><label for="note">Note:</label><textarea id="note" name="note" rows="3">{{ attivita.note or '' }}</textarea></div>
+
+        <button type="submit">Aggiorna Attività</button>
+    </form>
+    <br>
+    <a href="{{ url_for('attivita.visualizza_attivita', id=attivita.id) }}" class="cancel-link">Annulla</a>
+</div>
+
+<script>
+    function toggleActivityDetails() {
+        const select = document.getElementById('tipologia_id');
+        const selectedText = select.options[select.selectedIndex].text.trim().toUpperCase();
+        
+        const dettagliTrasportiDiv = document.getElementById('dettagli-trasporti');
+        const dettagliMantenimentoDiv = document.getElementById('dettagli-mantenimento');
+        const dettagliRifornimentiDiv = document.getElementById('dettagli-rifornimenti');
+        const dettagliGetraDiv        = document.getElementById('dettagli-getra');
+
+        // Nascondi tutto
+        [dettagliTrasportiDiv,
+         dettagliMantenimentoDiv,
+         dettagliRifornimentiDiv,
+         dettagliGetraDiv].forEach(div => div.style.display = 'none');
+
+        // Mostra la sezione corretta
+        if (selectedText === 'MOVIMENTI E TRASPORTI') {
+            dettagliTrasportiDiv.style.display = 'block';
+        } else if (selectedText === 'MANTENIMENTO E SQUADRE A CONTATTO') {
+            dettagliMantenimentoDiv.style.display = 'block';
+        } else if (selectedText === 'RIFORNIMENTI') {
+            dettagliRifornimentiDiv.style.display = 'block';
+        } else if (selectedText === 'GESTIONE TRANSITO') {
+            dettagliGetraDiv.style.display = 'block';
+        }
+    }
+
+    // Esegui la funzione al caricamento della pagina e al cambio di selezione
+    document.addEventListener('DOMContentLoaded', toggleActivityDetails);
+    document.getElementById('tipologia_id').addEventListener('change', toggleActivityDetails);
+</script>
+{% endblock %}

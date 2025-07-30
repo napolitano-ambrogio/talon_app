@@ -1,0 +1,299 @@
+/* ========================================
+   TALON SIDEBAR STYLES - CORRECTED VERSION
+   File: static/css/sidebar.css
+   
+   Struttura del file:
+   1. Variabili CSS
+   2. Sidebar Base
+   3. Stati della Sidebar
+   4. Menu Toggle Button e Animazioni
+   5. Tooltip
+   6. Menu della Sidebar
+   7. Animazioni e Transizioni
+   8. Layout della Pagina
+   ======================================== */
+
+/* ========================================
+   1. VARIABILI CSS
+   ======================================== */
+:root {
+    --sidebar-bg-color: #0D1B2A;
+    --sidebar-hover-color: rgb(28, 46, 74);
+    --sidebar-highlight-color: #495057;
+    --sidebar-width-collapsed: 60px;
+    --sidebar-width-expanded: 260px;
+    --transition-speed: 0.5s;
+    --transition-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
+    --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* ========================================
+   2. SIDEBAR BASE
+   ======================================== */
+.sidebar {
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    height: 100%;
+    width: var(--sidebar-width-collapsed);
+    background-color: var(--sidebar-bg-color); 
+    color: white;
+    z-index: 1000; 
+    overflow-x: hidden; 
+    white-space: nowrap;
+    box-shadow: 2px 0 20px rgba(0, 0, 0, 0.15);
+    
+    /* Transizione di default per width e shadow */
+    transition: width var(--transition-speed) var(--transition-easing), 
+                box-shadow 0.3s ease;
+}
+
+/* ========================================
+   3. STATI DELLA SIDEBAR
+   ======================================== */
+
+/* Stato: Sidebar espansa (hover o locked) */
+.sidebar.expanded {
+    width: var(--sidebar-width-expanded);
+    box-shadow: 4px 0 30px rgba(0, 0, 0, 0.25);
+}
+
+/* Stato: Sidebar pinnata (sempre espansa) */
+.sidebar.pinned {
+    width: var(--sidebar-width-expanded);
+}
+
+/* Stato: Loading iniziale (no transizioni) */
+.sidebar.loading,
+.sidebar.no-transition {
+    transition: none !important;
+}
+
+/* ========================================
+   4. MENU TOGGLE BUTTON E ANIMAZIONI
+   ======================================== */
+.menu-toggle {
+    position: relative; 
+    background: transparent; 
+    border: none; 
+    color: white;
+    cursor: pointer; 
+    width: 100%; 
+    height: 60px; 
+    display: flex;
+    align-items: center; 
+    padding-left: 18px;
+    outline: none;
+    transition: background-color 0.2s ease;
+}
+
+.menu-toggle:hover { 
+    background-color: var(--sidebar-highlight-color); 
+}
+
+.menu-toggle:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: -2px;
+}
+
+/* Icona hamburger - SEMPRE animata */
+.menu-toggle svg {
+    width: 24px;
+    height: 24px;
+    transform-origin: center;
+    transform: rotate(0deg) scale(1);
+    /* IMPORTANTE: Transizione sempre attiva per l'icona */
+    transition: transform 0.6s var(--transition-bounce) !important;
+}
+
+/* Icona ruotata quando sidebar è pinnata */
+.sidebar.pinned .menu-toggle svg {
+    transform: rotate(90deg) scale(1.1);
+}
+
+/* ========================================
+   5. TOOLTIP
+   ======================================== */
+.menu-toggle .tooltip {
+    visibility: hidden; 
+    opacity: 0; 
+    position: absolute; 
+    top: 50%;
+    left: calc(var(--sidebar-width-collapsed) + 15px);
+    transform: translateY(-50%) scale(0.9); 
+    background: linear-gradient(135deg, #333, #555);
+    color: #fff;
+    text-align: center; 
+    border-radius: 8px; 
+    padding: 8px 12px;
+    z-index: 1001; 
+    font-size: 12px; 
+    font-weight: 500;
+    white-space: nowrap;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    
+    /* Transizione smooth per il tooltip */
+    transition: all 0.3s var(--transition-bounce);
+}
+
+.menu-toggle:hover .tooltip { 
+    visibility: visible; 
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+}
+
+/* ========================================
+   6. MENU DELLA SIDEBAR
+   ======================================== */
+
+/* Container del menu */
+.sidebar-menu { 
+    margin-top: 10px; 
+}
+
+.sidebar-menu ul { 
+    list-style-type: none; 
+    padding: 0; 
+    margin: 0; 
+}
+
+.sidebar-menu li {
+    cursor: grab;
+}
+
+.sidebar-menu li.dragging {
+    opacity: 0.5;
+}
+
+.sidebar-menu li.drag-over {
+    padding-top: 50px;
+}
+
+/* Links del menu */
+.sidebar-menu li a {
+    display: flex; 
+    align-items: center; 
+    padding: 0 18px;
+    cursor: pointer; 
+    height: 50px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 0 25px 25px 0;
+    margin-right: 10px;
+    transition: all 0.3s var(--transition-easing);
+}
+
+/* Hover sui links */
+.sidebar-menu li a:hover { 
+    background: linear-gradient(135deg, var(--sidebar-hover-color), rgba(255, 255, 255, 0.1));
+    padding-left: 28px;
+    transform: translateX(5px);
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+}
+
+/* Effetto shine al hover */
+.sidebar-menu li a::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 255, 255, 0.2), 
+        transparent);
+    transition: left 0.6s ease;
+}
+
+.sidebar-menu li a:hover::before {
+    left: 100%;
+}
+
+/* Icone del menu */
+.sidebar-menu svg { 
+    flex-shrink: 0; 
+    width: 24px;
+    height: 24px;
+    transition: all 0.4s var(--transition-bounce);
+}
+
+/* Icone con effetto bounce al hover */
+.sidebar-menu li a:hover svg {
+    transform: scale(1.2);
+    filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.3));
+}
+
+/* Testo del menu */
+.menu-text { 
+    margin-left: 14px; 
+    opacity: 0; 
+    transform: translateX(-20px);
+    transition: all 0.4s var(--transition-easing);
+    font-weight: 500;
+}
+
+/* Testo visibile quando sidebar è espansa */
+.sidebar.expanded .menu-text,
+.sidebar.pinned .menu-text { 
+    opacity: 1; 
+    transform: translateX(0);
+}
+
+/* ========================================
+   7. ANIMAZIONI E TRANSIZIONI
+   ======================================== */
+
+/* Stagger animation per i menu items (solo quando expanded) */
+.sidebar.expanded .sidebar-menu li:nth-child(1) .menu-text { transition-delay: 0.1s; }
+.sidebar.expanded .sidebar-menu li:nth-child(2) .menu-text { transition-delay: 0.15s; }
+.sidebar.expanded .sidebar-menu li:nth-child(3) .menu-text { transition-delay: 0.2s; }
+.sidebar.expanded .sidebar-menu li:nth-child(4) .menu-text { transition-delay: 0.25s; }
+.sidebar.expanded .sidebar-menu li:nth-child(5) .menu-text { transition-delay: 0.3s; }
+
+/* Disabilita animazioni quando pinnata (ECCETTO per toggle e hover) */
+.sidebar.pinned {
+    transition: none !important;
+}
+
+/* Disabilita transizioni per elementi figli quando pinnata */
+.sidebar.pinned *:not(.menu-toggle):not(.menu-toggle *) {
+    animation: none !important;
+    transition: none !important;
+}
+
+/* Mantieni feedback hover anche quando pinnata */
+.sidebar.pinned .menu-toggle {
+    transition: background-color 0.2s ease !important;
+}
+
+.sidebar.pinned .sidebar-menu li a {
+    transition: background-color 0.2s ease !important;
+}
+
+/* ========================================
+   8. LAYOUT DELLA PAGINA
+   ======================================== */
+.page-wrapper {
+    margin-left: var(--sidebar-width-collapsed);
+    padding: 0;
+    transition: margin-left var(--transition-speed) var(--transition-easing);
+}
+
+/* Layout quando sidebar è espansa */
+.sidebar.expanded ~ .page-wrapper {
+    margin-left: var(--sidebar-width-expanded);
+}
+
+/* Layout quando sidebar è pinnata */
+.sidebar.pinned ~ .page-wrapper {
+    margin-left: var(--sidebar-width-expanded);
+    transition: none;
+}
+
+/* Layout quando sidebar è locked */
+.sidebar.locked ~ .page-wrapper {
+    margin-left: var(--sidebar-width-expanded);
+    transition: none;
+}

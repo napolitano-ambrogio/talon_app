@@ -1,0 +1,40 @@
+{% extends "layouts/_base.html" %}
+{% block title %}Nuova Operazione - TALON{% endblock %}
+{% block content %}
+<div class="form-container">
+    <h1>Nuova Operazione</h1>
+    <form action="{{ url_for('operazioni.salva_operazione') }}" method="POST">
+        <div class="form-group">
+            <label for="nome_missione">Nome Missione (es. UNIFIL):</label>
+            <input type="text" id="nome_missione" name="nome_missione" required>
+        </div>
+        <div class="form-group">
+            <label for="nome_breve">Nome Breve (Acronimo):</label>
+            <input type="text" id="nome_breve" name="nome_breve">
+        </div>
+        <div class="form-group">
+            <label for="teatro_operativo">Teatro Operativo (es. LIBANO):</label>
+            <input type="text" id="teatro_operativo" name="teatro_operativo">
+        </div>
+        <div class="form-group">
+            <label for="nazione">Nazione:</label>
+            <input type="text" id="nazione" name="nazione">
+        </div>
+        <div class="form-group">
+            <label for="data_inizio">Data Inizio Mandato:</label>
+            <input type="date" id="data_inizio" name="data_inizio">
+        </div>
+        <div class="form-group">
+            <label for="data_fine">Data Fine Mandato (opzionale):</label>
+            <input type="date" id="data_fine" name="data_fine">
+        </div>
+        <div class="form-group">
+            <label for="descrizione">Descrizione:</label>
+            <textarea id="descrizione" name="descrizione" rows="4"></textarea>
+        </div>
+        <button type="submit">Salva Operazione</button>
+    </form>
+    <br>
+    <a href="{{ url_for('operazioni.lista_operazioni') }}" class="cancel-link">Annulla</a>
+</div>
+{% endblock %}

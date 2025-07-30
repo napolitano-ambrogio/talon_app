@@ -1,0 +1,322 @@
+{% extends "layouts/_base.html" %}
+
+{% block title %}Dettaglio Attività - TALON{% endblock %}
+
+{% block content %}
+    <div class="detail-card">
+        <div class="detail-header">
+            <h3>Dettaglio Attività</h3>
+            <a href="{{ url_for('attivita.lista_attivita') }}" class="cancel-link" style="font-size: 0.9em;">&larr; Torna all'elenco Attività</a>
+        </div>
+        
+        <dl class="detail-grid">
+            <!-- Colonna Sinistra -->
+            <div>
+                <div class="detail-item">
+                    <dt>Ente Svolgimento</dt>
+                    <dd>{{ attivita.ente_nome }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Tipologia Attività</dt>
+                    <dd>{{ attivita.tipologia_nome }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Operazione</dt>
+                    <dd>
+                        {% if attivita.operazione_nome %}
+                            {{ attivita.operazione_nome }}
+                        {% else %}
+                            N/D
+                        {% endif %}
+                    </dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Periodo</dt>
+                    <dd>
+                        Dal: {{ attivita.data_inizio.split('-') | reverse | join('/') if attivita.data_inizio }}
+                        {% if attivita.data_fine %}
+                            <br> Al: {{ attivita.data_fine.split('-') | reverse | join('/') }}
+                        {% endif %}
+                    </dd>
+                </div>
+                 <div class="detail-item">
+                    <dt>Descrizione</dt>
+                    <dd>{{ attivita.descrizione or 'N/D' }}</dd>
+                </div>
+            </div>
+            <!-- Colonna Destra -->
+            <div>
+                <div class="detail-item">
+                    <dt>Luogo Partenza</dt>
+                    <dd>{{ partenza or 'N/D' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Luogo Destinazione</dt>
+                    <dd>{{ destinazione or 'N/D' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Personale Impiegato</dt>
+                    <dd>
+                        Ufficiali: {{ attivita.personale_ufficiali }} |
+                        Sottufficiali: {{ attivita.personale_sottufficiali }} |
+                        Graduati/VFP: {{ attivita.personale_graduati }} |
+                        Civili: {{ attivita.personale_civili }}
+                    </dd>
+                </div>
+                 <div class="detail-item">
+                    <dt>Note</dt>
+                    <dd>{{ attivita.note or 'Nessuna' }}</dd>
+                </div>
+            </div>
+        </dl>
+
+                <!-- Sezione Dettagli Specifici (mostrata solo se ci sono) -->
+        {% if dettagli_specifici %}
+        <hr style="margin-top: 20px; margin-bottom: 20px;">
+        <h4>Dettagli Specifici: {{ attivita.tipologia_nome }}</h4>
+        <dl class="detail-grid">
+            
+            <!-- Dettagli Trasporti -->
+            {% if attivita.tipologia_nome == 'MOVIMENTI E TRASPORTI' %}
+            <div>
+                <div class="detail-item">
+                    <dt>Tipologia Carico</dt>
+                    <dd>{{ dettagli_specifici.tipologia_carico or 'N/D' }}</dd>
+                </div>
+                 <div class="detail-item">
+                    <dt>Mezzo Impiegato</dt>
+                    <dd>{{ dettagli_specifici.mezzo_impiegato or 'N/D' }}</dd>
+                </div>
+            </div>
+            <div>
+                <div class="detail-item">
+                    <dt>Quantità</dt>
+                    <dd>{{ dettagli_specifici.quantita or 'N/D' }} {{ dettagli_specifici.unita_di_misura or '' }}</dd>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Dettagli Mantenimento e Squadre a Contatto -->
+            {% if attivita.tipologia_nome == 'MANTENIMENTO E SQUADRE A CONTATTO' %}
+            <div>
+                <div class="detail-item">
+                    <dt>Tipo Intervento</dt>
+                    <dd>{{ dettagli_specifici.tipo_intervento or 'N/D' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Attività Svolta</dt>
+                    <dd>{{ dettagli_specifici.attivita_svolta or 'N/D' }}</dd>
+                </div>
+            </div>
+            <div>
+                <div class="detail-item">
+                    <dt>Piattaforma/Materiale</dt>
+                    <dd>{{ dettagli_specifici.piattaforma_materiale or 'N/D' }}</dd>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Dettagli Rifornimenti -->
+            {% if attivita.tipologia_nome == 'RIFORNIMENTI' %}
+            <div>
+                <div class="detail-item">
+                    <dt>Tipologia Rifornimento</dt>
+                    <dd>{{ dettagli_specifici.tipologia_rifornimento or 'N/D' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Dettaglio Materiale</dt>
+                    <dd>{{ dettagli_specifici.dettaglio_materiale or 'N/D' }}</dd>
+                </div>
+            </div>
+            <div>
+                <div class="detail-item">
+                    <dt>Quantità</dt>
+                    <dd>{{ dettagli_specifici.quantita or 'N/D' }} {{ dettagli_specifici.unita_di_misura or '' }}</dd>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Dettagli GETRA -->
+            {% if attivita.tipologia_nome == 'GESTIONE TRANSITO' %}
+            <div>
+                <!-- Vettore SAFOPS 25894 -->
+                <div class="detail-item">
+                    <dt>Vettore</dt>
+                    {% set vettore = (dettagli_specifici.tipo_vettore or '')
+                                    ~ ' ' ~ (dettagli_specifici.seriale_vettore or '') %}
+                    <dd>
+                        {{ vettore.strip() or 'N/D' }}
+                        {% if dettagli_specifici.tipo_vettore %}
+                        <div id="mtform-decode" class="mtform-decode" style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                            <!-- La decodifica verrà inserita via JavaScript -->
+                        </div>
+                        {% endif %}
+                    </dd>
+                </div>
+            </div>
+            <div>
+                <div class="detail-item">
+                    <dt>Personale movimentato</dt>
+                    <dd>{{ dettagli_specifici.numero_personale or 'N/D' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Mezzi movimentati</dt>
+                    <dd>{{ dettagli_specifici.numero_mezzi or 'N/D' }}</dd>
+                </div>
+                
+                <div class="detail-item">
+                    <dt>Quantità</dt>
+                    {% set qta = (dettagli_specifici.volume or '')
+                                ~ ' ' ~ (dettagli_specifici.unita_di_misura or '') %}
+                    <dd>{{ qta.strip() or 'N/D' }}</dd>
+                </div>
+            </div>
+
+            <script>
+            // Funzione di decodifica MTFORM
+            function decodeMTFORM(code) {
+                // Mappature per la decodifica
+                const sourceMap = {
+                    'S': 'Sourced',
+                    'U': 'Unsourced'
+                };
+                
+                const sourceMapIta = {
+                    'S': 'Missione Pianificata',
+                    'U': 'Missione non Pianificata'
+                };
+                
+                const serviceMap = {
+                    'AF': 'Air Force',
+                    'CC': 'Commercial Cargo',
+                    'CP': 'Commercial Pax',
+                    'CS': 'Commercial Ship',
+                    'CT': 'Commerical Train',
+                    'CTR': 'Comercial Truck',
+                    'A': 'Army',
+                    'N': 'Navy',
+                    'USAF': 'USAF',
+                    'NATO': 'NATO'
+                };
+                
+                const serviceMapIta = {
+                    'AF': 'Volo Aeronautica Militare',
+                    'CC': 'Volo Carco Commerciale',
+                    'CP': 'Volo Passeggeri Commerciale',
+                    'CS': 'Nave Commerciale',
+                    'CT': 'Treno Commerciale',
+                    'CTR': 'Truck Commerciale',
+                    'A': 'Esercito',
+                    'N': 'Marina Militare',
+                    'USAF': 'USAF',
+                    'NATO': 'NATO'
+                };
+                
+                const operationMap = {
+                    'OPS': 'Operations',
+                    'CER': 'Ceremony',
+                    'PK': 'Peace Keeping',
+                    'HA': 'Humanitarian Aid',
+                    'EXE': 'Exercises'
+                };
+                
+                const operationMapIta = {
+                    'OPS': 'Operazioni',
+                    'CER': 'Cerimonia',
+                    'PK': 'Peace Keeping',
+                    'HA': 'Aiuti Umanitari',
+                    'EXE': 'Esercitazioni'
+                };
+                
+                code = code.toUpperCase().trim();
+                
+                if (code.length < 3) {
+                    return null;
+                }
+                
+                // Estrai il primo carattere (S o U)
+                const sourceType = code[0];
+                if (!sourceMap[sourceType]) {
+                    return null;
+                }
+                
+                // Trova il servizio
+                let service = '';
+                let remainingCode = code.substring(1);
+                
+                // Rimuovi eventuali numeri finali
+                let codeWithoutNumbers = remainingCode.replace(/\d+$/, '');
+                
+                // Prova prima con i codici più lunghi
+                for (let len = 4; len >= 1; len--) {
+                    const possibleService = codeWithoutNumbers.substring(0, len);
+                    if (serviceMap[possibleService]) {
+                        service = possibleService;
+                        codeWithoutNumbers = codeWithoutNumbers.substring(len);
+                        break;
+                    }
+                }
+                
+                if (!service) {
+                    return null;
+                }
+                
+                // Trova l'operazione
+                let operation = '';
+                for (let len = 3; len >= 2; len--) {
+                    const possibleOperation = codeWithoutNumbers.substring(0, len);
+                    if (operationMap[possibleOperation]) {
+                        operation = possibleOperation;
+                        break;
+                    }
+                }
+                
+                if (!operation) {
+                    return null;
+                }
+                
+                return {
+                    sourceEng: sourceMap[sourceType],
+                    sourceIta: sourceMapIta[sourceType],
+                    serviceEng: serviceMap[service],
+                    serviceIta: serviceMapIta[service],
+                    operationEng: operationMap[operation],
+                    operationIta: operationMapIta[operation],
+                    fullDecodeEng: `${sourceMap[sourceType]} ${serviceMap[service]} ${operationMap[operation]}`,
+                    fullDecodeIta: `${sourceMapIta[sourceType]} ${serviceMapIta[service]} ${operationMapIta[operation]}`
+                };
+            }
+
+            // Applica la decodifica quando il DOM è pronto
+            document.addEventListener('DOMContentLoaded', function() {
+                {% if dettagli_specifici.tipo_vettore %}
+                const mtformCode = '{{ dettagli_specifici.tipo_vettore }}';
+                const decodeElement = document.getElementById('mtform-decode');
+                
+                if (decodeElement && mtformCode) {
+                    const decoded = decodeMTFORM(mtformCode);
+                    if (decoded) {
+                        decodeElement.innerHTML = `
+                            ${decoded.fullDecodeEng}<br>
+                            ${decoded.fullDecodeIta}
+                        `;
+                    }
+                }
+                {% endif %}
+            });
+            </script>
+            {% endif %}
+        </dl>
+        {% endif %}
+
+        <hr style="margin-top: 30px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+            <!-- CORREZIONE: Link al form di modifica -->
+            <a href="{{ url_for('attivita.modifica_attivita_form', id=attivita.id) }}" style="background-color: #007bff; color: white; padding: 10px 20px; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em; text-decoration: none;">Modifica</a>
+            <!-- CORREZIONE: Action del form di eliminazione -->
+            <form action="{{ url_for('attivita.elimina_attivita', id=attivita.id) }}" method="POST" onsubmit="return confirm('Sei sicuro di voler eliminare questa attività? L\'azione è irreversibile.') && confirm('ATTENZIONE: Confermi definitivamente l\'eliminazione?');" style="margin: 0;">
+                <button type="submit" style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">Elimina Attività</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

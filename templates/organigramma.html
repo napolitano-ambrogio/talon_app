@@ -1,0 +1,114 @@
+{% macro render_tree(nodes) %}
+    <ul class="tree">
+        {% for node in nodes %}
+            <li class="{{ 'expanded' if node.parent_id is none and not view_all }}">
+                <div class="node-content">
+                    {% if node.children %}
+                        <span class="toggle-btn"></span>
+                    {% else %}
+                        <span style="width: 25px; display: inline-block;"></span>
+                    {% endif %}
+                    <div class="ente-name">
+                        <a href="{{ url_for('enti_militari.visualizza_ente', id=node.id) }}">
+                            <strong>{{ node.nome }}</strong>
+                        </a>
+                    </div>
+                </div>
+                {% if node.children %}
+                    {{ render_tree(node.children) }}
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{% endmacro %}
+
+{% extends "layouts/_base.html" %}
+
+{% block title %}Enti Militari - TALON{% endblock %}
+
+{% block content %}
+    <div class="detail-header">
+        <h3>Struttura Ordinativa</h3>
+        <a href="{{ url_for('enti_militari.inserisci_militare_form') }}" class="btn-modifica" style="background-color: #28a745;">Nuovo Ente Militare</a>
+    </div>
+
+    <div class="list-container">
+        <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse;">
+            <tbody>
+                <tr>
+                    <td style="text-align: left; vertical-align: middle; padding: 0;"></td>
+                    <td style="text-align: right; vertical-align: middle; padding: 0;">
+                        <div style="display: inline-flex; align-items: center;">
+                            <label class="talon-switch">
+                                <input type="checkbox" id="view-toggle-checkbox"
+                                       data-url-base="{{ url_for('enti_militari.organigramma') }}"
+                                       data-url-full="{{ url_for('enti_militari.organigramma', view='all') }}"
+                                       {% if view_all %}checked{% endif %}>
+                                <span class="talon-slider"></span>
+                            </label>
+                            <label for="view-toggle-checkbox" style="font-size: 0.9em; cursor: pointer; margin-left: 8px; white-space: nowrap;">
+                                Visualizza Struttura Organizzativa di Forza Armata
+                            </label>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="search-bar">
+            <input type="search" id="organigrammaSearchInput" placeholder="CERCA ENTE MILITARE...">
+        </div>
+
+        <p id="no-results-message" style="display: none; text-align: center;">Nessun risultato trovato.</p>
+
+        {% if tree %}
+            {{ render_tree(tree) }}
+        {% else %}
+            <p style="text-align: center;">Nessuna struttura disponibile.</p>
+        {% endif %}
+    </div>
+    
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Script specifico per la pagina organigramma
+    document.addEventListener('DOMContentLoaded', function() {
+        // View toggle già gestito in script.js, non serve duplicarlo
+        
+        // Funzionalità di ricerca specifica per organigramma
+        const searchInput = document.getElementById('organigrammaSearchInput');
+        const treeItems = document.querySelectorAll('.tree li');
+        const noResultsMessage = document.getElementById('no-results-message');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function () {
+                const searchTerm = this.value.toUpperCase();
+                let hasResults = false;
+
+                treeItems.forEach(item => {
+                    const enteName = item.querySelector('.ente-name');
+                    const text = enteName?.textContent.toUpperCase() || '';
+
+                    if (text.includes(searchTerm)) {
+                        item.style.display = 'block';
+                        hasResults = true;
+
+                        // Espande il nodo
+                        let parent = item.parentElement.closest('li');
+                        while (parent) {
+                            parent.style.display = 'block';
+                            parent.classList.add('expanded');
+                            parent = parent.parentElement.closest('li');
+                        }
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+
+                noResultsMessage.style.display = hasResults ? 'none' : 'block';
+            });
+        }
+    });
+</script>
+{% endblock %}

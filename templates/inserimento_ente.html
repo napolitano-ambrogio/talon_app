@@ -1,0 +1,69 @@
+{% extends "layouts/_base.html" %}
+
+{% block title %}Inserisci Ente Militare - TALON{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h1>Nuovo Ente Militare</h1>
+    
+    <form action="{{ url_for('enti_militari.salva_militare') }}" method="POST">
+        <div class="form-group">
+            <label for="nome">Nome Ente:</label>
+            <input type="text" id="nome" name="nome" required>
+        </div>
+        <div class="form-group">
+            <label for="codice">Codice (opzionale):</label>
+            <input type="text" id="codice" name="codice">
+        </div>
+        
+        <!-- CORREZIONE: Sostituito il <select> con il componente di ricerca -->
+        <div class="form-group">
+            <label for="parent_id">Dipende da (Ente Genitore):</label>
+            <div class="searchable-select" data-select-id="parent_id"></div>
+            <select name="parent_id" id="parent_id" style="display: none;">
+                <option value="">-- Nessuno (Ente al Vertice) --</option>
+                {% for ente in enti %}
+                    <option value="{{ ente.id }}">{{ ente.nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <hr>
+        <h3>Dettagli Contatto</h3>
+        
+        <div class="form-group">
+            <label for="indirizzo">Indirizzo (Via/Piazza):</label>
+            <input type="text" id="indirizzo" name="indirizzo">
+        </div>
+        <div class="form-group">
+            <label for="civico">Numero Civico:</label>
+            <input type="text" id="civico" name="civico">
+        </div>
+        <div class="form-group">
+            <label for="cap">CAP:</label>
+            <input type="text" id="cap" name="cap">
+        </div>
+        <div class="form-group">
+            <label for="citta">Città:</label>
+            <input type="text" id="citta" name="citta">
+        </div>
+        <div class="form-group">
+            <label for="provincia">Provincia (sigla):</label>
+            <input type="text" id="provincia" name="provincia" maxlength="2">
+        </div>
+        <div class="form-group">
+            <label for="telefono">Telefono:</label>
+            <input type="tel" id="telefono" name="telefono">
+        </div>
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email">
+        </div>
+
+        <button type="submit">Salva Ente</button>
+    </form>
+
+    <br>
+    <a href="{{ url_for('enti_militari.organigramma') }}" class="cancel-link">Annulla e torna all'Organigramma</a>
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "layouts/_base.html" %}
+
+{% block title %}Dettaglio Ente Militare - TALON{% endblock %}
+
+{% block content %}
+    <div class="detail-card">
+        <div class="detail-header">
+            <h3>Dettaglio Ente Militare</h3>
+            <!-- Pulsante "Torna all'elenco" spostato in alto -->
+            <a href="{{ url_for('enti_militari.organigramma') }}" class="cancel-link" style="font-size: 0.9em;">&larr; Torna all'Organigramma</a>
+        </div>
+        
+        <dl class="detail-grid">
+            <div>
+                <div class="detail-item">
+                    <dt>Nome Ente</dt>
+                    <dd>{{ ente.nome or 'N/D' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Codice</dt>
+                    <dd>{{ ente.codice or 'N/D' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Dipende da (Ente Genitore)</dt>
+                    <dd>{{ parent_name or 'Nessuno (Ente al Vertice)' }}</dd>
+                </div>
+            </div>
+            <div>
+                <div class="detail-item">
+                    <dt>Indirizzo</dt>
+                    <dd>{{ ente.indirizzo or 'N/D' }} {{ ente.civico or '' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Città e CAP</dt>
+                    <dd>{{ ente.citta or 'N/D' }} ({{ ente.provincia or '' }}) - {{ ente.cap or 'N/D' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Contatti</dt>
+                    <dd>Tel: {{ ente.telefono or 'N/D' }} <br> Email: {{ ente.email or 'N/D' }}</dd>
+                </div>
+            </div>
+        </dl>
+
+        <hr style="margin-top: 30px; margin-bottom: 20px;">
+        
+        <!-- Pulsanti Modifica ed Elimina affiancati e con stile uniforme -->
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+            <a href="{{ url_for('enti_militari.modifica_militare_form', id=ente.id) }}" style="background-color: #007bff; color: white; padding: 10px 20px; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em; text-decoration: none;">Modifica</a>
+            <form action="{{ url_for('enti_militari.elimina_militare', id=ente.id) }}" method="POST" onsubmit="return confirm('Sei sicuro di voler eliminare questo ente? L\'azione è irreversibile.') && confirm('ATTENZIONE: Confermi definitivamente l\'eliminazione?');" style="margin: 0;">
+                <button type="submit" style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">Elimina Ente</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

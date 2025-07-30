@@ -1,0 +1,61 @@
+{% extends "layouts/_base.html" %}
+{% block title %}Elenco Operazioni - TALON{% endblock %}
+{% block content %}
+    <div class="detail-header">
+        <h3>Elenco Operazioni Estere</h3>
+        <a href="{{ url_for('operazioni.inserisci_operazione_form') }}" class="btn-modifica" style="background-color: #28a745;">Nuova Operazione</a>
+    </div>
+    <div class="list-container">
+        <div class="search-bar">
+            <input type="search" id="searchInput" placeholder="CERCA PER NOME, TEATRO, NAZIONE...">
+        </div>
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>Nome Breve</th>
+                    <th>Nome Missione</th>
+                    <th>Teatro Operativo</th>
+                    <th>Nazione</th>
+                    <th>Data Inizio</th>
+                </tr>
+            </thead>
+            <tbody id="operazioniTableBody">
+                {% for op in operazioni %}
+                <tr class="clickable-row" data-href="{{ url_for('operazioni.visualizza_operazione', id=op.id) }}">
+                    <td><strong>{{ op.nome_breve or 'N/D' }}</strong></td>
+                    <td>{{ op.nome_missione }}</td>
+                    <td>{{ op.teatro_operativo or 'N/D' }}</td>
+                    <td>{{ op.nazione or 'N/D' }}</td>
+                    <td>{{ op.data_inizio.split('-') | reverse | join('/') if op.data_inizio else 'N/D' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" style="text-align: center;">Nessuna operazione inserita.</td></tr>
+                {% endfor %}
+                <tr id="no-results-row" style="display: none;"><td colspan="4" style="text-align: center;">Nessun risultato trovato.</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <script>
+        document.querySelectorAll('.clickable-row').forEach(row => {
+            row.addEventListener('click', () => { window.location.href = row.dataset.href; });
+        });
+        const searchInput = document.getElementById('searchInput');
+        const tableBody = document.getElementById('operazioniTableBody');
+        const allRows = tableBody.querySelectorAll('tr.clickable-row');
+        const noResultsRow = document.getElementById('no-results-row');
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toUpperCase();
+            let visibleRows = 0;
+            allRows.forEach(row => {
+                const rowText = row.textContent.toUpperCase();
+                if (rowText.includes(searchTerm)) {
+                    row.style.display = '';
+                    visibleRows++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            noResultsRow.style.display = (visibleRows === 0 && allRows.length > 0) ? 'table-row' : 'none';
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "layouts/_base.html" %}
+{% block title %}Dettaglio Ente Civile - TALON{% endblock %}
+{% block content %}
+    <div class="detail-card">
+        <div class="detail-header">
+            <h3>Dettaglio Ente Civile</h3>
+            <!-- CORREZIONE 3: Pulsante "Torna all'elenco" spostato in alto -->
+            <a href="{{ url_for('enti_civili.enti_civili') }}" class="cancel-link" style="font-size: 0.9em;">&larr; Torna all'elenco</a>
+        </div>
+        
+        <dl class="detail-grid">
+            <div>
+                <div class="detail-item">
+                    <dt>Nome Ente</dt>
+                    <dd>{{ ente.nome or 'N/D' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Indirizzo</dt>
+                    <dd>{{ ente.indirizzo or '' }} {{ ente.civico or '' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Località</dt>
+                    <dd>{{ ente.citta or '' }} ({{ ente.provincia or '' }}) - {{ ente.cap or '' }}</dd>
+                </div>
+                 <div class="detail-item">
+                    <dt>Nazione</dt>
+                    <dd>{{ ente.nazione or 'N/D' }}</dd>
+                </div>
+            </div>
+            <div>
+                <div class="detail-item">
+                    <dt>Telefono</dt>
+                    <dd>{{ ente.telefono or 'N/D' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Email</dt>
+                    <dd>{{ ente.email or 'N/D' }}</dd>
+                </div>
+            </div>
+        </dl>
+
+        <hr style="margin-top: 30px; margin-bottom: 20px;">
+        
+        <!-- CORREZIONE 1 & 2: Pulsanti Modifica ed Elimina affiancati e con stile uniforme -->
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+            <a href="{{ url_for('enti_civili.modifica_civile_form', id=ente.id) }}" style="background-color: #007bff; color: white; padding: 10px 20px; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em; text-decoration: none;">Modifica</a>
+            <form action="{{ url_for('enti_civili.elimina_civile', id=ente.id) }}" method="POST" onsubmit="return confirm('Sei sicuro di voler eliminare questo ente? L\'azione è irreversibile.') && confirm('ATTENZIONE: Confermi definitivamente l\'eliminazione?');" style="margin: 0;">
+                <button type="submit" style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">Elimina Ente</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
