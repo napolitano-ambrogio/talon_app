@@ -151,19 +151,109 @@
 
             <div class="form-group">
                 <label for="tipo_vettore">Tipo vettore:</label>
-                <select id="tipo_vettore" name="tipo_vettore">
+                <div class="searchable-select" data-select-id="tipo_vettore"></div>
+                <select id="tipo_vettore" name="tipo_vettore" style="display: none;">
                     <option value="" {% if not dettagli_getra.tipo_vettore %}selected{% endif %}>-- Seleziona --</option>
-                    <option value="SAFOPS"   {% if dettagli_getra.tipo_vettore == 'SAFOPS'   %}selected{% endif %}>SAFOPS – descrizione (inserire testo)</option>
-                    <option value="SCPOPS"   {% if dettagli_getra.tipo_vettore == 'SCPOPS'   %}selected{% endif %}>SCPOPS – descrizione (inserire testo)</option>
-                    <option value="SCSOPS"   {% if dettagli_getra.tipo_vettore == 'SCSOPS'   %}selected{% endif %}>SCSOPS – descrizione (inserire testo)</option>
-                    <option value="SCTOPS"   {% if dettagli_getra.tipo_vettore == 'SCTOPS'   %}selected{% endif %}>SCTOPS – descrizione (inserire testo)</option>
-                    <option value="SCPTROPS" {% if dettagli_getra.tipo_vettore == 'SCPTROPS' %}selected{% endif %}>SCPTROPS – descrizione (inserire testo)</option>
-                    <option value="SCPEXE"   {% if dettagli_getra.tipo_vettore == 'SCPEXE'   %}selected{% endif %}>SCPEXE – descrizione (inserire testo)</option>
-                    <option value="SAFMEDE"  {% if dettagli_getra.tipo_vettore == 'SAFMEDE'  %}selected{% endif %}>SAFMEDE – descrizione (inserire testo)</option>
-                    <option value="SNOPS"    {% if dettagli_getra.tipo_vettore == 'SNOPS'    %}selected{% endif %}>SNOPS – descrizione (inserire testo)</option>
-                    <option value="UAFMEDE"  {% if dettagli_getra.tipo_vettore == 'UAFMEDE'  %}selected{% endif %}>UAFMEDE – descrizione (inserire testo)</option>
-                    <option value="UCPEXE"   {% if dettagli_getra.tipo_vettore == 'UCPEXE'   %}selected{% endif %}>UCPEXE – descrizione (inserire testo)</option>
-                    <option value="ULAFOPS"  {% if dettagli_getra.tipo_vettore == 'ULAFOPS'  %}selected{% endif %}>ULAFOPS – descrizione (inserire testo)</option>
+                    <option value="SAFOPS" {% if dettagli_getra.tipo_vettore == 'SAFOPS' %}selected{% endif %}>SAFOPS - SOURCED AIR FORCE OPERATIONS</option>
+                    <option value="SAFCER" {% if dettagli_getra.tipo_vettore == 'SAFCER' %}selected{% endif %}>SAFCER - SOURCED AIR FORCE CEREMONY</option>
+                    <option value="SAFPK" {% if dettagli_getra.tipo_vettore == 'SAFPK' %}selected{% endif %}>SAFPK - SOURCED AIR FORCE PEACE KEEPING</option>
+                    <option value="SAFHA" {% if dettagli_getra.tipo_vettore == 'SAFHA' %}selected{% endif %}>SAFHA - SOURCED AIR FORCE HUMANITARIAN AID</option>
+                    <option value="SAFEXE" {% if dettagli_getra.tipo_vettore == 'SAFEXE' %}selected{% endif %}>SAFEXE - SOURCED AIR FORCE EXERCISES</option>
+                    <option value="SCCOPS" {% if dettagli_getra.tipo_vettore == 'SCCOPS' %}selected{% endif %}>SCCOPS - SOURCED COMMERCIAL CARGO OPERATIONS</option>
+                    <option value="SCCCER" {% if dettagli_getra.tipo_vettore == 'SCCCER' %}selected{% endif %}>SCCCER - SOURCED COMMERCIAL CARGO CEREMONY</option>
+                    <option value="SCCPK" {% if dettagli_getra.tipo_vettore == 'SCCPK' %}selected{% endif %}>SCCPK - SOURCED COMMERCIAL CARGO PEACE KEEPING</option>
+                    <option value="SCCHA" {% if dettagli_getra.tipo_vettore == 'SCCHA' %}selected{% endif %}>SCCHA - SOURCED COMMERCIAL CARGO HUMANITARIAN AID</option>
+                    <option value="SCCEXE" {% if dettagli_getra.tipo_vettore == 'SCCEXE' %}selected{% endif %}>SCCEXE - SOURCED COMMERCIAL CARGO EXERCISES</option>
+                    <option value="SCPOPS" {% if dettagli_getra.tipo_vettore == 'SCPOPS' %}selected{% endif %}>SCPOPS - SOURCED COMMERCIAL PAX OPERATIONS</option>
+                    <option value="SCPCER" {% if dettagli_getra.tipo_vettore == 'SCPCER' %}selected{% endif %}>SCPCER - SOURCED COMMERCIAL PAX CEREMONY</option>
+                    <option value="SCPPK" {% if dettagli_getra.tipo_vettore == 'SCPPK' %}selected{% endif %}>SCPPK - SOURCED COMMERCIAL PAX PEACE KEEPING</option>
+                    <option value="SCPHA" {% if dettagli_getra.tipo_vettore == 'SCPHA' %}selected{% endif %}>SCPHA - SOURCED COMMERCIAL PAX HUMANITARIAN AID</option>
+                    <option value="SCPEXE" {% if dettagli_getra.tipo_vettore == 'SCPEXE' %}selected{% endif %}>SCPEXE - SOURCED COMMERCIAL PAX EXERCISES</option>
+                    <option value="SCSOPS" {% if dettagli_getra.tipo_vettore == 'SCSOPS' %}selected{% endif %}>SCSOPS - SOURCED COMMERCIAL SHIP OPERATIONS</option>
+                    <option value="SCSCER" {% if dettagli_getra.tipo_vettore == 'SCSCER' %}selected{% endif %}>SCSCER - SOURCED COMMERCIAL SHIP CEREMONY</option>
+                    <option value="SCSPK" {% if dettagli_getra.tipo_vettore == 'SCSPK' %}selected{% endif %}>SCSPK - SOURCED COMMERCIAL SHIP PEACE KEEPING</option>
+                    <option value="SCSHA" {% if dettagli_getra.tipo_vettore == 'SCSHA' %}selected{% endif %}>SCSHA - SOURCED COMMERCIAL SHIP HUMANITARIAN AID</option>
+                    <option value="SCSEXE" {% if dettagli_getra.tipo_vettore == 'SCSEXE' %}selected{% endif %}>SCSEXE - SOURCED COMMERCIAL SHIP EXERCISES</option>
+                    <option value="SCTOPS" {% if dettagli_getra.tipo_vettore == 'SCTOPS' %}selected{% endif %}>SCTOPS - SOURCED COMMERCIAL TRAIN OPERATIONS</option>
+                    <option value="SCTCER" {% if dettagli_getra.tipo_vettore == 'SCTCER' %}selected{% endif %}>SCTCER - SOURCED COMMERCIAL TRAIN CEREMONY</option>
+                    <option value="SCTPK" {% if dettagli_getra.tipo_vettore == 'SCTPK' %}selected{% endif %}>SCTPK - SOURCED COMMERCIAL TRAIN PEACE KEEPING</option>
+                    <option value="SCTHA" {% if dettagli_getra.tipo_vettore == 'SCTHA' %}selected{% endif %}>SCTHA - SOURCED COMMERCIAL TRAIN HUMANITARIAN AID</option>
+                    <option value="SCTEXE" {% if dettagli_getra.tipo_vettore == 'SCTEXE' %}selected{% endif %}>SCTEXE - SOURCED COMMERCIAL TRAIN EXERCISES</option>
+                    <option value="SCTROPS" {% if dettagli_getra.tipo_vettore == 'SCTROPS' %}selected{% endif %}>SCTROPS - SOURCED COMMERCIAL TRUCK OPERATIONS</option>
+                    <option value="SCTRCER" {% if dettagli_getra.tipo_vettore == 'SCTRCER' %}selected{% endif %}>SCTRCER - SOURCED COMMERCIAL TRUCK CEREMONY</option>
+                    <option value="SCTRPK" {% if dettagli_getra.tipo_vettore == 'SCTRPK' %}selected{% endif %}>SCTRPK - SOURCED COMMERCIAL TRUCK PEACE KEEPING</option>
+                    <option value="SCTRHA" {% if dettagli_getra.tipo_vettore == 'SCTRHA' %}selected{% endif %}>SCTRHA - SOURCED COMMERCIAL TRUCK HUMANITARIAN AID</option>
+                    <option value="SCTREXE" {% if dettagli_getra.tipo_vettore == 'SCTREXE' %}selected{% endif %}>SCTREXE - SOURCED COMMERCIAL TRUCK EXERCISES</option>
+                    <option value="SAOPS" {% if dettagli_getra.tipo_vettore == 'SAOPS' %}selected{% endif %}>SAOPS - SOURCED ARMY OPERATIONS</option>
+                    <option value="SACER" {% if dettagli_getra.tipo_vettore == 'SACER' %}selected{% endif %}>SACER - SOURCED ARMY CEREMONY</option>
+                    <option value="SAPK" {% if dettagli_getra.tipo_vettore == 'SAPK' %}selected{% endif %}>SAPK - SOURCED ARMY PEACE KEEPING</option>
+                    <option value="SAHA" {% if dettagli_getra.tipo_vettore == 'SAHA' %}selected{% endif %}>SAHA - SOURCED ARMY HUMANITARIAN AID</option>
+                    <option value="SAEXE" {% if dettagli_getra.tipo_vettore == 'SAEXE' %}selected{% endif %}>SAEXE - SOURCED ARMY EXERCISES</option>
+                    <option value="SNOPS" {% if dettagli_getra.tipo_vettore == 'SNOPS' %}selected{% endif %}>SNOPS - SOURCED NAVY OPERATIONS</option>
+                    <option value="SNCER" {% if dettagli_getra.tipo_vettore == 'SNCER' %}selected{% endif %}>SNCER - SOURCED NAVY CEREMONY</option>
+                    <option value="SNPK" {% if dettagli_getra.tipo_vettore == 'SNPK' %}selected{% endif %}>SNPK - SOURCED NAVY PEACE KEEPING</option>
+                    <option value="SNHA" {% if dettagli_getra.tipo_vettore == 'SNHA' %}selected{% endif %}>SNHA - SOURCED NAVY HUMANITARIAN AID</option>
+                    <option value="SNEXE" {% if dettagli_getra.tipo_vettore == 'SNEXE' %}selected{% endif %}>SNEXE - SOURCED NAVY EXERCISES</option>
+                    <option value="SUSAFOPS" {% if dettagli_getra.tipo_vettore == 'SUSAFOPS' %}selected{% endif %}>SUSAFOPS - SOURCED USAF OPERATIONS</option>
+                    <option value="SUSAFCER" {% if dettagli_getra.tipo_vettore == 'SUSAFCER' %}selected{% endif %}>SUSAFCER - SOURCED USAF CEREMONY</option>
+                    <option value="SUSAFPK" {% if dettagli_getra.tipo_vettore == 'SUSAFPK' %}selected{% endif %}>SUSAFPK - SOURCED USAF PEACE KEEPING</option>
+                    <option value="SUSAFHA" {% if dettagli_getra.tipo_vettore == 'SUSAFHA' %}selected{% endif %}>SUSAFHA - SOURCED USAF HUMANITARIAN AID</option>
+                    <option value="SUSAFEXE" {% if dettagli_getra.tipo_vettore == 'SUSAFEXE' %}selected{% endif %}>SUSAFEXE - SOURCED USAF EXERCISES</option>
+                    <option value="SNATOOPS" {% if dettagli_getra.tipo_vettore == 'SNATOOPS' %}selected{% endif %}>SNATOOPS - SOURCED NATO OPERATIONS</option>
+                    <option value="SNATOCER" {% if dettagli_getra.tipo_vettore == 'SNATOCER' %}selected{% endif %}>SNATOCER - SOURCED NATO CEREMONY</option>
+                    <option value="SNATOPK" {% if dettagli_getra.tipo_vettore == 'SNATOPK' %}selected{% endif %}>SNATOPK - SOURCED NATO PEACE KEEPING</option>
+                    <option value="SNATOHA" {% if dettagli_getra.tipo_vettore == 'SNATOHA' %}selected{% endif %}>SNATOHA - SOURCED NATO HUMANITARIAN AID</option>
+                    <option value="SNATOEXE" {% if dettagli_getra.tipo_vettore == 'SNATOEXE' %}selected{% endif %}>SNATOEXE - SOURCED NATO EXERCISES</option>
+                    <option value="UAFOPS" {% if dettagli_getra.tipo_vettore == 'UAFOPS' %}selected{% endif %}>UAFOPS - UNSOURCED AIR FORCE OPERATIONS</option>
+                    <option value="UAFCER" {% if dettagli_getra.tipo_vettore == 'UAFCER' %}selected{% endif %}>UAFCER - UNSOURCED AIR FORCE CEREMONY</option>
+                    <option value="UAFPK" {% if dettagli_getra.tipo_vettore == 'UAFPK' %}selected{% endif %}>UAFPK - UNSOURCED AIR FORCE PEACE KEEPING</option>
+                    <option value="UAFHA" {% if dettagli_getra.tipo_vettore == 'UAFHA' %}selected{% endif %}>UAFHA - UNSOURCED AIR FORCE HUMANITARIAN AID</option>
+                    <option value="UAFEXE" {% if dettagli_getra.tipo_vettore == 'UAFEXE' %}selected{% endif %}>UAFEXE - UNSOURCED AIR FORCE EXERCISES</option>
+                    <option value="UCCOPS" {% if dettagli_getra.tipo_vettore == 'UCCOPS' %}selected{% endif %}>UCCOPS - UNSOURCED COMMERCIAL CARGO OPERATIONS</option>
+                    <option value="UCCCER" {% if dettagli_getra.tipo_vettore == 'UCCCER' %}selected{% endif %}>UCCCER - UNSOURCED COMMERCIAL CARGO CEREMONY</option>
+                    <option value="UCCPK" {% if dettagli_getra.tipo_vettore == 'UCCPK' %}selected{% endif %}>UCCPK - UNSOURCED COMMERCIAL CARGO PEACE KEEPING</option>
+                    <option value="UCCHA" {% if dettagli_getra.tipo_vettore == 'UCCHA' %}selected{% endif %}>UCCHA - UNSOURCED COMMERCIAL CARGO HUMANITARIAN AID</option>
+                    <option value="UCCEXE" {% if dettagli_getra.tipo_vettore == 'UCCEXE' %}selected{% endif %}>UCCEXE - UNSOURCED COMMERCIAL CARGO EXERCISES</option>
+                    <option value="UCPOPS" {% if dettagli_getra.tipo_vettore == 'UCPOPS' %}selected{% endif %}>UCPOPS - UNSOURCED COMMERCIAL PAX OPERATIONS</option>
+                    <option value="UCPCER" {% if dettagli_getra.tipo_vettore == 'UCPCER' %}selected{% endif %}>UCPCER - UNSOURCED COMMERCIAL PAX CEREMONY</option>
+                    <option value="UCPPK" {% if dettagli_getra.tipo_vettore == 'UCPPK' %}selected{% endif %}>UCPPK - UNSOURCED COMMERCIAL PAX PEACE KEEPING</option>
+                    <option value="UCPHA" {% if dettagli_getra.tipo_vettore == 'UCPHA' %}selected{% endif %}>UCPHA - UNSOURCED COMMERCIAL PAX HUMANITARIAN AID</option>
+                    <option value="UCPEXE" {% if dettagli_getra.tipo_vettore == 'UCPEXE' %}selected{% endif %}>UCPEXE - UNSOURCED COMMERCIAL PAX EXERCISES</option>
+                    <option value="UCSOPS" {% if dettagli_getra.tipo_vettore == 'UCSOPS' %}selected{% endif %}>UCSOPS - UNSOURCED COMMERCIAL SHIP OPERATIONS</option>
+                    <option value="UCSCER" {% if dettagli_getra.tipo_vettore == 'UCSCER' %}selected{% endif %}>UCSCER - UNSOURCED COMMERCIAL SHIP CEREMONY</option>
+                    <option value="UCSPK" {% if dettagli_getra.tipo_vettore == 'UCSPK' %}selected{% endif %}>UCSPK - UNSOURCED COMMERCIAL SHIP PEACE KEEPING</option>
+                    <option value="UCSHA" {% if dettagli_getra.tipo_vettore == 'UCSHA' %}selected{% endif %}>UCSHA - UNSOURCED COMMERCIAL SHIP HUMANITARIAN AID</option>
+                    <option value="UCSEXE" {% if dettagli_getra.tipo_vettore == 'UCSEXE' %}selected{% endif %}>UCSEXE - UNSOURCED COMMERCIAL SHIP EXERCISES</option>
+                    <option value="UCTOPS" {% if dettagli_getra.tipo_vettore == 'UCTOPS' %}selected{% endif %}>UCTOPS - UNSOURCED COMMERCIAL TRAIN OPERATIONS</option>
+                    <option value="UCTCER" {% if dettagli_getra.tipo_vettore == 'UCTCER' %}selected{% endif %}>UCTCER - UNSOURCED COMMERCIAL TRAIN CEREMONY</option>
+                    <option value="UCTPK" {% if dettagli_getra.tipo_vettore == 'UCTPK' %}selected{% endif %}>UCTPK - UNSOURCED COMMERCIAL TRAIN PEACE KEEPING</option>
+                    <option value="UCTHA" {% if dettagli_getra.tipo_vettore == 'UCTHA' %}selected{% endif %}>UCTHA - UNSOURCED COMMERCIAL TRAIN HUMANITARIAN AID</option>
+                    <option value="UCTEXE" {% if dettagli_getra.tipo_vettore == 'UCTEXE' %}selected{% endif %}>UCTEXE - UNSOURCED COMMERCIAL TRAIN EXERCISES</option>
+                    <option value="UCTROPS" {% if dettagli_getra.tipo_vettore == 'UCTROPS' %}selected{% endif %}>UCTROPS - UNSOURCED COMMERCIAL TRUCK OPERATIONS</option>
+                    <option value="UCTRCER" {% if dettagli_getra.tipo_vettore == 'UCTRCER' %}selected{% endif %}>UCTRCER - UNSOURCED COMMERCIAL TRUCK CEREMONY</option>
+                    <option value="UCTRPK" {% if dettagli_getra.tipo_vettore == 'UCTRPK' %}selected{% endif %}>UCTRPK - UNSOURCED COMMERCIAL TRUCK PEACE KEEPING</option>
+                    <option value="UCTRHA" {% if dettagli_getra.tipo_vettore == 'UCTRHA' %}selected{% endif %}>UCTRHA - UNSOURCED COMMERCIAL TRUCK HUMANITARIAN AID</option>
+                    <option value="UCTREXE" {% if dettagli_getra.tipo_vettore == 'UCTREXE' %}selected{% endif %}>UCTREXE - UNSOURCED COMMERCIAL TRUCK EXERCISES</option>
+                    <option value="UAOPS" {% if dettagli_getra.tipo_vettore == 'UAOPS' %}selected{% endif %}>UAOPS - UNSOURCED ARMY OPERATIONS</option>
+                    <option value="UACER" {% if dettagli_getra.tipo_vettore == 'UACER' %}selected{% endif %}>UACER - UNSOURCED ARMY CEREMONY</option>
+                    <option value="UAPK" {% if dettagli_getra.tipo_vettore == 'UAPK' %}selected{% endif %}>UAPK - UNSOURCED ARMY PEACE KEEPING</option>
+                    <option value="UAHA" {% if dettagli_getra.tipo_vettore == 'UAHA' %}selected{% endif %}>UAHA - UNSOURCED ARMY HUMANITARIAN AID</option>
+                    <option value="UAEXE" {% if dettagli_getra.tipo_vettore == 'UAEXE' %}selected{% endif %}>UAEXE - UNSOURCED ARMY EXERCISES</option>
+                    <option value="UNOPS" {% if dettagli_getra.tipo_vettore == 'UNOPS' %}selected{% endif %}>UNOPS - UNSOURCED NAVY OPERATIONS</option>
+                    <option value="UNCER" {% if dettagli_getra.tipo_vettore == 'UNCER' %}selected{% endif %}>UNCER - UNSOURCED NAVY CEREMONY</option>
+                    <option value="UNPK" {% if dettagli_getra.tipo_vettore == 'UNPK' %}selected{% endif %}>UNPK - UNSOURCED NAVY PEACE KEEPING</option>
+                    <option value="UNHA" {% if dettagli_getra.tipo_vettore == 'UNHA' %}selected{% endif %}>UNHA - UNSOURCED NAVY HUMANITARIAN AID</option>
+                    <option value="UNEXE" {% if dettagli_getra.tipo_vettore == 'UNEXE' %}selected{% endif %}>UNEXE - UNSOURCED NAVY EXERCISES</option>
+                    <option value="UUSAFOPS" {% if dettagli_getra.tipo_vettore == 'UUSAFOPS' %}selected{% endif %}>UUSAFOPS - UNSOURCED USAF OPERATIONS</option>
+                    <option value="UUSAFCER" {% if dettagli_getra.tipo_vettore == 'UUSAFCER' %}selected{% endif %}>UUSAFCER - UNSOURCED USAF CEREMONY</option>
+                    <option value="UUSAFPK" {% if dettagli_getra.tipo_vettore == 'UUSAFPK' %}selected{% endif %}>UUSAFPK - UNSOURCED USAF PEACE KEEPING</option>
+                    <option value="UUSAFHA" {% if dettagli_getra.tipo_vettore == 'UUSAFHA' %}selected{% endif %}>UUSAFHA - UNSOURCED USAF HUMANITARIAN AID</option>
+                    <option value="UUSAFEXE" {% if dettagli_getra.tipo_vettore == 'UUSAFEXE' %}selected{% endif %}>UUSAFEXE - UNSOURCED USAF EXERCISES</option>
+                    <option value="UNATOOPS" {% if dettagli_getra.tipo_vettore == 'UNATOOPS' %}selected{% endif %}>UNATOOPS - UNSOURCED NATO OPERATIONS</option>
+                    <option value="UNATOCER" {% if dettagli_getra.tipo_vettore == 'UNATOCER' %}selected{% endif %}>UNATOCER - UNSOURCED NATO CEREMONY</option>
+                    <option value="UNATOPK" {% if dettagli_getra.tipo_vettore == 'UNATOPK' %}selected{% endif %}>UNATOPK - UNSOURCED NATO PEACE KEEPING</option>
+                    <option value="UNATOHA" {% if dettagli_getra.tipo_vettore == 'UNATOHA' %}selected{% endif %}>UNATOHA - UNSOURCED NATO HUMANITARIAN AID</option>
+                    <option value="UNATOEXE" {% if dettagli_getra.tipo_vettore == 'UNATOEXE' %}selected{% endif %}>UNATOEXE - UNSOURCED NATO EXERCISES</option>
                 </select>
             </div>
 

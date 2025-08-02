@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, redirect
 
 # Definiamo un "Blueprint", un modulo per le nostre rotte
 main_bp = Blueprint(
@@ -9,6 +9,11 @@ main_bp = Blueprint(
 )
 
 @main_bp.route('/')
+def index():
+    """Redirect dalla root alla dashboard."""
+    return redirect('/dashboard')
+
+@main_bp.route('/dashboard')
 def dashboard():
     """Mostra la dashboard principale."""
     return render_template('dashboard.html')
