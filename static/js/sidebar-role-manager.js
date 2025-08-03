@@ -1,9 +1,9 @@
 /**
  * ========================================
- * TALON ROLE MANAGER - MODULO UTILITY
+ * TALON ROLE MANAGER - MODULO UTILITY CORRETTO
  * File: static/js/sidebar-role-manager.js
  * 
- * Versione: 1.2 - Ottimizzato
+ * Versione: 1.3 - SENZA WIDGET PROBLEMATICI
  * Funzionalità: Utility avanzate per gestione ruoli,
  *               controlli permessi e integrazioni DOM
  * ========================================
@@ -100,7 +100,8 @@
                 this.applyGlobalRoleControls();
                 this.initializeObservers();
                 this.setupEventDelegation();
-                this.initializeDebugPanel();
+                
+                // ❌ RIMOSSO: this.initializeDebugPanel() - causava il widget debug
                 
                 this.initialized = true;
                 console.log('[Role Manager] ✅ Inizializzazione completata');
@@ -195,8 +196,19 @@
             // Applica a bottoni specifici
             this.applyButtonRestrictions();
             
-            // Aggiungi indicatori visivi
-            this.addVisualIndicators();
+            // ❌ RIMOSSO: this.addVisualIndicators() - causava il widget debug
+            
+            // Solo aggiungi classi CSS senza widget
+            this.addCSSClasses();
+        }
+
+        /**
+         * NUOVO: Aggiunge solo classi CSS senza widget
+         */
+        addCSSClasses() {
+            // Aggiungi classi CSS per styling
+            document.body.classList.add(`role-${this.currentRole.toLowerCase()}`);
+            document.body.classList.add('role-manager-active');
         }
 
         /**
@@ -368,60 +380,8 @@
             }
         }
 
-        /**
-         * Aggiunge indicatori visivi
-         */
-        addVisualIndicators() {
-            // Aggiungi badge ruolo se non esiste
-            this.addRoleBadge();
-            
-            // Aggiungi tooltip agli elementi disabilitati
-            this.addDisabledTooltips();
-            
-            // Aggiungi classi CSS per styling
-            document.body.classList.add(`role-${this.currentRole.toLowerCase()}`);
-            document.body.classList.add('role-manager-active');
-        }
-
-        /**
-         * Aggiunge badge ruolo nell'interfaccia
-         */
-        addRoleBadge() {
-            // Cerca container esistente o creane uno
-            let badgeContainer = document.getElementById('role-badge-container');
-            if (!badgeContainer) {
-                badgeContainer = document.createElement('div');
-                badgeContainer.id = 'role-badge-container';
-                badgeContainer.style.cssText = `
-                    position: fixed;
-                    bottom: 20px;
-                    left: 20px;
-                    z-index: 1000;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    background: rgba(255, 255, 255, 0.9);
-                    padding: 10px 15px;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-                    font-size: 14px;
-                `;
-                document.body.appendChild(badgeContainer);
-            }
-            
-            badgeContainer.innerHTML = `
-                <span style="font-size: 1.5em;">${this.roleConfig.icon}</span>
-                <div>
-                    <div style="font-weight: 600; color: ${this.roleConfig.color};">
-                        ${this.roleConfig.label}
-                    </div>
-                    <div style="font-size: 0.85em; color: #6c757d;">
-                        Livello ${this.roleConfig.level}
-                    </div>
-                </div>
-            `;
-        }
+        // ❌ RIMOSSA COMPLETAMENTE: addVisualIndicators()
+        // ❌ RIMOSSA COMPLETAMENTE: addRoleBadge() - causava il widget in basso
 
         /**
          * Aggiunge tooltip agli elementi disabilitati
@@ -595,125 +555,15 @@
             } else {
                 // Fallback semplice
                 console.log(`[${type.toUpperCase()}] ${message}`);
-                alert(message);
             }
         }
 
-        /**
-         * Inizializza pannello debug (solo per ADMIN)
-         */
-        initializeDebugPanel() {
-            if (this.currentRole !== 'ADMIN') return;
-            
-            // Aggiungi comando console
-            window.roleDebug = () => this.showDebugInfo();
-            
-            // Shortcut keyboard (Ctrl+Shift+D)
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.shiftKey && e.key === 'D') {
-                    e.preventDefault();
-                    this.toggleDebugPanel();
-                }
-            });
-        }
+        // ❌ RIMOSSA COMPLETAMENTE: initializeDebugPanel()
+        // ❌ RIMOSSA COMPLETAMENTE: toggleDebugPanel()
+        // ❌ RIMOSSA COMPLETAMENTE: createDebugPanel()
 
         /**
-         * Toggle pannello debug
-         */
-        toggleDebugPanel() {
-            let panel = document.getElementById('role-debug-panel');
-            
-            if (panel) {
-                panel.remove();
-            } else {
-                this.createDebugPanel();
-            }
-        }
-
-        /**
-         * Crea pannello debug
-         */
-        createDebugPanel() {
-            const panel = document.createElement('div');
-            panel.id = 'role-debug-panel';
-            panel.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                width: 350px;
-                max-height: 80vh;
-                overflow-y: auto;
-                background: rgba(0, 0, 0, 0.9);
-                color: #fff;
-                padding: 20px;
-                border-radius: 8px;
-                font-family: 'Courier New', monospace;
-                font-size: 13px;
-                z-index: 10000;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            `;
-            
-            const info = this.getDebugInfo();
-            panel.innerHTML = `
-                <h3 style="margin: 0 0 15px 0; color: #4caf50;">🔍 Role Manager Debug</h3>
-                <button onclick="document.getElementById('role-debug-panel').remove()" 
-                        style="position: absolute; top: 10px; right: 10px; 
-                               background: #f44336; color: white; border: none; 
-                               padding: 5px 10px; border-radius: 4px; cursor: pointer;">
-                    ✕
-                </button>
-                
-                <div style="margin-bottom: 15px;">
-                    <strong style="color: #ff9800;">Ruolo Corrente:</strong> 
-                    <span style="color: ${info.role.color}">${info.role.name} (Livello ${info.role.level})</span>
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <strong style="color: #ff9800;">Permessi:</strong>
-                    <div style="margin-left: 10px; color: #03a9f4;">
-                        ${info.permissions.join(', ') || 'Nessuno'}
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <strong style="color: #ff9800;">Statistiche Elementi:</strong>
-                    <div style="margin-left: 10px;">
-                        <div>Totali: ${info.stats.total}</div>
-                        <div>Nascosti: ${info.stats.hidden}</div>
-                        <div>Disabilitati: ${info.stats.disabled}</div>
-                        <div>Form Read-only: ${info.stats.readonlyForms}</div>
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <strong style="color: #ff9800;">API Disponibili:</strong>
-                    <div style="margin-left: 10px; font-size: 11px;">
-                        <div>window.roleManager</div>
-                        <div>window.roleDebug()</div>
-                        <div>Ctrl+Shift+D (toggle panel)</div>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #555;">
-                    <button onclick="window.roleManager.testAllRoles()" 
-                            style="background: #2196f3; color: white; border: none; 
-                                   padding: 8px 15px; border-radius: 4px; cursor: pointer; 
-                                   margin-right: 10px;">
-                        Test Tutti i Ruoli
-                    </button>
-                    <button onclick="window.roleManager.exportDebugLog()" 
-                            style="background: #4caf50; color: white; border: none; 
-                                   padding: 8px 15px; border-radius: 4px; cursor: pointer;">
-                        Esporta Log
-                    </button>
-                </div>
-            `;
-            
-            document.body.appendChild(panel);
-        }
-
-        /**
-         * Ottiene informazioni debug
+         * Ottiene informazioni debug SEMPLIFICATE
          */
         getDebugInfo() {
             return {
@@ -733,7 +583,7 @@
         }
 
         /**
-         * Mostra info debug in console
+         * Mostra info debug SOLO in console
          */
         showDebugInfo() {
             const info = this.getDebugInfo();
@@ -745,87 +595,8 @@
             console.groupEnd();
         }
 
-        /**
-         * Test cambio ruolo (solo debug)
-         */
-        testAllRoles() {
-            if (this.currentRole !== 'ADMIN') {
-                this.showNotification('Solo ADMIN può testare i ruoli', 'error');
-                return;
-            }
-            
-            const roles = Object.keys(CONFIG.ROLES);
-            let index = 0;
-            
-            const interval = setInterval(() => {
-                if (index >= roles.length) {
-                    clearInterval(interval);
-                    // Ripristina ruolo originale
-                    if (this.sidebarAPI) {
-                        this.sidebarAPI.updateRole('ADMIN');
-                    }
-                    this.showNotification('Test ruoli completato', 'success');
-                    return;
-                }
-                
-                const testRole = roles[index];
-                console.log(`[Role Manager] Testing role: ${testRole}`);
-                
-                if (this.sidebarAPI) {
-                    this.sidebarAPI.updateRole(testRole);
-                }
-                
-                // Ricarica controlli
-                this.currentRole = testRole;
-                this.roleConfig = CONFIG.ROLES[testRole];
-                this.applyGlobalRoleControls();
-                
-                index++;
-            }, 2000);
-        }
-
-        /**
-         * Esporta log debug
-         */
-        exportDebugLog() {
-            const log = {
-                timestamp: new Date().toISOString(),
-                userAgent: navigator.userAgent,
-                role: this.getDebugInfo(),
-                elements: {
-                    withRoleRestrictions: [],
-                    withPermissionRestrictions: []
-                }
-            };
-            
-            // Raccogli elementi con restrizioni
-            document.querySelectorAll(CONFIG.SELECTORS.roleElements).forEach(el => {
-                log.elements.withRoleRestrictions.push({
-                    tag: el.tagName,
-                    id: el.id,
-                    classes: el.className,
-                    restrictions: {
-                        minRole: el.getAttribute('data-min-role'),
-                        requiresRole: el.getAttribute('data-requires-role'),
-                        adminOnly: el.hasAttribute('data-admin-only'),
-                        hidden: el.getAttribute('data-role-hidden') === 'true'
-                    }
-                });
-            });
-            
-            // Download come JSON
-            const blob = new Blob([JSON.stringify(log, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `role-manager-debug-${Date.now()}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            this.showNotification('Log debug esportato', 'success');
-        }
+        // ❌ RIMOSSA COMPLETAMENTE: testAllRoles()
+        // ❌ RIMOSSA COMPLETAMENTE: exportDebugLog()
 
         // ========================================
         // METODI UTILITY PUBBLICI
@@ -895,9 +666,7 @@
             this.observers.forEach(observer => observer.disconnect());
             this.observers = [];
             
-            // Rimuovi elementi UI
-            document.getElementById('role-badge-container')?.remove();
-            document.getElementById('role-debug-panel')?.remove();
+            // ❌ RIMOSSO: Rimozione widget che non creiamo più
             this.hideTooltip();
             
             // Rimuovi classi
@@ -933,9 +702,8 @@
         refresh: () => roleManager.refresh(),
         updateRole: (role) => roleManager.updateRole(role),
         
-        // Debug (solo ADMIN)
+        // Debug SOLO console (no widget)
         debug: () => roleManager.showDebugInfo(),
-        testRoles: () => roleManager.testAllRoles(),
         
         // Utility
         showElement: (el) => roleManager.showElement(el),
@@ -944,10 +712,10 @@
         enableElement: (el) => roleManager.enableElement(el),
         
         // Info sistema
-        version: '1.2',
+        version: '1.3',
         isInitialized: () => roleManager.initialized
     };
 
-    console.log('[Role Manager] ✅ Modulo caricato. API disponibile in window.RoleManagerAPI');
+    console.log('[Role Manager] ✅ Modulo caricato SENZA widget problematici. API disponibile in window.RoleManagerAPI');
 
 })(window, document);
