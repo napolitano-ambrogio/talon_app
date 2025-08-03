@@ -1,5 +1,5 @@
 /* ========================================
-   TALON SIDEBAR STYLES - CORRECTED VERSION
+   TALON SIDEBAR STYLES - COMPLETE VERSION
    File: static/css/sidebar.css
    
    Struttura del file:
@@ -9,8 +9,10 @@
    4. Menu Toggle Button e Animazioni
    5. Tooltip
    6. Menu della Sidebar
-   7. Animazioni e Transizioni
-   8. Layout della Pagina
+   7. Controlli Ruoli (NUOVO)
+   8. Sidebar Footer e Logout
+   9. Animazioni e Transizioni
+   10. Layout della Pagina
    ======================================== */
 
 /* ========================================
@@ -25,6 +27,14 @@
     --transition-speed: 0.5s;
     --transition-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
     --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --logout-color: #ff6b6b;
+    --logout-hover-color: #ff5252;
+    
+    /* Variabili per controlli ruoli */
+    --role-admin-color: #dc3545;
+    --role-operatore-color: #007bff;
+    --role-visualizzatore-color: #6c757d;
+    --divider-color: rgba(255, 255, 255, 0.2);
 }
 
 /* ========================================
@@ -149,13 +159,17 @@
 
 /* Container del menu */
 .sidebar-menu { 
-    margin-top: 10px; 
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 70px); /* Altezza meno il toggle button */
 }
 
 .sidebar-menu ul { 
     list-style-type: none; 
     padding: 0; 
-    margin: 0; 
+    margin: 0;
+    flex: 1; /* Prende tutto lo spazio disponibile */
 }
 
 .sidebar-menu li {
@@ -242,8 +256,324 @@
 }
 
 /* ========================================
-   7. ANIMAZIONI E TRANSIZIONI
+   7. CONTROLLI RUOLI (NUOVO)
    ======================================== */
+
+/* Divider per sezioni menu */
+.menu-divider {
+    margin: 1rem 0;
+    padding: 0 1rem;
+    cursor: default !important;
+}
+
+.menu-divider hr.sidebar-divider {
+    border: none;
+    height: 1px;
+    background: var(--divider-color);
+    margin: 0.5rem 0;
+}
+
+.menu-divider .divider-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: all 0.4s var(--transition-easing);
+}
+
+/* Divider label visibile quando sidebar è espansa */
+.sidebar.expanded .divider-label,
+.sidebar.pinned .divider-label {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Badge ruolo utente discreto */
+.user-role-badge {
+    font-size: 0.6rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: auto;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition: all 0.4s var(--transition-easing);
+    font-family: monospace;
+}
+
+/* Badge visibile quando sidebar è espansa */
+.sidebar.expanded .user-role-badge,
+.sidebar.pinned .user-role-badge {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Elementi nascosti per controlli ruoli - utilizzano le classi del CSS principale */
+.sidebar li.role-hidden,
+.sidebar li[style*="display: none"] {
+    display: none !important;
+}
+
+.sidebar li.role-disabled {
+    opacity: 0.5 !important;
+    pointer-events: none !important;
+}
+
+/* Stili per attributi data specifici nel menu */
+.sidebar li[data-admin-only]:not([data-user-role="ADMIN"]) {
+    display: none !important;
+}
+
+.sidebar li[data-min-role="OPERATORE"]:not([data-user-role="ADMIN"]):not([data-user-role="OPERATORE"]) {
+    display: none !important;
+}
+
+.sidebar li[data-visualizzatore-hidden][data-user-role="VISUALIZZATORE"] {
+    display: none !important;
+}
+
+/* Indicatori visivi sottili per livelli di accesso */
+.sidebar li[data-min-role="ADMIN"] a::after {
+    content: '';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 3px;
+    background: var(--role-admin-color);
+    border-radius: 50%;
+    opacity: 0.7;
+}
+
+.sidebar li[data-min-role="OPERATORE"] a::after {
+    content: '';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 3px;
+    background: var(--role-operatore-color);
+    border-radius: 50%;
+    opacity: 0.7;
+}
+
+/* Nascondi indicatori quando sidebar è compressa */
+.sidebar:not(.expanded):not(.pinned) li a::after {
+    display: none;
+}
+
+/* ========================================
+   8. SIDEBAR FOOTER E LOGOUT
+   ======================================== */
+
+/* Sezione footer della sidebar */
+.sidebar-footer {
+    margin-top: auto;
+    padding: 1rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0; /* Non si riduce mai */
+}
+
+/* Informazioni utente */
+.user-info {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    position: relative;
+    min-height: 40px; /* Altezza minima per badge ruolo */
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.user-info svg {
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+}
+
+.user-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: all 0.4s var(--transition-easing);
+    flex: 1;
+    min-width: 0; /* Permette text-overflow */
+}
+
+/* Testo utente visibile quando sidebar è espansa */
+.sidebar.expanded .user-text,
+.sidebar.pinned .user-text { 
+    opacity: 1; 
+    transform: translateX(0);
+}
+
+/* Pulsante logout */
+.logout-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    color: var(--logout-color);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.875rem;
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+    border-radius: 0 25px 25px 0;
+    margin-right: 10px;
+}
+
+.logout-btn:hover {
+    background-color: rgba(255, 107, 107, 0.1);
+    color: var(--logout-hover-color);
+    padding-left: 1.5rem;
+    transform: translateX(5px);
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.2);
+}
+
+.logout-btn:active {
+    transform: translateY(1px) translateX(5px);
+}
+
+.logout-btn svg {
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    transition: all 0.4s var(--transition-bounce);
+}
+
+.logout-btn:hover svg {
+    transform: scale(1.2);
+    filter: drop-shadow(0 2px 4px rgba(255, 107, 107, 0.3));
+}
+
+.logout-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: all 0.4s var(--transition-easing);
+}
+
+/* Testo logout visibile quando sidebar è espansa */
+.sidebar.expanded .logout-text,
+.sidebar.pinned .logout-text { 
+    opacity: 1; 
+    transform: translateX(0);
+}
+
+/* Effetto shine per il logout */
+.logout-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 107, 107, 0.2), 
+        transparent);
+    transition: left 0.6s ease;
+}
+
+.logout-btn:hover::before {
+    left: 100%;
+}
+
+/* ========================================
+   9. STILI PER SIDEBAR COMPATTA
+   ======================================== */
+
+/* Adattamenti per sidebar compatta */
+.sidebar.collapsed .user-info,
+.sidebar.collapsed .logout-btn {
+    justify-content: center;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.sidebar.collapsed .user-info svg,
+.sidebar.collapsed .logout-btn svg {
+    margin-right: 0;
+}
+
+/* Tooltip per sidebar compatta */
+.sidebar.collapsed .logout-btn {
+    position: relative;
+}
+
+.sidebar.collapsed .logout-btn:hover::after {
+    content: 'Logout';
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    background: linear-gradient(135deg, #333, #555);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    margin-left: 0.75rem;
+    z-index: 1001;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    animation: tooltipFadeIn 0.3s var(--transition-bounce);
+}
+
+.sidebar.collapsed .user-info:hover::after {
+    content: attr(data-username);
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    background: linear-gradient(135deg, #333, #555);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    margin-left: 0.75rem;
+    z-index: 1001;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    animation: tooltipFadeIn 0.3s var(--transition-bounce);
+}
+
+/* ========================================
+   10. ANIMAZIONI E TRANSIZIONI
+   ======================================== */
+
+/* Animazione per i tooltip */
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(-50%) scale(1);
+    }
+}
 
 /* Stagger animation per i menu items (solo quando expanded) */
 .sidebar.expanded .sidebar-menu li:nth-child(1) .menu-text { transition-delay: 0.1s; }
@@ -251,6 +581,13 @@
 .sidebar.expanded .sidebar-menu li:nth-child(3) .menu-text { transition-delay: 0.2s; }
 .sidebar.expanded .sidebar-menu li:nth-child(4) .menu-text { transition-delay: 0.25s; }
 .sidebar.expanded .sidebar-menu li:nth-child(5) .menu-text { transition-delay: 0.3s; }
+.sidebar.expanded .sidebar-menu li:nth-child(6) .menu-text { transition-delay: 0.35s; }
+.sidebar.expanded .sidebar-menu li:nth-child(7) .menu-text { transition-delay: 0.4s; }
+
+/* Animazioni per footer elements */
+.sidebar.expanded .user-text { transition-delay: 0.2s; }
+.sidebar.expanded .logout-text { transition-delay: 0.25s; }
+.sidebar.expanded .user-role-badge { transition-delay: 0.3s; }
 
 /* Disabilita animazioni quando pinnata (ECCETTO per toggle e hover) */
 .sidebar.pinned {
@@ -269,11 +606,15 @@
 }
 
 .sidebar.pinned .sidebar-menu li a {
-    transition: background-color 0.2s ease !important;
+    transition: all 0.3s var(--transition-easing) !important;
+}
+
+.sidebar.pinned .logout-btn {
+    transition: all 0.3s ease !important;
 }
 
 /* ========================================
-   8. LAYOUT DELLA PAGINA
+   11. LAYOUT DELLA PAGINA
    ======================================== */
 .page-wrapper {
     margin-left: var(--sidebar-width-collapsed);
@@ -296,4 +637,50 @@
 .sidebar.locked ~ .page-wrapper {
     margin-left: var(--sidebar-width-expanded);
     transition: none;
+}
+
+/* ========================================
+   12. RESPONSIVE E ACCESSIBILITY
+   ======================================== */
+
+/* Focus states per accessibilità */
+.logout-btn:focus-visible {
+    outline: 2px solid var(--logout-color);
+    outline-offset: -2px;
+}
+
+.user-info:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: -2px;
+}
+
+/* Media queries per dispositivi mobili */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform var(--transition-speed) var(--transition-easing);
+    }
+    
+    .sidebar.expanded,
+    .sidebar.pinned {
+        transform: translateX(0);
+    }
+    
+    .page-wrapper {
+        margin-left: 0;
+    }
+    
+    /* Nascondi indicatori ruolo su mobile */
+    .user-role-badge {
+        display: none;
+    }
+    
+    /* Semplifica divider su mobile */
+    .menu-divider {
+        margin: 0.5rem 0;
+    }
+    
+    .menu-divider .divider-label {
+        font-size: 0.6rem;
+    }
 }

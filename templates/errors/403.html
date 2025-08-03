@@ -1,85 +1,57 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Accesso Negato - TALON</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0;
-        }
-        .error-container {
-            background: white;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 500px;
-        }
-        .error-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-        }
-        .error-title {
-            color: #333;
-            font-size: 2rem;
-            margin-bottom: 1rem;
-        }
-        .error-message {
-            color: #666;
-            margin-bottom: 2rem;
-            line-height: 1.6;
-        }
-        .error-details {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 2rem;
-            font-size: 0.9rem;
-            color: #666;
-        }
-        .back-button {
-            display: inline-block;
-            padding: 12px 24px;
-            background: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            transition: background 0.3s;
-        }
-        .back-button:hover {
-            background: #0056b3;
-        }
-    </style>
-</head>
-<body>
-    <div class="error-container">
+{% extends "_base.html" %}
+
+{% block title %}TALON - Accesso Negato{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <div class="error-card">
         <div class="error-icon">🚫</div>
-        <h1 class="error-title">Accesso Negato</h1>
-        <p class="error-message">
-            Non hai i permessi necessari per accedere a questa risorsa.
-        </p>
-        
-        {% if permission %}
-        <div class="error-details">
-            <strong>Permesso richiesto:</strong> {{ permission }}<br>
-            Contatta l'amministratore per richiedere l'accesso.
+        <h1>403 - Accesso Negato</h1>
+        <p>Non hai i privilegi necessari per accedere a questa risorsa.</p>
+        <div class="error-actions">
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">Torna alla Dashboard</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
         </div>
-        {% endif %}
-        
-        {% if error %}
-        <div class="error-details">
-            <strong>Dettaglio:</strong> {{ error }}
-        </div>
-        {% endif %}
-        
-        <a href="/dashboard" class="back-button">Torna alla Dashboard</a>
     </div>
-</body>
-</html>
+</div>
+
+<style>
+.error-container {
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.error-card {
+    max-width: 500px;
+    padding: 40px;
+}
+
+.error-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+}
+
+.error-card h1 {
+    color: #dc3545;
+    font-size: 2rem;
+    margin-bottom: 15px;
+}
+
+.error-card p {
+    color: #6c757d;
+    font-size: 1.1rem;
+    margin-bottom: 30px;
+}
+
+.error-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+</style>
+{% endblock %}

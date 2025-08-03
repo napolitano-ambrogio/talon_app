@@ -1,3 +1,4 @@
+<!-- components/sidebar.html - Versione con endpoint corretti -->
 <nav class="sidebar" id="sidebar" role="navigation" aria-label="Menu principale">
     <button class="menu-toggle" id="menu-toggle-btn" type="button" aria-label="Toggle menu" aria-expanded="false">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -10,6 +11,7 @@
     
     <div class="sidebar-menu">
         <ul id="menu-list" role="list">
+            <!-- Dashboard Superset - Accessibile a tutti i ruoli autenticati -->
             <li draggable="true" data-menu-id="dashboard" role="listitem">
                 <a href="{{ url_for('main.dashboard') }}" aria-label="Dashboard">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -22,8 +24,9 @@
                 </a>
             </li>
             
+            <!-- Enti Militari - Accessibile a tutti i ruoli autenticati -->
             <li draggable="true" data-menu-id="enti_militari" role="listitem">
-                <a href="{{ url_for('enti_militari.organigramma') }}" aria-label="Enti Militari">
+                <a href="{{ url_for('main.enti_militari_organigramma') }}" aria-label="Enti Militari">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="9" y="2" width="6" height="5" rx="1"></rect>
                         <rect x="3" y="17" width="6" height="5" rx="1"></rect>
@@ -37,8 +40,9 @@
                 </a>
             </li>
             
+            <!-- Enti Civili - Accessibile a tutti i ruoli autenticati -->
             <li draggable="true" data-menu-id="enti_civili" role="listitem">
-                <a href="{{ url_for('enti_civili.enti_civili') }}" aria-label="Enti Civili">
+                <a href="{{ url_for('main.enti_civili_list') }}" aria-label="Enti Civili">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                         <circle cx="8.5" cy="7" r="4"/>
@@ -49,8 +53,9 @@
                 </a>
             </li>
             
-            <li draggable="true" data-menu-id="attivita" role="listitem">
-                <a href="{{ url_for('attivita.lista_attivita') }}" aria-label="Attività">
+            <!-- Attività - Solo OPERATORE e ADMIN -->
+            <li draggable="true" data-menu-id="attivita" role="listitem" data-min-role="OPERATORE">
+                <a href="{{ url_for('main.attivita_list') }}" aria-label="Attività">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                         <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -61,8 +66,9 @@
                 </a>
             </li>
             
-            <li draggable="true" data-menu-id="operazioni" role="listitem">
-                <a href="{{ url_for('operazioni.lista_operazioni') }}" aria-label="Operazioni">
+            <!-- Operazioni - Solo OPERATORE e ADMIN -->
+            <li draggable="true" data-menu-id="operazioni" role="listitem" data-min-role="OPERATORE">
+                <a href="{{ url_for('main.operazioni_list') }}" aria-label="Operazioni">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="10"></circle>
                         <line x1="2" y1="12" x2="22" y2="12"></line>
@@ -71,6 +77,79 @@
                     <span class="menu-text">Operazioni</span>
                 </a>
             </li>
+            
+            <!-- Sezione Amministrazione - Solo ADMIN -->
+            {% if session.get('ruolo_nome') == 'ADMIN' %}
+            <li class="menu-divider" data-admin-only>
+                <hr class="sidebar-divider">
+                <span class="divider-label">AMMINISTRAZIONE</span>
+            </li>
+            
+            <!-- Dashboard Admin - Solo ADMIN -->
+            <li draggable="true" data-menu-id="dashboard_admin" role="listitem" data-admin-only>
+                <a href="{{ url_for('main.dashboard_admin') }}" aria-label="Dashboard Admin">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                    <span class="menu-text">Dashboard Admin</span>
+                </a>
+            </li>
+            
+            <li draggable="true" data-menu-id="gestione_utenti" role="listitem" data-admin-only>
+                <a href="{{ url_for('main.admin_users') }}" aria-label="Gestione Utenti">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span class="menu-text">Gestione Utenti</span>
+                </a>
+            </li>
+            
+            <li draggable="true" data-menu-id="sistema" role="listitem" data-admin-only>
+                <a href="{{ url_for('main.admin_system_info') }}" aria-label="Sistema">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                    <span class="menu-text">Sistema</span>
+                </a>
+            </li>
+            {% endif %}
         </ul>
+        
+        <!-- Sezione logout fissa in fondo -->
+        <div class="sidebar-footer">
+            <div class="user-info" id="user-info" data-username="{{ session.get('username', 'Utente') }}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span class="user-text" id="user-name">
+                    {% if session.get('nome') and session.get('cognome') %}
+                        {{ session.get('nome') }} {{ session.get('cognome') }}
+                    {% else %}
+                        {{ session.get('username', 'Utente') }}
+                    {% endif %}
+                </span>
+                <!-- Indicatore ruolo discreto -->
+                {% if session.get('ruolo_nome') %}
+                <span class="user-role-badge" data-role="{{ session.get('ruolo_nome') }}">
+                    {{ session.get('ruolo_nome') }}
+                </span>
+                {% endif %}
+            </div>
+            
+            <button class="logout-btn" id="logout-btn" type="button" aria-label="Logout" title="Disconnetti">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16,17 21,12 16,7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span class="logout-text">Logout</span>
+            </button>
+        </div>
     </div>
 </nav>

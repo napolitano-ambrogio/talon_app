@@ -1,0 +1,17 @@
+{% extends "_base.html" %}
+
+{% block title %}TALON - Errore Interno{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <div class="error-card">
+        <div class="error-icon">⚠️</div>
+        <h1>500 - Errore Interno</h1>
+        <p>Si è verificato un errore interno del server. Riprova più tardi.</p>
+        <div class="error-actions">
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">Torna alla Dashboard</a>
+            <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

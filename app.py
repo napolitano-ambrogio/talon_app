@@ -1,19 +1,22 @@
-# app.py - Versione aggiornata con modulo auth.py e sessioni web
+# app.py - Versione ottimizzata con sistema auth a 3 ruoli
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Flask, request, jsonify, render_template, redirect, session
+from flask import Flask, request, jsonify, render_template, redirect, session, flash, url_for
 import sqlite3
 import hashlib
 import datetime
 from waitress import serve
 
-# Importa il modulo di autenticazione
+# Importa il modulo di autenticazione AGGIORNATO
 from auth import (
     login_required, permission_required, entity_access_required,
     get_user_by_username, get_user_permissions, get_user_accessible_entities,
-    log_user_action, get_current_user_info
+    log_user_action, get_current_user_info, setup_auth_context_processor,
+    admin_required, operatore_or_admin_required, is_admin, is_operatore_or_above,
+    get_user_role, update_session_with_role_info, validate_user_role_consistency,
+    debug_user_permissions, get_system_auth_stats, ROLE_ADMIN, ROLE_OPERATORE, ROLE_VISUALIZZATORE
 )
 
 # Importa i blueprint esistenti
@@ -24,7 +27,7 @@ from routes.operazioni import operazioni_bp
 from routes.attivita import attivita_bp
 
 # Configurazione
-DATABASE = 'talon_data.db'  # Aggiorna se necessario
+DATABASE = 'talon_data.db'
 
 def create_app():
     app = Flask(
@@ -33,13 +36,27 @@ def create_app():
         static_folder='static'
     )
     
-    app.config['SECRET_KEY'] = 'talon-secret-key-change-this-in-production'
+    # ===========================================
+    # CONFIGURAZIONE APP E SESSIONI
+    # ===========================================
+    
+    app.config['SECRET_KEY'] = 'talon-secret-key-super-secure-2025-auth-v2'
     app.config['user_sessions'] = {}  # Sessioni in memoria per token API
+    
+    # Configurazione sessioni Flask ottimizzata
     app.config['SESSION_PERMANENT'] = True
-    app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(hours=24)
-    app.config['SESSION_COOKIE_SECURE'] = False  # Per sviluppo locale
-    app.config['SESSION_COOKIE_HTTPONLY'] = True
-
+    app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=7)
+    app.config['SESSION_COOKIE_SECURE'] = False  # HTTP OK per sviluppo
+    app.config['SESSION_COOKIE_HTTPONLY'] = True  # Maggiore sicurezza
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Protezione CSRF
+    app.config['SESSION_COOKIE_PATH'] = '/'
+    
+    # Database configuration
+    app.config['DATABASE'] = DATABASE
+    
+    # 🎯 CONFIGURA IL CONTEXT PROCESSOR PER I TEMPLATE
+    setup_auth_context_processor(app)
+    
     # ===========================================
     # FUNZIONI DATABASE SEMPLIFICATE
     # ===========================================
@@ -49,17 +66,23 @@ def create_app():
         conn.row_factory = sqlite3.Row
         return conn
 
-    def simple_password_check(stored_hash: str, password: str) -> bool:
-        """Verifica password semplice (solo per test)"""
-        if password == 'admin123':
+    def verify_password(stored_hash: str, password: str, username: str = None) -> bool:
+        """Verifica password con fallback per admin di test"""
+        # Fallback per admin di test
+        if username == 'admin' and password == 'admin123':
             return True
-        return stored_hash == hashlib.md5(password.encode()).hexdigest()
+        
+        # Verifica hash MD5 semplice
+        if stored_hash:
+            return stored_hash == hashlib.md5(password.encode()).hexdigest()
+        
+        return False
 
-    def create_simple_session(user_data: dict) -> str:
-        """Crea una sessione semplice"""
+    def create_api_session_token(user_data: dict) -> str:
+        """Crea token di sessione per API"""
         import time
         import random
-        token = f"talon_{user_data['id']}_{int(time.time())}_{random.randint(1000,9999)}"
+        token = f"talon_{user_data['id']}_{int(time.time())}_{random.randint(10000,99999)}"
         
         app.config['user_sessions'][token] = {
             'user_id': user_data['id'],
@@ -73,203 +96,312 @@ def create_app():
     # ROUTE DI AUTENTICAZIONE
     # ===========================================
 
-    @app.route('/components/login')
-    def login_component():
-        """Pagina di login"""
-        return render_template('components/login.html')
-    
-    @app.route('/login-web', methods=['GET', 'POST'])
-    def login_web():
-        """Login web tradizionale (non API) per test"""
-        if request.method == 'GET':
-            return render_template('login_web.html')
+    @app.route('/auth/login', methods=['GET'])
+    def show_login():
+        """Mostra pagina di login"""
+        # Se già loggato, redirect alla dashboard
+        if session.get('logged_in') and session.get('user_id'):
+            return redirect(url_for('main.dashboard'))
         
-        # POST - Processare login
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        if not username or not password:
-            return render_template('login_web.html', error='Username e password richiesti')
-        
-        user = get_user_by_username(username)
-        if not user or not simple_password_check(user.get('password_hash', ''), password):
-            return render_template('login_web.html', error='Credenziali non valide')
-        
-        # Salva nella sessione Flask
-        session.clear()
-        session['user_id'] = user['id']
-        session['username'] = user['username']
-        session['logged_in'] = True
-        session.permanent = True
-        
-        print(f"DEBUG: Web login successful for {username}")
-        print(f"DEBUG: Session: {dict(session)}")
-        
-        # Log del login
-        log_user_action(user['id'], 'WEB_LOGIN', ip_address=request.remote_addr)
-        
-        return redirect('/attivita')
+        return render_template('login.html')
 
-    @app.route('/api/auth/login', methods=['POST'])
-    def login():
-        """Endpoint di login con supporto sessioni web"""
-        data = request.get_json()
-        username = data.get('username')
-        password = data.get('password')
+    @app.route('/auth/login', methods=['POST'])
+    def process_login():
+        """Processa il login sia web che API"""
+        # Determina se è una richiesta API o web
+        is_api_request = (request.is_json or 
+                         request.headers.get('Content-Type', '').startswith('application/json'))
         
+        if is_api_request:
+            data = request.get_json()
+            username = data.get('username')
+            password = data.get('password')
+        else:
+            username = request.form.get('username')
+            password = request.form.get('password')
+        
+        # Validazione input
         if not username or not password:
-            return jsonify({'error': 'Username e password richiesti'}), 400
+            error_msg = 'Username e password richiesti'
+            if is_api_request:
+                return jsonify({'error': error_msg, 'code': 'MISSING_CREDENTIALS'}), 400
+            flash(error_msg, 'error')
+            return redirect(url_for('show_login'))
         
-        user = get_user_by_username(username)
-        if not user:
-            return jsonify({'error': 'Credenziali non valide'}), 401
+        # Verifica credenziali
+        user = get_user_by_username(username.strip())
+        if not user or not verify_password(user.get('password_hash', ''), password, username):
+            error_msg = 'Credenziali non valide'
+            if is_api_request:
+                return jsonify({'error': error_msg, 'code': 'INVALID_CREDENTIALS'}), 401
+            flash(error_msg, 'error')
+            return redirect(url_for('show_login'))
         
-        if not simple_password_check(user.get('password_hash', ''), password):
-            return jsonify({'error': 'Credenziali non valide'}), 401
+        # Verifica che l'utente sia attivo
+        if not user.get('attivo', True):
+            error_msg = 'Account disattivato'
+            if is_api_request:
+                return jsonify({'error': error_msg, 'code': 'ACCOUNT_DISABLED'}), 401
+            flash(error_msg, 'error')
+            return redirect(url_for('show_login'))
         
-        # Crea sessione token (per API)
-        token = create_simple_session(user)
+        # Login riuscito - crea sessione
+        session.permanent = True
+        session.clear()
         
-        # *** IMPORTANTE: Salva anche nella sessione Flask (per pagine web) ***
-        session.clear()  # Pulisci eventuali sessioni precedenti
+        # Dati base di sessione
         session['user_id'] = user['id']
         session['username'] = user['username']
         session['logged_in'] = True
-        session.permanent = True  # Rende la sessione permanente
+        session['login_time'] = datetime.datetime.now().isoformat()
+        session['session_valid'] = True
         
-        # Forza il salvataggio della sessione
-        session.modified = True
-        
-        print(f"DEBUG: Login successful for {username}")
-        print(f"DEBUG: Flask session creata: {dict(session)}")
-        print(f"DEBUG: Session modified: {session.modified}")
-        print(f"DEBUG: Token creato: {token}")
+        # Aggiorna sessione con informazioni ruolo
+        update_session_with_role_info(user['id'])
         
         # Aggiorna ultimo accesso
-        conn = get_db_connection()
         try:
+            conn = get_db_connection()
             conn.execute(
                 'UPDATE utenti SET ultimo_accesso = datetime("now") WHERE id = ?',
                 (user['id'],)
             )
             conn.commit()
+            conn.close()
         except sqlite3.OperationalError:
             pass
-        conn.close()
         
-        log_user_action(user['id'], 'LOGIN', ip_address=request.remote_addr)
+        # Log del login
+        log_user_action(
+            user_id=user['id'], 
+            action='LOGIN_SUCCESS',
+            details=f"Login {'API' if is_api_request else 'WEB'} da {request.remote_addr}",
+            ip_address=request.remote_addr
+        )
+        
+        if is_api_request:
+            # Risposta API
+            token = create_api_session_token(user)
+            permissions = get_user_permissions(user['id'])
+            accessible_entities = get_user_accessible_entities(user['id'])
+            
+            return jsonify({
+                'success': True,
+                'token': token,
+                'user': {
+                    'id': user['id'],
+                    'username': user['username'],
+                    'nome': user['nome'],
+                    'cognome': user['cognome'],
+                    'grado': user.get('grado'),
+                    'ruolo': user.get('ruolo_nome'),
+                    'ente_appartenenza': user.get('ente_nome'),
+                    'livello_accesso': user.get('livello_accesso', 0)
+                },
+                'permissions': permissions,
+                'accessible_entities': accessible_entities,
+                'session_info': {
+                    'login_time': session['login_time'],
+                    'expires': (datetime.datetime.now() + app.config['PERMANENT_SESSION_LIFETIME']).isoformat()
+                }
+            })
+        else:
+            # Risposta web
+            flash(f'Benvenuto, {user["nome"]} {user["cognome"]}!', 'success')
+            
+            # Redirect intelligente
+            next_page = request.args.get('next')
+            if next_page and next_page.startswith('/'):
+                return redirect(next_page)
+            
+            # Redirect basato sul ruolo
+            user_role = session.get('ruolo_nome', '').upper()
+            return redirect(url_for('main.dashboard'))
+
+    @app.route('/auth/logout', methods=['GET', 'POST'])
+    def logout():
+        """Logout dell'utente"""
+        user_id = session.get('user_id')
+        username = session.get('username')
+        
+        # Log del logout
+        if user_id:
+            log_user_action(
+                user_id=user_id,
+                action='LOGOUT',
+                details=f"Logout da {request.remote_addr}",
+                ip_address=request.remote_addr
+            )
+        
+        # Pulisci token API se presente
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            sessions = app.config.get('user_sessions', {})
+            if token in sessions:
+                del sessions[token]
+        
+        # Pulisci sessione Flask
+        session.clear()
+        
+        if request.is_json:
+            return jsonify({'success': True, 'message': 'Logout effettuato'})
+        else:
+            flash('Logout effettuato correttamente.', 'info')
+            return redirect(url_for('show_login'))
+
+    @app.route('/api/auth/me', methods=['GET'])
+    @login_required
+    def get_current_user_api():
+        """Informazioni utente corrente (API)"""
+        user = get_current_user_info()
+        if not user:
+            return jsonify({'error': 'Utente non trovato', 'code': 'USER_NOT_FOUND'}), 404
         
         permissions = get_user_permissions(user['id'])
         accessible_entities = get_user_accessible_entities(user['id'])
         
-        response_data = {
-            'token': token,
-            'user': {
-                'id': user['id'],
-                'username': user['username'],
-                'nome': user['nome'],
-                'cognome': user['cognome'],
-                'grado': user['grado'],
-                'ruolo': user['ruolo_nome'],
-                'ente_appartenenza': user['ente_nome']
-            },
-            'permissions': permissions,
-            'accessible_entities': accessible_entities
-        }
-        
-        # Crea risposta standard
-        response = jsonify(response_data)
-        
-        return response
-
-    @app.route('/api/auth/me', methods=['GET'])
-    @login_required
-    def get_current_user():
-        """Informazioni utente corrente"""
-        user = get_current_user_info()
-        permissions = get_user_permissions(request.current_user['user_id'])
-        accessible_entities = get_user_accessible_entities(request.current_user['user_id'])
-        
         return jsonify({
             'user': {
                 'id': user['id'],
                 'username': user['username'],
                 'nome': user['nome'],
                 'cognome': user['cognome'],
-                'grado': user['grado'],
-                'ruolo': user['ruolo_nome'],
-                'ente_appartenenza': user['ente_nome']
+                'grado': user.get('grado'),
+                'ruolo': user.get('ruolo_nome'),
+                'ente_appartenenza': user.get('ente_nome'),
+                'livello_accesso': user.get('livello_accesso', 0),
+                'accesso_globale': user.get('accesso_globale', False)
             },
             'permissions': permissions,
-            'accessible_entities': accessible_entities
+            'accessible_entities': accessible_entities,
+            'session_info': {
+                'login_time': session.get('login_time'),
+                'is_admin': is_admin(),
+                'is_operatore_or_above': is_operatore_or_above(),
+                'role': get_user_role()
+            }
         })
 
-    @app.route('/api/auth/logout', methods=['POST'])
-    @login_required
-    def logout():
-        """Logout"""
-        # Pulisci token API
-        token = request.headers.get('Authorization', '').replace('Bearer ', '')
-        sessions = app.config.get('user_sessions', {})
-        if token in sessions:
-            del sessions[token]
-        
-        # *** IMPORTANTE: Pulisci anche la sessione Flask ***
-        user_id = session.get('user_id')
-        session.clear()
-        
-        print(f"DEBUG: Logout effettuato, sessione pulita")
-        
-        if user_id:
-            log_user_action(user_id, 'LOGOUT', ip_address=request.remote_addr)
-        
-        return jsonify({'message': 'Logout effettuato'})
-
     # ===========================================
-    # ROUTE DASHBOARD
+    # ROUTE PRINCIPALI
     # ===========================================
-
-    @app.route('/dashboard')
-    def dashboard():
-        """Dashboard principale (senza protezione per ora)"""
-        return render_template('dashboard.html')
-
+    
     @app.route('/')
-    def index():
-        """Redirect da root a dashboard"""
-        return redirect('/dashboard')
+    def root():
+        """Root redirect intelligente"""
+        if session.get('logged_in'):
+            return redirect(url_for('main.dashboard'))
+        else:
+            return redirect(url_for('show_login'))
 
     # ===========================================
-    # ROUTE DI DEBUG (TEMPORANEE)
+    # ROUTE DI AMMINISTRAZIONE
+    # ===========================================
+    
+    @app.route('/admin/users')
+    @admin_required
+    def admin_users():
+        """Gestione utenti (solo admin)"""
+        try:
+            conn = get_db_connection()
+            users = conn.execute(
+                '''SELECT u.*, r.nome as ruolo_nome, em.nome as ente_nome
+                   FROM utenti u
+                   LEFT JOIN ruoli r ON r.id = u.ruolo_id
+                   LEFT JOIN enti_militari em ON em.id = u.ente_militare_id
+                   ORDER BY u.cognome, u.nome'''
+            ).fetchall()
+            conn.close()
+            
+            return render_template('admin/users.html', users=users)
+        except Exception as e:
+            flash(f'Errore nel caricamento utenti: {str(e)}', 'error')
+            return redirect(url_for('main.dashboard'))
+
+    @app.route('/admin/system-info')
+    @admin_required
+    def admin_system_info():
+        """Informazioni sistema (solo admin)"""
+        try:
+            stats = get_system_auth_stats()
+            role_consistency = validate_user_role_consistency()
+            
+            return render_template('admin/system_info.html', 
+                                 stats=stats, 
+                                 role_consistency=role_consistency)
+        except Exception as e:
+            flash(f'Errore nel caricamento statistiche: {str(e)}', 'error')
+            return redirect(url_for('main.dashboard'))
+
+    # ===========================================
+    # ROUTE DI DEBUG (SOLO SVILUPPO)
     # ===========================================
     
     @app.route('/debug/session')
     def debug_session():
-        """Route di debug per verificare la sessione"""
-        return jsonify({
+        """Debug informazioni sessione"""
+        if not app.debug:
+            return jsonify({'error': 'Debug non disponibile in produzione'}), 403
+        
+        user_info = get_current_user_info()
+        session_data = get_current_user_session() if 'get_current_user_session' in globals() else None
+        
+        debug_info = {
             'flask_session': dict(session),
-            'has_user_id': 'user_id' in session,
+            'session_valid': session.get('session_valid', False),
+            'user_logged_in': session.get('logged_in', False),
             'user_id': session.get('user_id'),
             'username': session.get('username'),
-            'logged_in': session.get('logged_in')
-        })
-    
-    @app.route('/quick-login')
-    def quick_login():
-        """Login rapido per test - DA RIMUOVERE IN PRODUZIONE"""
-        user = get_user_by_username('admin')
-        if user:
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            session['logged_in'] = True
-            session.permanent = True
-            
-            print(f"DEBUG: Quick login effettuato")
-            print(f"DEBUG: Session dopo quick login: {dict(session)}")
-            
-            return redirect('/attivita')
-        else:
-            return "Utente admin non trovato", 404
+            'user_role': session.get('ruolo_nome'),
+            'is_admin': session.get('is_admin', False),
+            'user_info': user_info,
+            'session_data': session_data,
+            'accessible_entities_count': len(get_accessible_entities()) if session.get('logged_in') else 0
+        }
+        
+        return jsonify(debug_info)
+
+    @app.route('/debug/user/<int:user_id>')
+    @admin_required
+    def debug_user_info(user_id):
+        """Debug informazioni specifiche utente (solo admin)"""
+        try:
+            debug_info = debug_user_permissions(user_id)
+            return jsonify(debug_info)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/quick-login/<username>')
+    def quick_login(username):
+        """Login rapido per sviluppo - DA RIMUOVERE IN PRODUZIONE"""
+        if not app.debug:
+            return jsonify({'error': 'Non disponibile in produzione'}), 403
+        
+        user = get_user_by_username(username)
+        if not user:
+            return jsonify({'error': f'Utente {username} non trovato'}), 404
+        
+        # Forza login
+        session.permanent = True
+        session.clear()
+        session['user_id'] = user['id']
+        session['username'] = user['username']
+        session['logged_in'] = True
+        session['login_time'] = datetime.datetime.now().isoformat()
+        session['session_valid'] = True
+        
+        update_session_with_role_info(user['id'])
+        
+        log_user_action(
+            user_id=user['id'],
+            action='QUICK_LOGIN_DEBUG',
+            details=f"Quick login debug per {username}",
+            ip_address=request.remote_addr
+        )
+        
+        flash(f'Quick login effettuato per {username}', 'info')
+        return redirect(url_for('main.dashboard'))
 
     # ===========================================
     # GESTIONE ERRORI
@@ -277,20 +409,95 @@ def create_app():
 
     @app.errorhandler(401)
     def unauthorized(error):
-        print(f"DEBUG: 401 error per {request.path}")
-        print(f"DEBUG: Sessione corrente: {dict(session)}")
-        
+        """Gestione errore 401 - Non autorizzato"""
         if request.path.startswith('/api/'):
-            return jsonify({'error': 'Non autenticato'}), 401
-        return redirect('/components/login')
+            return jsonify({
+                'error': 'Autenticazione richiesta',
+                'code': 'AUTHENTICATION_REQUIRED',
+                'login_url': url_for('show_login', _external=True)
+            }), 401
+        
+        flash('Devi effettuare il login per accedere a questa pagina.', 'warning')
+        return redirect(url_for('show_login', next=request.url))
 
     @app.errorhandler(403)
     def forbidden(error):
-        print(f"DEBUG: 403 error per {request.path}")
-        
+        """Gestione errore 403 - Accesso negato"""
         if request.path.startswith('/api/'):
-            return jsonify({'error': 'Accesso negato'}), 403
+            return jsonify({
+                'error': 'Accesso negato',
+                'code': 'ACCESS_DENIED',
+                'required_permission': getattr(error, 'required_permission', None)
+            }), 403
+        
+        flash('Non hai i privilegi necessari per accedere a questa risorsa.', 'error')
         return render_template('errors/403.html'), 403
+
+    @app.errorhandler(404)
+    def page_not_found(error):
+        """Gestione errore 404 - Pagina non trovata"""
+        if request.path.startswith('/api/'):
+            return jsonify({
+                'error': 'Endpoint non trovato',
+                'code': 'NOT_FOUND',
+                'path': request.path
+            }), 404
+        
+        return render_template('errors/404.html'), 404
+
+    @app.errorhandler(500)
+    def internal_server_error(error):
+        """Gestione errore 500 - Errore interno server"""
+        if request.path.startswith('/api/'):
+            return jsonify({
+                'error': 'Errore interno del server',
+                'code': 'INTERNAL_ERROR'
+            }), 500
+        
+        flash('Si è verificato un errore interno. Riprova più tardi.', 'error')
+        return render_template('errors/500.html'), 500
+
+    # ===========================================
+    # CONTEXT PROCESSORS AGGIUNTIVI
+    # ===========================================
+    
+    @app.context_processor
+    def inject_app_info():
+        """Inietta informazioni app nei template"""
+        return {
+            'app_name': 'TALON System',
+            'app_version': '2.0.0',
+            'current_year': datetime.datetime.now().year,
+            'debug_mode': app.debug
+        }
+
+    # ===========================================
+    # TEMPLATE FILTERS
+    # ===========================================
+    
+    @app.template_filter('datetime_format')
+    def datetime_format(value, format='%d/%m/%Y %H:%M'):
+        """Formatta datetime per i template"""
+        if isinstance(value, str):
+            try:
+                value = datetime.datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except:
+                return value
+        if isinstance(value, datetime.datetime):
+            return value.strftime(format)
+        return value
+
+    @app.template_filter('role_badge_class')
+    def role_badge_class(role):
+        """Restituisce classe CSS per badge ruolo"""
+        role_upper = str(role).upper()
+        if role_upper == ROLE_ADMIN:
+            return 'badge-danger'
+        elif role_upper == ROLE_OPERATORE:
+            return 'badge-warning'
+        elif role_upper == ROLE_VISUALIZZATORE:
+            return 'badge-info'
+        return 'badge-secondary'
 
     # ===========================================
     # REGISTRAZIONE BLUEPRINT
@@ -302,16 +509,70 @@ def create_app():
     app.register_blueprint(operazioni_bp)
     app.register_blueprint(attivita_bp)
 
+    # ===========================================
+    # INIZIALIZZAZIONE APPLICAZIONE - FLASK 2.2+ COMPATIBLE
+    # ===========================================
+    
+    # ✅ SOSTITUISCE @app.before_first_request (rimosso in Flask 2.2+)
+    with app.app_context():
+        try:
+            # Valida consistenza ruoli
+            if not validate_user_role_consistency():
+                app.logger.warning("Inconsistenze rilevate nel sistema dei ruoli")
+            
+            app.logger.info("TALON System inizializzato correttamente")
+            print("🔧 Database e sistema ruoli verificati")
+        except Exception as e:
+            app.logger.error(f"Errore nell'inizializzazione: {e}")
+            print(f"❌ Errore inizializzazione: {e}")
+
     return app
 
-if __name__ == '__main__':
+def main():
+    """Funzione principale"""
     app = create_app()
     
-    print("=== TALON AUTENTICAZIONE ===")
-    print("Credenziali di test:")
-    print("Username: admin")
-    print("Password: admin123")
-    print("============================")
-    print("DEBUG: Avvio server con gestione sessioni web")
+    # Configurazione logging
+    if not app.debug:
+        import logging
+        from logging.handlers import RotatingFileHandler
+        
+        # Crea directory logs se non esiste
+        os.makedirs('logs', exist_ok=True)
+        
+        file_handler = RotatingFileHandler('logs/talon.log', maxBytes=10240000, backupCount=10)
+        file_handler.setFormatter(logging.Formatter(
+            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+        ))
+        file_handler.setLevel(logging.INFO)
+        app.logger.addHandler(file_handler)
+        app.logger.setLevel(logging.INFO)
+        app.logger.info('TALON System startup')
     
-    serve(app, host='0.0.0.0', port=5000, threads=16)
+    print("=" * 50)
+    print("🎯 TALON SYSTEM v2.0 - SISTEMA AUTENTICAZIONE A 3 RUOLI")
+    print("=" * 50)
+    print("👤 CREDENZIALI DI TEST:")
+    print("   Username: admin")
+    print("   Password: admin123")
+    print("=" * 50)
+    print("🔐 RUOLI DISPONIBILI:")
+    print(f"   • {ROLE_ADMIN} - Accesso completo al sistema")
+    print(f"   • {ROLE_OPERATORE} - Modifica dati nel cono d'ombra")
+    print(f"   • {ROLE_VISUALIZZATORE} - Solo visualizzazione")
+    print("=" * 50)
+    print("🌐 ENDPOINTS PRINCIPALI:")
+    print("   • /auth/login - Login web/API")
+    print("   • /admin/users - Gestione utenti (admin)")
+    print("   • /debug/session - Debug sessione (dev)")
+    print("=" * 50)
+    
+    if app.debug:
+        print("🚨 MODALITÀ DEBUG ATTIVA")
+        app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+    else:
+        print("🚀 MODALITÀ PRODUZIONE")
+        serve(app, host='0.0.0.0', port=5000, threads=16)
+
+if __name__ == '__main__':
+    main()

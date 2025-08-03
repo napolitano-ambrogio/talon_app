@@ -1,0 +1,17 @@
+{% extends "_base.html" %}
+
+{% block title %}TALON - Pagina Non Trovata{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <div class="error-card">
+        <div class="error-icon">❓</div>
+        <h1>404 - Pagina Non Trovata</h1>
+        <p>La risorsa richiesta non è stata trovata sul server.</p>
+        <div class="error-actions">
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">Torna alla Dashboard</a>
+            <a href="javascript:history.back()" class="btn btn-secondary">Indietro</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

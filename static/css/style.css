@@ -104,6 +104,32 @@ textarea {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+  /* Stili specifici per l'header con animazione */
+  position: relative;
+  overflow: hidden;
+  height: 80px;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 20px;
+}
+
+#network-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.page-header h1, 
+.page-header h2 {
+  position: relative;
+  z-index: 1;
+  margin: 0;
 }
 
 .page-header h1 {
@@ -112,6 +138,10 @@ textarea {
   font-style: italic;
   color: var(--primary-color);
   font-weight: 600;
+  font-size: 1.8em;
+  font-style: italic;
+  color: #0D1B2A;
+  margin-bottom: 5px;
 }
 
 .page-header h2 {
@@ -119,6 +149,9 @@ textarea {
   font-size: 1rem;
   font-weight: 400;
   color: var(--text-secondary);
+  font-size: 1em;
+  font-weight: normal;
+  color: #495057;
 }
 
 .main-content {
@@ -127,6 +160,196 @@ textarea {
   width: 100%;
   margin: 0 auto;
   overflow-x: auto;
+}
+
+/* ===== CONTROLLI RUOLI - STILI SOBRI ===== */
+
+/* Indicatore Ruolo Utente - Versione Militare Sobria */
+.user-role-indicator {
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  z-index: 2;
+  backdrop-filter: blur(5px);
+  box-shadow: var(--shadow-sm);
+  font-family: monospace;
+}
+
+.user-role-indicator .username-display {
+  font-size: 0.6rem;
+  opacity: 0.8;
+  font-weight: normal;
+}
+
+/* Elementi nascosti per ruoli */
+.role-hidden {
+  display: none !important;
+}
+
+.role-disabled {
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+}
+
+/* Overlay per contenuto ristretto - Versione Sobria */
+.restricted-content {
+  position: relative;
+}
+
+.restricted-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(200, 200, 200, 0.1);
+  backdrop-filter: blur(1px);
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.restricted-content.show-overlay::before {
+  opacity: 1;
+}
+
+.restricted-content .restriction-message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(108, 117, 125, 0.95);
+  color: white;
+  padding: 8px 12px;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  pointer-events: none;
+  letter-spacing: 0.5px;
+}
+
+.restricted-content.show-overlay .restriction-message {
+  opacity: 1;
+}
+
+/* Modalità sola lettura */
+.readonly-mode .form-container {
+  background: #f8f9fa !important;
+  border-color: #dee2e6 !important;
+}
+
+.readonly-mode input[readonly],
+.readonly-mode textarea[readonly],
+.readonly-mode select[disabled] {
+  background-color: #e9ecef !important;
+  cursor: not-allowed !important;
+  color: var(--text-muted) !important;
+}
+
+/* Stili per menu condizionali */
+.conditional-menu-item {
+  transition: all var(--transition-fast);
+}
+
+.conditional-menu-item.hidden {
+  display: none !important;
+}
+
+.conditional-menu-item.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* Attributi data per controllo granulare */
+[data-role-restricted] {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+[data-admin-only]:not([data-user-role="ADMIN"]) {
+  display: none !important;
+}
+
+[data-operatore-plus]:not([data-user-role="ADMIN"]):not([data-user-role="OPERATORE"]) {
+  display: none !important;
+}
+
+[data-visualizzatore-hidden][data-user-role="VISUALIZZATORE"] {
+  display: none !important;
+}
+
+/* Stili per form disabilitati per VISUALIZZATORE */
+body[data-user-role="VISUALIZZATORE"] .form-container:not([data-readonly]) {
+  position: relative;
+}
+
+body[data-user-role="VISUALIZZATORE"] .form-container:not([data-readonly])::after {
+  content: 'ACCESSO IN SOLA LETTURA';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(248, 249, 250, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  z-index: 10;
+}
+
+/* Nascondere pulsanti di eliminazione per non-ADMIN */
+body:not([data-user-role="ADMIN"]) .btn-elimina,
+body:not([data-user-role="ADMIN"]) button[name*="elimina"],
+body:not([data-user-role="ADMIN"]) button[name*="delete"],
+body:not([data-user-role="ADMIN"]) input[name*="elimina"],
+body:not([data-user-role="ADMIN"]) input[name*="delete"],
+body:not([data-user-role="ADMIN"]) button.elimina,
+body:not([data-user-role="ADMIN"]) .elimina-btn,
+body:not([data-user-role="ADMIN"]) form[action*="elimina"] button[type="submit"],
+body:not([data-user-role="ADMIN"]) form[action*="delete"] button[type="submit"],
+body:not([data-user-role="ADMIN"]) button[style*="background-color: #d9534f"],
+body:not([data-user-role="ADMIN"]) button[style*="background-color:#d9534f"] {
+  display: none !important;
+}
+
+/* Nascondere pulsanti di azione per VISUALIZZATORE */
+body[data-user-role="VISUALIZZATORE"] .btn-primary:not(.btn-info):not([data-readonly]),
+body[data-user-role="VISUALIZZATORE"] .btn-success:not([data-readonly]),
+body[data-user-role="VISUALIZZATORE"] .btn-modifica:not([data-readonly]),
+body[data-user-role="VISUALIZZATORE"] button[type="submit"]:not([readonly]):not([data-readonly]),
+body[data-user-role="VISUALIZZATORE"] input[type="submit"]:not([readonly]):not([data-readonly]) {
+  display: none !important;
+}
+
+/* Stili per indicazione stato utente */
+.user-status {
+  font-size: 0.7rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
 }
 
 /* ===== COMPONENTI INTERATTIVI ===== */
@@ -1290,6 +1513,13 @@ input:checked + .talon-slider:before {
   .dashboard-card {
     width: 100% !important;
     max-width: 500px;
+  }
+  
+  /* Indicatore ruolo responsive */
+  .user-role-indicator {
+    position: static;
+    margin-bottom: 10px;
+    display: inline-block;
   }
 }
 

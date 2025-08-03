@@ -1,0 +1,219 @@
+<!-- _base.html - VERSIONE CORRETTA senza blocchi duplicati -->
+<!DOCTYPE html>
+<html lang="it" class="h-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TALON System{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- CSS personalizzati -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-roles.css') }}">
+    
+    <!-- Block per CSS aggiuntivi -->
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="h-100 {% if session.get('ruolo_nome') %}role-{{ session.get('ruolo_nome').lower() }}{% endif %}" 
+      data-user-role="{{ session.get('ruolo_nome', 'VISUALIZZATORE') }}">
+
+    <!-- Dati ruolo utente (hidden per JavaScript) -->
+    <input type="hidden" id="user-role-data" value="{{ session.get('ruolo_nome', 'VISUALIZZATORE') }}">
+    
+    <!-- Debug info container (nascosto di default) -->
+    {% if config.DEBUG %}
+    <div id="role-debug-info"></div>
+    {% endif %}
+
+    <div class="d-flex h-100">
+        <!-- Sidebar - Solo se l'utente è loggato -->
+        {% if session.get('logged_in') %}
+            {% include 'components/sidebar.html' %}
+        {% endif %}
+        
+        <!-- Contenuto principale -->
+        <main class="flex-grow-1 d-flex flex-column {% if not session.get('logged_in') %}mx-auto{% endif %}">
+            <!-- Header con informazioni utente e breadcrumb - Solo se loggato -->
+            {% if session.get('logged_in') %}
+            <header class="bg-light border-bottom py-2 px-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <!-- Breadcrumb -->
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="{{ url_for('main.dashboard') }}">
+                                    <i class="fas fa-home"></i> Dashboard
+                                </a>
+                            </li>
+                            {% block breadcrumb %}{% endblock %}
+                        </ol>
+                    </nav>
+                    
+                    <!-- Informazioni utente compatte -->
+                    <div class="d-flex align-items-center">
+                        <!-- Indicatore ruolo -->
+                        <span class="badge bg-secondary me-2 user-role-badge" 
+                              data-role="{{ session.get('ruolo_nome', 'VISUALIZZATORE') }}">
+                            {{ session.get('ruolo_nome', 'VISUALIZZATORE') }}
+                        </span>
+                        
+                        <!-- Nome utente -->
+                        <span class="text-muted me-3">
+                            {% if session.get('nome') and session.get('cognome') %}
+                                {{ session.get('nome') }} {{ session.get('cognome') }}
+                            {% else %}
+                                {{ session.get('username', 'Utente') }}
+                            {% endif %}
+                        </span>
+                        
+                        <!-- Logout rapido -->
+                        <form method="POST" action="{{ url_for('logout') }}" class="d-inline">
+                            <button type="submit" class="btn btn-outline-secondary btn-sm" 
+                                    title="Disconnetti">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </header>
+            {% endif %}
+            
+            <!-- Area messaggi flash -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="flash-messages p-3">
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Chiudi"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endwith %}
+            
+            <!-- ⚠️ BLOCCO CONTENT - UNICO PUNTO DI DEFINIZIONE -->
+            <div class="flex-grow-1 p-3">
+                {% block content %}
+                <!-- Contenuto predefinito per pagine vuote -->
+                <div class="text-center text-muted">
+                    <p>Contenuto non disponibile</p>
+                </div>
+                {% endblock %}
+            </div>
+            
+            <!-- Footer -->
+            <footer class="bg-light border-top py-2 px-3 mt-auto">
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        TALON System v2.0 - Sistema a 3 Ruoli
+                        {% if config.DEBUG %}
+                        <span class="badge bg-warning text-dark ms-2">DEBUG</span>
+                        {% endif %}
+                    </small>
+                    
+                    {% if session.get('logged_in') %}
+                    <small class="text-muted">
+                        Ultimo accesso: {{ session.get('login_time', 'N/A')[:16] if session.get('login_time') else 'N/A' }}
+                    </small>
+                    {% endif %}
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Scripts base -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- FontAwesome (sostituisci YOUR_KIT_ID con il tuo kit ID) -->
+    <!-- <script src="https://kit.fontawesome.com/YOUR_KIT_ID.js" crossorigin="anonymous"></script> -->
+    
+    <!-- Sistema ruoli JavaScript - Solo se loggato -->
+    {% if session.get('logged_in') %}
+    <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sidebar-role-manager.js') }}"></script>
+    {% endif %}
+    
+    <!-- Global JavaScript per controlli permessi -->
+    <script>
+        // Funzioni globali per controllo permessi
+        window.TalonPermissions = {
+            userRole: '{{ session.get("ruolo_nome", "VISUALIZZATORE") }}',
+            canEdit: {{ 'true' if session.get('ruolo_nome') in ['ADMIN', 'OPERATORE'] else 'false' }},
+            canDelete: {{ 'true' if session.get('ruolo_nome') == 'ADMIN' else 'false' }},
+            canCreate: {{ 'true' if session.get('ruolo_nome') in ['ADMIN', 'OPERATORE'] else 'false' }},
+            isAdmin: {{ 'true' if session.get('ruolo_nome') == 'ADMIN' else 'false' }},
+            isLoggedIn: {{ 'true' if session.get('logged_in') else 'false' }}
+        };
+        
+        // Funzione globale per mostrare alert
+        window.showAlert = function(message, type = 'info') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+            
+            // Auto-remove dopo 5 secondi
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        };
+        
+        // Gestione click sui pulsanti con permessi - Solo se loggato
+        {% if session.get('logged_in') %}
+        document.addEventListener('click', function(e) {
+            const button = e.target.closest('[data-requires-permission]');
+            if (button) {
+                const requiredPermission = button.getAttribute('data-requires-permission');
+                let hasPermission = false;
+                
+                switch(requiredPermission) {
+                    case 'edit':
+                        hasPermission = window.TalonPermissions.canEdit;
+                        break;
+                    case 'delete':
+                        hasPermission = window.TalonPermissions.canDelete;
+                        break;
+                    case 'create':
+                        hasPermission = window.TalonPermissions.canCreate;
+                        break;
+                    case 'admin':
+                        hasPermission = window.TalonPermissions.isAdmin;
+                        break;
+                }
+                
+                if (!hasPermission) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const messages = {
+                        'edit': 'Non hai i permessi per modificare questo elemento.',
+                        'delete': 'Solo gli amministratori possono eliminare elementi.',
+                        'create': 'Non hai i permessi per creare nuovi elementi.',
+                        'admin': 'Questa funzione è riservata agli amministratori.'
+                    };
+                    
+                    window.showAlert(messages[requiredPermission] || 'Permessi insufficienti.', 'warning');
+                }
+            }
+        });
+        {% endif %}
+        
+        // Log informazioni inizializzazione
+        console.log('🎯 TALON System initialized');
+        console.log('👤 User role:', window.TalonPermissions.userRole);
+        console.log('🔐 Permissions:', window.TalonPermissions);
+    </script>
+    
+    <!-- Block per script aggiuntivi -->
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
