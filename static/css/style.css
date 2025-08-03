@@ -61,6 +61,11 @@
   --mobile: 768px;
   --tablet: 1024px;
   --desktop: 1200px;
+  
+  /* Colori ruoli */
+  --role-admin-color: #dc3545;
+  --role-operatore-color: #fd7e14;
+  --role-visualizzatore-color: #0d6efd;
 }
 
 /* ===== RESET E STILI BASE ===== */
@@ -78,6 +83,11 @@ body {
   line-height: 1.6;
   color: var(--text-primary);
   min-height: 100vh;
+}
+
+/* Aggiungi attributo data-user-role al body per controlli CSS */
+body[data-user-role] {
+  position: relative;
 }
 
 a {
@@ -182,6 +192,22 @@ textarea {
   backdrop-filter: blur(5px);
   box-shadow: var(--shadow-sm);
   font-family: monospace;
+}
+
+/* Colori indicatore per ruolo */
+body[data-user-role="ADMIN"] .user-role-indicator {
+  border-color: var(--role-admin-color);
+  color: var(--role-admin-color);
+}
+
+body[data-user-role="OPERATORE"] .user-role-indicator {
+  border-color: var(--role-operatore-color);
+  color: var(--role-operatore-color);
+}
+
+body[data-user-role="VISUALIZZATORE"] .user-role-indicator {
+  border-color: var(--role-visualizzatore-color);
+  color: var(--role-visualizzatore-color);
 }
 
 .user-role-indicator .username-display {
@@ -295,6 +321,16 @@ textarea {
   display: none !important;
 }
 
+/* Controlli più specifici per ruoli */
+body[data-user-role="VISUALIZZATORE"] [data-requires-role="OPERATORE"],
+body[data-user-role="VISUALIZZATORE"] [data-requires-role="ADMIN"] {
+  display: none !important;
+}
+
+body[data-user-role="OPERATORE"] [data-requires-role="ADMIN"] {
+  display: none !important;
+}
+
 /* Stili per form disabilitati per VISUALIZZATORE */
 body[data-user-role="VISUALIZZATORE"] .form-container:not([data-readonly]) {
   position: relative;
@@ -319,8 +355,15 @@ body[data-user-role="VISUALIZZATORE"] .form-container:not([data-readonly])::afte
   z-index: 10;
 }
 
+/* Nascondi tutti i form di modifica/creazione per VISUALIZZATORE */
+body[data-user-role="VISUALIZZATORE"] form:not([data-readonly]):not(.search-form):not(.filter-form) {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
 /* Nascondere pulsanti di eliminazione per non-ADMIN */
 body:not([data-user-role="ADMIN"]) .btn-elimina,
+body:not([data-user-role="ADMIN"]) .btn-danger,
 body:not([data-user-role="ADMIN"]) button[name*="elimina"],
 body:not([data-user-role="ADMIN"]) button[name*="delete"],
 body:not([data-user-role="ADMIN"]) input[name*="elimina"],
@@ -330,17 +373,32 @@ body:not([data-user-role="ADMIN"]) .elimina-btn,
 body:not([data-user-role="ADMIN"]) form[action*="elimina"] button[type="submit"],
 body:not([data-user-role="ADMIN"]) form[action*="delete"] button[type="submit"],
 body:not([data-user-role="ADMIN"]) button[style*="background-color: #d9534f"],
-body:not([data-user-role="ADMIN"]) button[style*="background-color:#d9534f"] {
+body:not([data-user-role="ADMIN"]) button[style*="background-color:#d9534f"],
+body:not([data-user-role="ADMIN"]) [data-action="delete"],
+body:not([data-user-role="ADMIN"]) [data-requires-role="ADMIN"] {
   display: none !important;
 }
 
 /* Nascondere pulsanti di azione per VISUALIZZATORE */
-body[data-user-role="VISUALIZZATORE"] .btn-primary:not(.btn-info):not([data-readonly]),
+body[data-user-role="VISUALIZZATORE"] .btn-primary:not(.btn-info):not([data-readonly]):not(.btn-view),
 body[data-user-role="VISUALIZZATORE"] .btn-success:not([data-readonly]),
+body[data-user-role="VISUALIZZATORE"] .btn-warning:not([data-readonly]),
 body[data-user-role="VISUALIZZATORE"] .btn-modifica:not([data-readonly]),
-body[data-user-role="VISUALIZZATORE"] button[type="submit"]:not([readonly]):not([data-readonly]),
-body[data-user-role="VISUALIZZATORE"] input[type="submit"]:not([readonly]):not([data-readonly]) {
+body[data-user-role="VISUALIZZATORE"] button[type="submit"]:not([readonly]):not([data-readonly]):not(.search-submit):not(.filter-submit),
+body[data-user-role="VISUALIZZATORE"] input[type="submit"]:not([readonly]):not([data-readonly]):not(.search-submit):not(.filter-submit),
+body[data-user-role="VISUALIZZATORE"] [data-action="create"],
+body[data-user-role="VISUALIZZATORE"] [data-action="edit"],
+body[data-user-role="VISUALIZZATORE"] [data-action="update"] {
   display: none !important;
+}
+
+/* Permettere solo visualizzazione e report per VISUALIZZATORE */
+body[data-user-role="VISUALIZZATORE"] .btn-info,
+body[data-user-role="VISUALIZZATORE"] .btn-view,
+body[data-user-role="VISUALIZZATORE"] [data-action="view"],
+body[data-user-role="VISUALIZZATORE"] [data-action="report"],
+body[data-user-role="VISUALIZZATORE"] [data-action="export"] {
+  display: inline-block !important;
 }
 
 /* Stili per indicazione stato utente */
@@ -350,6 +408,34 @@ body[data-user-role="VISUALIZZATORE"] input[type="submit"]:not([readonly]):not([
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 2px;
+}
+
+/* Badge ruolo inline */
+.role-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.role-badge.admin {
+  background-color: var(--role-admin-color);
+  color: white;
+}
+
+.role-badge.operatore {
+  background-color: var(--role-operatore-color);
+  color: white;
+}
+
+.role-badge.visualizzatore {
+  background-color: var(--role-visualizzatore-color);
+  color: white;
 }
 
 /* ===== COMPONENTI INTERATTIVI ===== */
@@ -437,6 +523,24 @@ body[data-user-role="VISUALIZZATORE"] input[type="submit"]:not([readonly]):not([
 
 .btn-danger:hover {
   background-color: #d32f2f;
+}
+
+.btn-warning {
+  background-color: #ff9800;
+  color: white;
+}
+
+.btn-warning:hover {
+  background-color: #f57c00;
+}
+
+.btn-info {
+  background-color: #00bcd4;
+  color: white;
+}
+
+.btn-info:hover {
+  background-color: #0097a7;
 }
 
 .btn-outlined {

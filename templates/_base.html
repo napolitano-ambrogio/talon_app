@@ -1,15 +1,19 @@
-<!-- _base.html - VERSIONE CORRETTA senza blocchi duplicati -->
+<!-- _base.html - VERSIONE ORIGINALE PULITA -->
 <!DOCTYPE html>
 <html lang="it" class="h-100">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="user-role" content="{{ session.get('ruolo_nome', 'GUEST') }}">
+    <meta name="user-name" content="{{ session.get('username', 'Utente') }}">
     <title>{% block title %}TALON System{% endblock %}</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <!-- CSS personalizzati -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-roles.css') }}">
     
@@ -17,15 +21,22 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body class="h-100 {% if session.get('ruolo_nome') %}role-{{ session.get('ruolo_nome').lower() }}{% endif %}" 
-      data-user-role="{{ session.get('ruolo_nome', 'VISUALIZZATORE') }}">
+      data-user-role="{{ session.get('ruolo_nome', 'GUEST') }}"
+      data-user-name="{{ session.get('username', 'Utente') }}"
+      data-page="{{ request.endpoint }}">
 
-    <!-- Dati ruolo utente (hidden per JavaScript) -->
-    <input type="hidden" id="user-role-data" value="{{ session.get('ruolo_nome', 'VISUALIZZATORE') }}">
-    
-    <!-- Debug info container (nascosto di default) -->
-    {% if config.DEBUG %}
-    <div id="role-debug-info"></div>
-    {% endif %}
+    <!-- Variabili globali JavaScript per il sistema ruoli -->
+    <script>
+        // Variabili Flask per JavaScript
+        window.FLASK_USER_ROLE = "{{ session.get('ruolo_nome', 'GUEST') }}";
+        window.FLASK_USER_NAME = "{{ session.get('username', 'Utente') }}";
+        window.FLASK_USER_FULL_NAME = "{{ session.get('nome', '') }} {{ session.get('cognome', '') }}".trim() || "{{ session.get('username', 'Utente') }}";
+        window.FLASK_IS_LOGGED_IN = {{ 'true' if session.get('logged_in') else 'false' }};
+        window.FLASK_DEBUG = {{ 'true' if config.DEBUG else 'false' }};
+    </script>
+
+    <!-- Dati ruolo utente (hidden per compatibilità) -->
+    <input type="hidden" id="hidden-user-role" value="{{ session.get('ruolo_nome', 'GUEST') }}">
 
     <div class="d-flex h-100">
         <!-- Sidebar - Solo se l'utente è loggato -->
@@ -34,10 +45,10 @@
         {% endif %}
         
         <!-- Contenuto principale -->
-        <main class="flex-grow-1 d-flex flex-column {% if not session.get('logged_in') %}mx-auto{% endif %}">
-            <!-- Header con informazioni utente e breadcrumb - Solo se loggato -->
+        <main class="flex-grow-1 d-flex flex-column {% if not session.get('logged_in') %}mx-auto{% endif %} page-wrapper">
+            <!-- Header pulito - Solo se loggato -->
             {% if session.get('logged_in') %}
-            <header class="bg-light border-bottom py-2 px-3">
+            <header class="bg-light border-bottom py-2 px-3 page-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <!-- Breadcrumb -->
                     <nav aria-label="breadcrumb">
@@ -51,30 +62,30 @@
                         </ol>
                     </nav>
                     
-                    <!-- Informazioni utente compatte -->
+                    <!-- Informazioni utente pulite -->
                     <div class="d-flex align-items-center">
-                        <!-- Indicatore ruolo -->
-                        <span class="badge bg-secondary me-2 user-role-badge" 
-                              data-role="{{ session.get('ruolo_nome', 'VISUALIZZATORE') }}">
-                            {{ session.get('ruolo_nome', 'VISUALIZZATORE') }}
+                        <!-- Nome utente completo con ruolo -->
+                        <span class="user-info me-3">
+                            <span class="username">
+                                {% if session.get('nome') and session.get('cognome') %}
+                                    {{ session.get('nome') }} {{ session.get('cognome') }}
+                                {% else %}
+                                    {{ session.get('username', 'Utente') }}
+                                {% endif %}
+                            </span>
+                            <small class="text-muted">
+                                ({{ session.get('ruolo_nome', 'GUEST') }})
+                            </small>
                         </span>
                         
-                        <!-- Nome utente -->
-                        <span class="text-muted me-3">
-                            {% if session.get('nome') and session.get('cognome') %}
-                                {{ session.get('nome') }} {{ session.get('cognome') }}
-                            {% else %}
-                                {{ session.get('username', 'Utente') }}
-                            {% endif %}
+                        <!-- Badge ruolo colorato -->
+                        <span class="badge role-badge me-2 
+                                   {% if session.get('ruolo_nome') == 'ADMIN' %}badge-danger
+                                   {% elif session.get('ruolo_nome') == 'OPERATORE' %}badge-warning
+                                   {% elif session.get('ruolo_nome') == 'VISUALIZZATORE' %}badge-info
+                                   {% else %}badge-secondary{% endif %}">
+                            {{ session.get('ruolo_nome', 'GUEST') }}
                         </span>
-                        
-                        <!-- Logout rapido -->
-                        <form method="POST" action="{{ url_for('logout') }}" class="d-inline">
-                            <button type="submit" class="btn btn-outline-secondary btn-sm" 
-                                    title="Disconnetti">
-                                <i class="fas fa-sign-out-alt"></i>
-                            </button>
-                        </form>
                     </div>
                 </div>
             </header>
@@ -94,8 +105,11 @@
                 {% endif %}
             {% endwith %}
             
-            <!-- ⚠️ BLOCCO CONTENT - UNICO PUNTO DI DEFINIZIONE -->
-            <div class="flex-grow-1 p-3">
+            <!-- Container per toast notifications -->
+            <div id="toast-container"></div>
+            
+            <!-- Contenuto principale -->
+            <div class="flex-grow-1 p-3 main-content">
                 {% block content %}
                 <!-- Contenuto predefinito per pagine vuote -->
                 <div class="text-center text-muted">
@@ -104,7 +118,7 @@
                 {% endblock %}
             </div>
             
-            <!-- Footer -->
+            <!-- Footer pulito -->
             <footer class="bg-light border-top py-2 px-3 mt-auto">
                 <div class="d-flex justify-content-between align-items-center">
                     <small class="text-muted">
@@ -124,96 +138,82 @@
         </main>
     </div>
 
-    <!-- Scripts base -->
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Bootstrap Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- FontAwesome (sostituisci YOUR_KIT_ID con il tuo kit ID) -->
-    <!-- <script src="https://kit.fontawesome.com/YOUR_KIT_ID.js" crossorigin="anonymous"></script> -->
+    <!-- FontAwesome -->
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     
     <!-- Sistema ruoli JavaScript - Solo se loggato -->
     {% if session.get('logged_in') %}
     <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
     <script src="{{ url_for('static', filename='js/sidebar-role-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     {% endif %}
     
-    <!-- Global JavaScript per controlli permessi -->
+    <!-- Script globale pulito -->
     <script>
-        // Funzioni globali per controllo permessi
+        // Configurazione globale
         window.TalonPermissions = {
-            userRole: '{{ session.get("ruolo_nome", "VISUALIZZATORE") }}',
+            userRole: '{{ session.get("ruolo_nome", "GUEST") }}',
             canEdit: {{ 'true' if session.get('ruolo_nome') in ['ADMIN', 'OPERATORE'] else 'false' }},
             canDelete: {{ 'true' if session.get('ruolo_nome') == 'ADMIN' else 'false' }},
             canCreate: {{ 'true' if session.get('ruolo_nome') in ['ADMIN', 'OPERATORE'] else 'false' }},
             isAdmin: {{ 'true' if session.get('ruolo_nome') == 'ADMIN' else 'false' }},
+            isOperatore: {{ 'true' if session.get('ruolo_nome') == 'OPERATORE' else 'false' }},
+            isVisualizzatore: {{ 'true' if session.get('ruolo_nome') == 'VISUALIZZATORE' else 'false' }},
             isLoggedIn: {{ 'true' if session.get('logged_in') else 'false' }}
         };
         
-        // Funzione globale per mostrare alert
+        // Funzione globale per alert
         window.showAlert = function(message, type = 'info') {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-            alertDiv.innerHTML = `
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
-            document.body.appendChild(alertDiv);
-            
-            // Auto-remove dopo 5 secondi
-            setTimeout(() => {
-                if (alertDiv.parentNode) {
-                    alertDiv.remove();
+            if (window.TALON_API && window.TALON_API.showInfo) {
+                switch(type) {
+                    case 'success':
+                        window.TALON_API.showSuccess(message);
+                        break;
+                    case 'danger':
+                    case 'error':
+                        window.TALON_API.showError(message);
+                        break;
+                    default:
+                        window.TALON_API.showInfo(message);
                 }
-            }, 5000);
+            } else {
+                // Fallback Bootstrap alert
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+                alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+                alertDiv.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.body.appendChild(alertDiv);
+                
+                setTimeout(() => {
+                    if (alertDiv.parentNode) {
+                        alertDiv.remove();
+                    }
+                }, 5000);
+            }
         };
         
-        // Gestione click sui pulsanti con permessi - Solo se loggato
-        {% if session.get('logged_in') %}
-        document.addEventListener('click', function(e) {
-            const button = e.target.closest('[data-requires-permission]');
-            if (button) {
-                const requiredPermission = button.getAttribute('data-requires-permission');
-                let hasPermission = false;
-                
-                switch(requiredPermission) {
-                    case 'edit':
-                        hasPermission = window.TalonPermissions.canEdit;
-                        break;
-                    case 'delete':
-                        hasPermission = window.TalonPermissions.canDelete;
-                        break;
-                    case 'create':
-                        hasPermission = window.TalonPermissions.canCreate;
-                        break;
-                    case 'admin':
-                        hasPermission = window.TalonPermissions.isAdmin;
-                        break;
-                }
-                
-                if (!hasPermission) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    const messages = {
-                        'edit': 'Non hai i permessi per modificare questo elemento.',
-                        'delete': 'Solo gli amministratori possono eliminare elementi.',
-                        'create': 'Non hai i permessi per creare nuovi elementi.',
-                        'admin': 'Questa funzione è riservata agli amministratori.'
-                    };
-                    
-                    window.showAlert(messages[requiredPermission] || 'Permessi insufficienti.', 'warning');
+        // Setup CSRF per AJAX
+        {% if csrf_token %}
+        $.ajaxSetup({
+            beforeSend: function(xhr, settings) {
+                if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token() }}");
                 }
             }
         });
         {% endif %}
-        
-        // Log informazioni inizializzazione
-        console.log('🎯 TALON System initialized');
-        console.log('👤 User role:', window.TalonPermissions.userRole);
-        console.log('🔐 Permissions:', window.TalonPermissions);
     </script>
     
-    <!-- Block per script aggiuntivi -->
+    <!-- Block per script aggiuntivi specifici per pagina -->
     {% block extra_js %}{% endblock %}
 </body>
 </html>

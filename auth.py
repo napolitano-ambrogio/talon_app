@@ -385,7 +385,7 @@ def login_required(f):
                 return jsonify({'error': 'Autenticazione richiesta', 'code': 'AUTH_REQUIRED'}), 401
             
             flash('Devi effettuare il login per accedere a questa pagina.', 'warning')
-            return redirect(url_for('auth.login', next=request.url))
+            return redirect(url_for('show_login', next=request.url))
         
         # Imposta utente corrente nella richiesta
         request.current_user = session_data
@@ -422,7 +422,7 @@ def admin_required(f):
                 return jsonify({'error': 'Privilegi amministratore richiesti', 'code': 'ADMIN_REQUIRED'}), 403
             
             flash('Solo gli amministratori possono accedere a questa funzione.', 'error')
-            return redirect(url_for('main.index'))
+            return redirect(url_for('main.dashboard'))
         
         return f(*args, **kwargs)
     
@@ -448,7 +448,7 @@ def operatore_or_admin_required(f):
                 return jsonify({'error': 'Privilegi operatore richiesti', 'code': 'OPERATORE_REQUIRED'}), 403
             
             flash('Privilegi operatore necessari per questa operazione.', 'error')
-            return redirect(url_for('main.index'))
+            return redirect(url_for('main.dashboard'))
         
         return f(*args, **kwargs)
     
@@ -498,7 +498,7 @@ def permission_required(permission_name: str):
                     }), 403
                 
                 flash(f'Permesso "{permission_name}" necessario per questa operazione.', 'error')
-                return redirect(url_for('main.index'))
+                return redirect(url_for('main.dashboard'))
             
             return f(*args, **kwargs)
         return decorated_function
@@ -539,7 +539,7 @@ def entity_access_required(entity_param_name: str = 'id'):
                         'code': 'MISSING_ENTITY_PARAM'
                     }), 400
                 flash('Parametro ente mancante nella richiesta.', 'error')
-                return redirect(url_for('main.index'))
+                return redirect(url_for('main.dashboard'))
             
             try:
                 entity_id = int(entity_id)
@@ -550,7 +550,7 @@ def entity_access_required(entity_param_name: str = 'id'):
                         'code': 'INVALID_ENTITY_PARAM'
                     }), 400
                 flash('ID ente non valido.', 'error')
-                return redirect(url_for('main.index'))
+                return redirect(url_for('main.dashboard'))
             
             # Verifica accesso all'ente
             accessible_entities = get_user_accessible_entities(user_id)
@@ -573,7 +573,7 @@ def entity_access_required(entity_param_name: str = 'id'):
                     }), 403
                 
                 flash('Non hai accesso a questo ente nel tuo cono d\'ombra.', 'error')
-                return redirect(url_for('main.index'))
+                return redirect(url_for('main.dashboard'))
             
             return f(*args, **kwargs)
         return decorated_function
@@ -610,7 +610,7 @@ def role_required(required_role: str):
                     }), 403
                 
                 flash(f'Ruolo "{required_role}" necessario per questa operazione.', 'error')
-                return redirect(url_for('main.index'))
+                return redirect(url_for('main.dashboard'))
             
             return f(*args, **kwargs)
         return decorated_function
@@ -676,7 +676,7 @@ def simple_login_required(f):
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session or not session.get('logged_in'):
             flash('Devi effettuare il login per accedere a questa pagina.', 'warning')
-            return redirect(url_for('auth.login', next=request.url))
+            return redirect(url_for('show_login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -690,7 +690,7 @@ def simple_admin_required(f):
             return f(*args, **kwargs)
         
         flash('Solo gli amministratori possono accedere a questa funzione.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('main.dashboard'))
     return decorated_function
 
 def simple_operatore_or_admin_required(f):
@@ -703,7 +703,7 @@ def simple_operatore_or_admin_required(f):
             return f(*args, **kwargs)
         
         flash('Privilegi operatore necessari per questa operazione.', 'error')
-        return redirect(url_for('main.index'))
+        return redirect(url_for('main.dashboard'))
     return decorated_function
 
 # ===========================================

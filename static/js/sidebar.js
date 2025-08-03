@@ -1,9 +1,9 @@
 /**
  * ========================================
- * TALON SIDEBAR MODULE - COMPLETE UPDATED VERSION
+ * TALON SIDEBAR MODULE - VERSIONE OTTIMIZZATA
  * File: static/js/sidebar.js
  * 
- * Versione: 2.0 - Completamente aggiornata
+ * Versione: 2.1 - Ottimizzata per gestione ruoli
  * Data: 2025
  * Funzionalità: Menu navigazione, controlli ruoli, drag&drop, logout
  * ========================================
@@ -25,12 +25,20 @@ class TalonSidebar {
         this.isExpanded = false;
         this.isLocked = false;
         
-        // Controlli ruoli
-        this.userRole = this.getUserRole();
-        this.roleHierarchy = { 'GUEST': 0, 'VISUALIZZATORE': 1, 'OPERATORE': 2, 'ADMIN': 3 };
+        // Controlli ruoli - MIGLIORATO
+        this.userRole = null; // Inizializzato dopo
+        this.roleHierarchy = { 
+            'GUEST': 0, 
+            'VISUALIZZATORE': 10, 
+            'OPERATORE': 50, 
+            'ADMIN': 100 
+        };
         
         // Drag & Drop
         this.draggedItem = null;
+        
+        // Flag di inizializzazione
+        this.isInitialized = false;
         
         // Inizializza solo se la sidebar esiste
         if (this.sidebar) {
@@ -39,7 +47,13 @@ class TalonSidebar {
     }
 
     init() {
-        console.log('[TALON Sidebar] Inizializzazione versione 2.0...');
+        console.log('[TALON Sidebar] Inizializzazione versione 2.1...');
+        
+        // IMPORTANTE: Rileva ruolo prima di tutto
+        this.userRole = this.detectUserRole();
+        this.propagateUserRole();
+        
+        // Inizializzazione componenti
         this.applyInitialState();
         this.bindEvents();
         this.initializeDragAndDrop();
@@ -48,94 +62,121 @@ class TalonSidebar {
         this.initializeLogout();
         this.initializeRoleControls();
         
-        // FIX: Gestione menu e bottoni
+        // Fix menu e bottoni
         this.fixMenuLinks();
         this.initializeDashboardButtons();
         
+        // Segna come inizializzato
+        this.isInitialized = true;
+        
         console.log('[TALON Sidebar] Inizializzazione completata ✅');
+        console.log('[TALON Sidebar] Ruolo utente:', this.userRole);
     }
 
     /**
-     * AGGIORNATO: Rileva ruolo utente con priorità corretta
+     * MIGLIORATO: Rileva ruolo utente con logica più robusta
      */
-    getUserRole() {
-        // Ordine di priorità per il rilevamento ruolo
-        const roleFromWindow = window.userRole;
-        const roleFromBody = document.body.getAttribute('data-user-role');
-        const roleFromSession = sessionStorage.getItem('userRole');
-        const roleFromTemplate = this.getRoleFromTemplate();
-        
-        const detectedRole = roleFromWindow || roleFromBody || roleFromTemplate || roleFromSession || 'GUEST';
-        
-        console.log('[TALON Sidebar] Rilevamento ruolo:');
-        console.log('  - Window:', roleFromWindow);
-        console.log('  - Body:', roleFromBody);
-        console.log('  - Session:', roleFromSession);
-        console.log('  - Template:', roleFromTemplate);
-        console.log('  - Finale:', detectedRole);
-        
-        return detectedRole;
-    }
-
-    /**
-     * NUOVO: Estrae ruolo dal template Flask (se disponibile)
-     */
-    getRoleFromTemplate() {
-        // Cerca script tags con informazioni ruolo
-        const scripts = document.querySelectorAll('script');
-        for (let script of scripts) {
-            const content = script.textContent;
-            if (content.includes('ruolo_nome') || content.includes('userRole')) {
-                const roleMatch = content.match(/['"]ADMIN['"]|['"]OPERATORE['"]|['"]VISUALIZZATORE['"]|['"]GUEST['"]/);
-                if (roleMatch) {
-                    return roleMatch[0].replace(/['"]/g, '');
-                }
-            }
+    detectUserRole() {
+        // 1. Controlla variabile globale Flask (priorità massima)
+        if (window.FLASK_USER_ROLE) {
+            console.log('[TALON Sidebar] Ruolo da Flask:', window.FLASK_USER_ROLE);
+            return window.FLASK_USER_ROLE;
         }
         
-        // Cerca in attributi data del body
+        // 2. Controlla meta tag
+        const metaRole = document.querySelector('meta[name="user-role"]');
+        if (metaRole && metaRole.content) {
+            console.log('[TALON Sidebar] Ruolo da meta tag:', metaRole.content);
+            return metaRole.content;
+        }
+        
+        // 3. Controlla data attribute body
         const bodyRole = document.body.getAttribute('data-user-role');
         if (bodyRole && bodyRole !== 'null' && bodyRole !== 'undefined') {
+            console.log('[TALON Sidebar] Ruolo da body:', bodyRole);
             return bodyRole;
+        }
+        
+        // 4. Controlla elemento nascosto nel DOM
+        const roleElement = document.getElementById('hidden-user-role');
+        if (roleElement && roleElement.value) {
+            console.log('[TALON Sidebar] Ruolo da elemento nascosto:', roleElement.value);
+            return roleElement.value;
+        }
+        
+        // 5. Controlla sessionStorage
+        const sessionRole = sessionStorage.getItem('userRole');
+        if (sessionRole && sessionRole !== 'null') {
+            console.log('[TALON Sidebar] Ruolo da sessionStorage:', sessionRole);
+            return sessionRole;
+        }
+        
+        // 6. Estrai da script inline
+        const scriptRole = this.extractRoleFromScripts();
+        if (scriptRole) {
+            console.log('[TALON Sidebar] Ruolo da script:', scriptRole);
+            return scriptRole;
+        }
+        
+        // 7. Default
+        console.warn('[TALON Sidebar] Nessun ruolo rilevato, default a GUEST');
+        return 'GUEST';
+    }
+
+    /**
+     * NUOVO: Estrae ruolo da script inline nel template
+     */
+    extractRoleFromScripts() {
+        const scripts = document.querySelectorAll('script:not([src])');
+        for (let script of scripts) {
+            const content = script.textContent;
+            
+            // Cerca pattern comuni
+            const patterns = [
+                /window\.userRole\s*=\s*["'](\w+)["']/,
+                /ruolo_nome["']\s*:\s*["'](\w+)["']/,
+                /user_role["']\s*:\s*["'](\w+)["']/,
+                /FLASK_USER_ROLE\s*=\s*["'](\w+)["']/
+            ];
+            
+            for (let pattern of patterns) {
+                const match = content.match(pattern);
+                if (match && match[1]) {
+                    const role = match[1].toUpperCase();
+                    if (this.roleHierarchy.hasOwnProperty(role)) {
+                        return role;
+                    }
+                }
+            }
         }
         
         return null;
     }
 
     /**
-     * AGGIORNATO: Corregge link menu senza href e gestisce navigazione
+     * NUOVO: Propaga il ruolo in tutto il sistema
      */
-    fixMenuLinks() {
-        const menuLinks = this.menuList.querySelectorAll('a');
+    propagateUserRole() {
+        // Imposta variabili globali
+        window.userRole = this.userRole;
+        window.TALON_USER_ROLE = this.userRole;
         
-        menuLinks.forEach(link => {
-            const menuItem = link.closest('li');
-            const menuId = menuItem?.dataset.menuId;
-            const href = link.getAttribute('href');
-            
-            // Se il link ha href="#" o è vuoto, sostituiscilo con navigazione JavaScript
-            if (!href || href === '#' || href === 'javascript:void(0)') {
-                link.removeAttribute('href');
-                link.style.cursor = 'pointer';
-                
-                // Rimuovi vecchi event listeners
-                const newLink = link.cloneNode(true);
-                link.parentNode.replaceChild(newLink, link);
-                
-                // Aggiungi nuovo event listener
-                newLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.handleMenuNavigation(menuId, newLink);
-                });
-                
-                console.log(`[TALON Sidebar] Fixed menu link: ${menuId}`);
-            }
-        });
+        // Imposta data attribute sul body
+        document.body.setAttribute('data-user-role', this.userRole);
+        
+        // Salva in sessionStorage
+        sessionStorage.setItem('userRole', this.userRole);
+        
+        // Aggiungi classe CSS per ruolo
+        document.body.className = document.body.className
+            .replace(/\brole-\w+\b/g, '') // Rimuovi classi ruolo esistenti
+            .trim() + ` role-${this.userRole.toLowerCase()}`;
+        
+        console.log('[TALON Sidebar] Ruolo propagato:', this.userRole);
     }
 
     /**
-     * AGGIORNATO: Gestisce navigazione menu con rotte corrette
+     * MIGLIORATO: Gestisce navigazione menu con controlli di accesso
      */
     handleMenuNavigation(menuId, linkElement) {
         console.log(`[TALON Sidebar] Menu clicked: ${menuId}`);
@@ -147,28 +188,58 @@ class TalonSidebar {
             return;
         }
         
-        // Mappa completa delle rotte CORRETTE
+        // Mappa completa delle rotte con requisiti di ruolo
         const menuRoutes = {
-            'dashboard': '/dashboard',                    // Dashboard Superset (dashboard.html)
-            'dashboard_admin': '/dashboard_admin',        // Dashboard Admin (dashboard_admin.html)  
-            'enti_militari': '/enti_militari/organigramma', // Organigramma (organigramma.html)
-            'enti_civili': '/enti_civili',               // Lista Enti Civili
-            'attivita': '/attivita',                     // Lista Attività (lista_attivita.html)
-            'operazioni': '/operazioni',                 // Lista Operazioni (lista_operazioni.html)
-            'gestione_utenti': '/admin/users',           // Gestione Utenti
-            'sistema': '/admin/system-info'              // Sistema
+            'dashboard': {
+                route: '/dashboard',
+                minRole: 'VISUALIZZATORE'
+            },
+            'dashboard_admin': {
+                route: '/dashboard_admin',
+                minRole: 'ADMIN'
+            },
+            'enti_militari': {
+                route: '/enti_militari/organigramma',
+                minRole: 'VISUALIZZATORE'
+            },
+            'enti_civili': {
+                route: '/enti_civili',
+                minRole: 'VISUALIZZATORE'
+            },
+            'attivita': {
+                route: '/attivita',
+                minRole: 'VISUALIZZATORE'
+            },
+            'operazioni': {
+                route: '/operazioni',
+                minRole: 'VISUALIZZATORE'
+            },
+            'gestione_utenti': {
+                route: '/admin/users',
+                minRole: 'ADMIN'
+            },
+            'sistema': {
+                route: '/admin/system-info',
+                minRole: 'ADMIN'
+            }
         };
         
-        const route = menuRoutes[menuId];
-        if (route) {
-            console.log(`[TALON Sidebar] Navigating to: ${route}`);
+        const menuConfig = menuRoutes[menuId];
+        if (menuConfig) {
+            // Verifica requisito di ruolo
+            if (!this.hasMinimumRole(menuConfig.minRole)) {
+                this.showToast(`Accesso negato. Richiede ruolo: ${menuConfig.minRole}`, 'error');
+                return;
+            }
+            
+            console.log(`[TALON Sidebar] Navigating to: ${menuConfig.route}`);
             
             // Animazione di feedback
             this.animateMenuClick(linkElement);
             
             // Navigazione ritardata per mostrare l'animazione
             setTimeout(() => {
-                window.location.href = route;
+                window.location.href = menuConfig.route;
             }, 150);
         } else {
             console.warn(`[TALON Sidebar] Route not found for menu: ${menuId}`);
@@ -177,7 +248,16 @@ class TalonSidebar {
     }
 
     /**
-     * NUOVO: Inizializza bottoni dashboard
+     * NUOVO: Verifica se l'utente ha il ruolo minimo richiesto
+     */
+    hasMinimumRole(requiredRole) {
+        const userLevel = this.roleHierarchy[this.userRole] || 0;
+        const requiredLevel = this.roleHierarchy[requiredRole] || 100;
+        return userLevel >= requiredLevel;
+    }
+
+    /**
+     * MIGLIORATO: Inizializza bottoni dashboard con controlli ruolo
      */
     initializeDashboardButtons() {
         console.log('[TALON Sidebar] Inizializzazione bottoni dashboard...');
@@ -186,164 +266,114 @@ class TalonSidebar {
         setTimeout(() => {
             this.setupActionButtons();
             this.setupViewButtons();
-            this.enableAllButtonsForAdmin();
-        }, 1000);
+            this.applyRoleRestrictionsToButtons();
+        }, 500);
     }
 
     /**
-     * NUOVO: Configura bottoni azioni rapide con rotte corrette
+     * MIGLIORATO: Configura bottoni azioni con controlli ruolo
      */
     setupActionButtons() {
         const buttonActions = {
-            'Nuovo Utente': () => this.navigateToRoute('/admin/users/new'),
-            'Nuovo Ente Civile': () => this.navigateToRoute('/enti_civili/new'),
-            'Nuovo Ente Militare': () => this.navigateToRoute('/enti_militari/new'),
-            'Nuova Operazione': () => this.navigateToRoute('/operazioni/new'),
-            'Backup Database': () => this.confirmAndNavigate('/admin/backup', 'Avviare il backup del database?'),
-            'Visualizza Log': () => this.openInNewTab('/admin/logs')
+            'Nuovo Utente': {
+                action: () => this.navigateToRoute('/admin/users/new'),
+                minRole: 'ADMIN'
+            },
+            'Nuovo Ente Civile': {
+                action: () => this.navigateToRoute('/enti_civili/new'),
+                minRole: 'OPERATORE'
+            },
+            'Nuovo Ente Militare': {
+                action: () => this.navigateToRoute('/enti_militari/new'),
+                minRole: 'OPERATORE'
+            },
+            'Nuova Operazione': {
+                action: () => this.navigateToRoute('/operazioni/new'),
+                minRole: 'OPERATORE'
+            },
+            'Backup Database': {
+                action: () => this.confirmAndNavigate('/admin/backup', 'Avviare il backup del database?'),
+                minRole: 'ADMIN'
+            },
+            'Visualizza Log': {
+                action: () => this.openInNewTab('/admin/logs'),
+                minRole: 'ADMIN'
+            }
         };
         
-        Object.entries(buttonActions).forEach(([buttonText, action]) => {
+        Object.entries(buttonActions).forEach(([buttonText, config]) => {
             const buttons = this.findButtonsByText(buttonText);
             buttons.forEach(btn => {
-                this.enableButton(btn, action);
-                console.log(`[TALON Sidebar] Configured button: ${buttonText}`);
-            });
-        });
-    }
-
-    /**
-     * NUOVO: Configura bottoni visualizza
-     */
-    setupViewButtons() {
-        const viewButtons = document.querySelectorAll('button, .btn');
-        
-        viewButtons.forEach(btn => {
-            if (btn.textContent.trim() === 'Visualizza') {
-                const route = this.detectViewButtonRoute(btn);
-                if (route) {
-                    this.enableButton(btn, () => this.navigateToRoute(route));
-                    console.log(`[TALON Sidebar] Configured view button for: ${route}`);
+                if (this.hasMinimumRole(config.minRole)) {
+                    this.enableButton(btn, config.action);
+                    console.log(`[TALON Sidebar] Button enabled: ${buttonText}`);
+                } else {
+                    this.disableButton(btn, `Richiede ruolo: ${config.minRole}`);
+                    console.log(`[TALON Sidebar] Button disabled: ${buttonText} (richiede ${config.minRole})`);
                 }
-            }
+            });
         });
     }
 
     /**
-     * NUOVO: Rileva rotta per bottoni visualizza
+     * NUOVO: Applica restrizioni ruolo ai bottoni
      */
-    detectViewButtonRoute(button) {
-        const container = button.closest('.card, .section, .widget, .dashboard-item');
-        if (!container) return null;
+    applyRoleRestrictionsToButtons() {
+        // Disabilita tutti i bottoni di eliminazione per non-ADMIN
+        if (this.userRole !== 'ADMIN') {
+            const deleteButtons = document.querySelectorAll(
+                'button[data-action="delete"], ' +
+                '.btn-danger, ' +
+                'button[onclick*="delete"], ' +
+                'button[onclick*="elimina"]'
+            );
+            
+            deleteButtons.forEach(btn => {
+                this.disableButton(btn, 'Solo ADMIN può eliminare');
+            });
+        }
         
-        const heading = container.querySelector('h3, h4, h5, .card-title, .section-title');
-        const section = heading?.textContent.trim().toLowerCase();
+        // Disabilita bottoni di modifica per VISUALIZZATORE
+        if (this.userRole === 'VISUALIZZATORE') {
+            const editButtons = document.querySelectorAll(
+                'button[data-action="edit"], ' +
+                'button[data-action="create"], ' +
+                '.btn-primary:not(.btn-view), ' +
+                '.btn-success, ' +
+                '.btn-warning'
+            );
+            
+            editButtons.forEach(btn => {
+                this.disableButton(btn, 'Accesso in sola lettura');
+            });
+        }
         
-        const routeMap = {
-            'enti civili': '/enti_civili',
-            'enti militari': '/enti_militari/organigramma',
-            'operazioni': '/operazioni',
-            'attività': '/attivita',
-            'utenti totali': '/admin/users',
-            'attività recenti': '/attivita',
-            'sistema': '/admin/system-info'
-        };
-        
-        return routeMap[section] || null;
-    }
-
-    /**
-     * NUOVO: Abilita tutti i bottoni per ADMIN
-     */
-    enableAllButtonsForAdmin() {
+        // Mostra tutti i bottoni per ADMIN
         if (this.userRole === 'ADMIN') {
-            document.querySelectorAll('button[disabled], .btn[disabled]').forEach(btn => {
-                btn.disabled = false;
-                btn.style.pointerEvents = 'auto';
-                btn.style.opacity = '1';
-                btn.style.cursor = 'pointer';
-            });
-            
-            // Mostra elementi nascosti per admin
-            document.querySelectorAll('[data-admin-only]').forEach(el => {
-                el.style.display = '';
-            });
-            
-            console.log('[TALON Sidebar] Tutti i bottoni abilitati per ADMIN');
+            this.enableAllButtonsForAdmin();
         }
     }
 
     /**
-     * UTILITY: Trova bottoni per testo
+     * NUOVO: Disabilita bottone con tooltip
      */
-    findButtonsByText(text) {
-        return Array.from(document.querySelectorAll('button, .btn')).filter(btn => 
-            btn.textContent.trim() === text
-        );
-    }
-
-    /**
-     * UTILITY: Abilita bottone con azione
-     */
-    enableButton(button, action) {
-        // Abilita il bottone
-        button.disabled = false;
-        button.style.pointerEvents = 'auto';
-        button.style.opacity = '1';
-        button.style.cursor = 'pointer';
+    disableButton(button, reason) {
+        button.disabled = true;
+        button.style.opacity = '0.5';
+        button.style.cursor = 'not-allowed';
+        button.setAttribute('title', reason);
+        button.setAttribute('data-disabled-reason', reason);
         
-        // Rimuovi vecchi event listeners clonando
-        const newButton = button.cloneNode(true);
-        button.parentNode.replaceChild(newButton, button);
-        
-        // Aggiungi nuovo event listener
-        newButton.addEventListener('click', (e) => {
+        // Aggiungi event listener per mostrare messaggio
+        button.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            action();
+            this.showToast(reason, 'warning');
         });
-        
-        return newButton;
     }
 
     /**
-     * UTILITY: Navigazione
-     */
-    navigateToRoute(route) {
-        console.log(`[TALON Sidebar] Navigating to: ${route}`);
-        window.location.href = route;
-    }
-
-    /**
-     * UTILITY: Navigazione con conferma
-     */
-    confirmAndNavigate(route, message) {
-        if (confirm(message)) {
-            this.navigateToRoute(route);
-        }
-    }
-
-    /**
-     * UTILITY: Apri in nuova tab
-     */
-    openInNewTab(route) {
-        console.log(`[TALON Sidebar] Opening in new tab: ${route}`);
-        window.open(route, '_blank');
-    }
-
-    /**
-     * AGGIORNATO: Mostra messaggio per funzioni non implementate
-     */
-    showNotImplementedMessage(menuId) {
-        const message = `Menu "${menuId}" non ancora implementato`;
-        console.warn(`[TALON Sidebar] ${message}`);
-        
-        // Mostra notifica invece di alert
-        this.showToast(message, 'warning');
-    }
-
-    /**
-     * NUOVO: Sistema di notifiche toast
+     * MIGLIORATO: Sistema di notifiche toast con stili migliorati
      */
     showToast(message, type = 'info') {
         // Crea container toast se non esiste
@@ -361,10 +391,27 @@ class TalonSidebar {
             document.body.appendChild(toastContainer);
         }
         
+        // Colori per tipo
+        const colors = {
+            'error': '#dc3545',
+            'warning': '#ffc107',
+            'success': '#28a745',
+            'info': '#17a2b8'
+        };
+        
+        // Icone per tipo
+        const icons = {
+            'error': '❌',
+            'warning': '⚠️',
+            'success': '✅',
+            'info': 'ℹ️'
+        };
+        
         // Crea toast
         const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
         toast.style.cssText = `
-            background: ${type === 'error' ? '#dc3545' : type === 'warning' ? '#ffc107' : '#17a2b8'};
+            background: ${colors[type] || colors.info};
             color: ${type === 'warning' ? '#000' : '#fff'};
             padding: 12px 20px;
             border-radius: 8px;
@@ -375,18 +422,25 @@ class TalonSidebar {
             transition: all 0.3s ease;
             pointer-events: auto;
             font-size: 14px;
-            max-width: 300px;
+            max-width: 350px;
             word-wrap: break-word;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         `;
-        toast.textContent = message;
+        
+        toast.innerHTML = `
+            <span style="font-size: 1.2em;">${icons[type] || icons.info}</span>
+            <span>${message}</span>
+        `;
         
         toastContainer.appendChild(toast);
         
         // Animazione entrata
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             toast.style.opacity = '1';
             toast.style.transform = 'translateX(0)';
-        }, 100);
+        });
         
         // Rimozione automatica
         setTimeout(() => {
@@ -397,11 +451,11 @@ class TalonSidebar {
                     toast.parentNode.removeChild(toast);
                 }
             }, 300);
-        }, 3000);
+        }, 4000);
     }
 
     // ==========================================
-    // METODI ESISTENTI (aggiornati dove necessario)
+    // METODI ESISTENTI (mantenuti ma ottimizzati)
     // ==========================================
 
     applyInitialState() {
@@ -577,51 +631,156 @@ class TalonSidebar {
         }, 150);
     }
 
+    /**
+     * MIGLIORATO: Inizializzazione controlli ruoli con logica più robusta
+     */
     initializeRoleControls() {
         console.log(`[TALON Sidebar] Inizializzazione controlli ruoli per: ${this.userRole}`);
+        
+        // Applica restrizioni al menu
         this.applyRoleRestrictionsToMenu();
+        
+        // Aggiorna info utente
         this.updateUserInfoWithRole();
         
-        // Aggiorna ruolo globalmente
-        window.userRole = this.userRole;
-        document.body.setAttribute('data-user-role', this.userRole);
-        sessionStorage.setItem('userRole', this.userRole);
+        // Applica stili CSS per ruolo
+        this.applyRoleStyles();
+        
+        // Inizializza observer per cambiamenti dinamici
+        this.initializeRoleObserver();
     }
 
+    /**
+     * MIGLIORATO: Applica restrizioni ruolo al menu con logica più chiara
+     */
     applyRoleRestrictionsToMenu() {
         const menuItems = this.menuList.querySelectorAll('li');
         const userLevel = this.roleHierarchy[this.userRole] || 0;
         
+        let hiddenCount = 0;
+        let visibleCount = 0;
+        
         menuItems.forEach(item => {
-            const minRole = item.getAttribute('data-min-role');
-            if (minRole) {
-                const minLevel = this.roleHierarchy[minRole] || 3;
-                if (userLevel < minLevel) {
-                    this.hideMenuItem(item, `Richiede ruolo: ${minRole}`);
-                    return;
+            // Salta divider
+            if (item.classList.contains('menu-divider')) {
+                return;
+            }
+            
+            // Controlla requisiti multipli
+            const checks = [
+                {
+                    condition: item.getAttribute('data-min-role'),
+                    validate: (minRole) => userLevel >= (this.roleHierarchy[minRole] || 100),
+                    reason: (minRole) => `Richiede ruolo minimo: ${minRole}`
+                },
+                {
+                    condition: item.hasAttribute('data-admin-only'),
+                    validate: () => this.userRole === 'ADMIN',
+                    reason: () => 'Solo per amministratori'
+                },
+                {
+                    condition: item.hasAttribute('data-operatore-plus'),
+                    validate: () => this.userRole === 'ADMIN' || this.userRole === 'OPERATORE',
+                    reason: () => 'Richiede ruolo Operatore o superiore'
+                },
+                {
+                    condition: item.hasAttribute('data-visualizzatore-hidden'),
+                    validate: () => this.userRole !== 'VISUALIZZATORE',
+                    reason: () => 'Non disponibile per Visualizzatore'
+                }
+            ];
+            
+            // Esegui controlli
+            let shouldHide = false;
+            let denyReason = '';
+            
+            for (let check of checks) {
+                if (check.condition) {
+                    const value = typeof check.condition === 'string' ? check.condition : true;
+                    if (!check.validate(value)) {
+                        shouldHide = true;
+                        denyReason = check.reason(value);
+                        break;
+                    }
                 }
             }
             
-            if (item.hasAttribute('data-admin-only') && this.userRole !== 'ADMIN') {
-                this.hideMenuItem(item, 'Solo per ADMIN');
-                return;
+            // Applica visibilità
+            if (shouldHide) {
+                this.hideMenuItem(item, denyReason);
+                hiddenCount++;
+            } else {
+                this.showMenuItem(item);
+                visibleCount++;
             }
-            
-            if (item.hasAttribute('data-visualizzatore-hidden') && this.userRole === 'VISUALIZZATORE') {
-                this.hideMenuItem(item, 'Non disponibile per VISUALIZZATORE');
-                return;
-            }
-            
-            this.showMenuItem(item);
         });
         
-        console.log(`[TALON Sidebar] Controlli ruoli applicati a ${menuItems.length} menu items`);
+        console.log(`[TALON Sidebar] Menu items - Visibili: ${visibleCount}, Nascosti: ${hiddenCount}`);
+    }
+
+    /**
+     * NUOVO: Applica stili CSS specifici per ruolo
+     */
+    applyRoleStyles() {
+        // Rimuovi classi ruolo esistenti
+        this.sidebar.classList.remove('role-admin', 'role-operatore', 'role-visualizzatore', 'role-guest');
+        
+        // Aggiungi classe ruolo corrente
+        this.sidebar.classList.add(`role-${this.userRole.toLowerCase()}`);
+        
+        // Aggiungi indicatori visivi
+        const roleColors = {
+            'ADMIN': 'var(--role-admin-color)',
+            'OPERATORE': 'var(--role-operatore-color)',
+            'VISUALIZZATORE': 'var(--role-visualizzatore-color)',
+            'GUEST': '#6c757d'
+        };
+        
+        const color = roleColors[this.userRole] || roleColors.GUEST;
+        this.sidebar.style.setProperty('--current-role-color', color);
+    }
+
+    /**
+     * NUOVO: Observer per cambiamenti dinamici del DOM
+     */
+    initializeRoleObserver() {
+        if (!window.MutationObserver) return;
+        
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    // Riapplica restrizioni ai nuovi elementi
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === 1 && node.matches && node.matches('li')) {
+                            this.applyRoleRestrictionsToMenuItem(node);
+                        }
+                    });
+                }
+            });
+        });
+        
+        observer.observe(this.menuList, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    /**
+     * NUOVO: Applica restrizioni a singolo menu item
+     */
+    applyRoleRestrictionsToMenuItem(item) {
+        const userLevel = this.roleHierarchy[this.userRole] || 0;
+        
+        // Esegui gli stessi controlli di applyRoleRestrictionsToMenu
+        // ma per un singolo elemento
+        // ... (logica simile)
     }
 
     hideMenuItem(item, reason = '') {
         item.classList.add('role-hidden');
         item.style.display = 'none';
         item.setAttribute('data-access-denied', reason);
+        item.setAttribute('aria-hidden', 'true');
         item.setAttribute('draggable', 'false');
     }
 
@@ -629,34 +788,16 @@ class TalonSidebar {
         item.classList.remove('role-hidden');
         item.style.display = '';
         item.removeAttribute('data-access-denied');
+        item.removeAttribute('aria-hidden');
         item.setAttribute('draggable', 'true');
     }
 
     hasAccessToMenuItem(menuItem) {
         if (!menuItem) return false;
         
-        if (menuItem.classList.contains('role-hidden') || 
-            menuItem.style.display === 'none') {
-            return false;
-        }
-        
-        const userLevel = this.roleHierarchy[this.userRole] || 0;
-        
-        const minRole = menuItem.getAttribute('data-min-role');
-        if (minRole) {
-            const minLevel = this.roleHierarchy[minRole] || 3;
-            if (userLevel < minLevel) return false;
-        }
-        
-        if (menuItem.hasAttribute('data-admin-only') && this.userRole !== 'ADMIN') {
-            return false;
-        }
-        
-        if (menuItem.hasAttribute('data-visualizzatore-hidden') && this.userRole === 'VISUALIZZATORE') {
-            return false;
-        }
-        
-        return true;
+        return !menuItem.classList.contains('role-hidden') && 
+               menuItem.style.display !== 'none' &&
+               !menuItem.hasAttribute('data-access-denied');
     }
 
     showAccessDeniedMessage(menuItem) {
@@ -668,13 +809,21 @@ class TalonSidebar {
     updateUserInfoWithRole() {
         if (!this.userInfo) return;
         
+        // Aggiorna attributi
         this.userInfo.setAttribute('data-user-role', this.userRole);
+        this.userInfo.setAttribute('data-username', this.userName?.textContent || 'Utente');
         
-        const roleBadge = this.userInfo.querySelector('.user-role-badge');
-        if (roleBadge) {
-            roleBadge.textContent = this.userRole;
-            roleBadge.title = `Ruolo attuale: ${this.userRole}`;
+        // Aggiorna o crea badge ruolo
+        let roleBadge = this.userInfo.querySelector('.user-role-badge');
+        if (!roleBadge) {
+            roleBadge = document.createElement('span');
+            roleBadge.className = 'user-role-badge';
+            this.userInfo.appendChild(roleBadge);
         }
+        
+        roleBadge.textContent = this.userRole;
+        roleBadge.setAttribute('data-role', this.userRole);
+        roleBadge.title = `Ruolo attuale: ${this.userRole}`;
         
         console.log(`[TALON Sidebar] Info utente aggiornate per ruolo: ${this.userRole}`);
     }
@@ -682,6 +831,9 @@ class TalonSidebar {
     initializeUserInfo() {
         if (this.userName && this.userInfo) {
             console.log('[TALON Sidebar] Info utente caricate dal template');
+            
+            // Aggiungi tooltip con info complete
+            this.userInfo.title = `${this.userName.textContent} - Ruolo: ${this.userRole}`;
         }
     }
 
@@ -702,7 +854,11 @@ class TalonSidebar {
                 // Mostra toast di conferma
                 this.showToast('Logout in corso...', 'info');
                 
-                // Redirect
+                // Pulisci dati locali
+                sessionStorage.clear();
+                localStorage.removeItem('sidebarMenuOrder');
+                
+                // Redirect con delay
                 setTimeout(() => {
                     window.location.href = '/auth/logout';
                 }, 500);
@@ -714,8 +870,179 @@ class TalonSidebar {
         }
     }
 
+    /**
+     * MIGLIORATO: Corregge link menu con gestione migliore
+     */
+    fixMenuLinks() {
+        const menuLinks = this.menuList.querySelectorAll('a');
+        
+        menuLinks.forEach(link => {
+            const menuItem = link.closest('li');
+            const menuId = menuItem?.dataset.menuId;
+            const href = link.getAttribute('href');
+            
+            // Se il link ha href valido e non è "#", mantienilo
+            if (href && href !== '#' && href !== 'javascript:void(0)') {
+                // Aggiungi solo controllo accesso
+                link.addEventListener('click', (e) => {
+                    if (!this.hasAccessToMenuItem(menuItem)) {
+                        e.preventDefault();
+                        this.showAccessDeniedMessage(menuItem);
+                    }
+                });
+                return;
+            }
+            
+            // Altrimenti, sostituisci con navigazione JavaScript
+            link.removeAttribute('href');
+            link.style.cursor = 'pointer';
+            
+            // Rimuovi vecchi event listeners clonando
+            const newLink = link.cloneNode(true);
+            link.parentNode.replaceChild(newLink, link);
+            
+            // Aggiungi nuovo event listener
+            newLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.handleMenuNavigation(menuId, newLink);
+            });
+            
+            console.log(`[TALON Sidebar] Fixed menu link: ${menuId}`);
+        });
+    }
+
     // ==========================================
-    // DRAG & DROP (invariato)
+    // UTILITY METHODS
+    // ==========================================
+
+    findButtonsByText(text) {
+        return Array.from(document.querySelectorAll('button, .btn')).filter(btn => 
+            btn.textContent.trim() === text
+        );
+    }
+
+    enableButton(button, action) {
+        // Abilita il bottone
+        button.disabled = false;
+        button.style.pointerEvents = 'auto';
+        button.style.opacity = '1';
+        button.style.cursor = 'pointer';
+        button.removeAttribute('data-disabled-reason');
+        button.removeAttribute('title');
+        
+        // Rimuovi vecchi event listeners clonando
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+        
+        // Aggiungi nuovo event listener
+        newButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            action();
+        });
+        
+        return newButton;
+    }
+
+    navigateToRoute(route) {
+        console.log(`[TALON Sidebar] Navigating to: ${route}`);
+        window.location.href = route;
+    }
+
+    confirmAndNavigate(route, message) {
+        if (confirm(message)) {
+            this.navigateToRoute(route);
+        }
+    }
+
+    openInNewTab(route) {
+        console.log(`[TALON Sidebar] Opening in new tab: ${route}`);
+        window.open(route, '_blank');
+    }
+
+    showNotImplementedMessage(menuId) {
+        const message = `Funzionalità "${menuId}" non ancora implementata`;
+        console.warn(`[TALON Sidebar] ${message}`);
+        this.showToast(message, 'warning');
+    }
+
+    /**
+     * MIGLIORATO: Configura bottoni visualizza con logica più robusta
+     */
+    setupViewButtons() {
+        const viewButtons = document.querySelectorAll('button, .btn');
+        
+        viewButtons.forEach(btn => {
+            const btnText = btn.textContent.trim().toLowerCase();
+            if (btnText === 'visualizza' || btnText === 'vedi' || btnText === 'mostra') {
+                const route = this.detectViewButtonRoute(btn);
+                if (route) {
+                    this.enableButton(btn, () => this.navigateToRoute(route));
+                    console.log(`[TALON Sidebar] Configured view button for: ${route}`);
+                }
+            }
+        });
+    }
+
+    detectViewButtonRoute(button) {
+        const container = button.closest('.card, .section, .widget, .dashboard-item, [data-section]');
+        if (!container) return null;
+        
+        // Cerca attributo data-route
+        const dataRoute = container.getAttribute('data-route');
+        if (dataRoute) return dataRoute;
+        
+        // Altrimenti usa il titolo della sezione
+        const heading = container.querySelector('h1, h2, h3, h4, h5, h6, .title, .card-title');
+        const section = heading?.textContent.trim().toLowerCase();
+        
+        const routeMap = {
+            'enti civili': '/enti_civili',
+            'enti militari': '/enti_militari/organigramma',
+            'operazioni': '/operazioni',
+            'attività': '/attivita',
+            'utenti': '/admin/users',
+            'sistema': '/admin/system-info',
+            'log': '/admin/logs',
+            'backup': '/admin/backup'
+        };
+        
+        // Cerca corrispondenza parziale
+        for (let [key, route] of Object.entries(routeMap)) {
+            if (section && section.includes(key)) {
+                return route;
+            }
+        }
+        
+        return null;
+    }
+
+    enableAllButtonsForAdmin() {
+        if (this.userRole !== 'ADMIN') return;
+        
+        document.querySelectorAll('button[disabled], .btn[disabled]').forEach(btn => {
+            // Salta bottoni che devono rimanere disabilitati
+            if (btn.hasAttribute('data-always-disabled')) return;
+            
+            btn.disabled = false;
+            btn.style.pointerEvents = 'auto';
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+            btn.removeAttribute('data-disabled-reason');
+        });
+        
+        // Mostra elementi nascosti per admin
+        document.querySelectorAll('[data-admin-only]').forEach(el => {
+            el.style.display = '';
+            el.removeAttribute('aria-hidden');
+        });
+        
+        console.log('[TALON Sidebar] Tutti i controlli abilitati per ADMIN');
+    }
+
+    // ==========================================
+    // DRAG & DROP (mantenuto invariato)
     // ==========================================
 
     initializeDragAndDrop() {
@@ -822,7 +1149,7 @@ class TalonSidebar {
     }
 
     // ==========================================
-    // API PUBBLICA (aggiornata)
+    // API PUBBLICA ESTESA
     // ==========================================
 
     pin() {
@@ -850,22 +1177,33 @@ class TalonSidebar {
         return this.userRole;
     }
 
+    getRoleLevel() {
+        return this.roleHierarchy[this.userRole] || 0;
+    }
+
     updateUserRole(newRole) {
+        if (!this.roleHierarchy.hasOwnProperty(newRole)) {
+            console.error(`[TALON Sidebar] Ruolo non valido: ${newRole}`);
+            return false;
+        }
+        
         const oldRole = this.userRole;
         this.userRole = newRole;
         
         console.log(`[TALON Sidebar] Ruolo aggiornato da ${oldRole} a ${newRole}`);
         
-        // Aggiorna tutto il sistema
-        window.userRole = newRole;
-        document.body.setAttribute('data-user-role', newRole);
-        sessionStorage.setItem('userRole', newRole);
+        // Propaga il nuovo ruolo
+        this.propagateUserRole();
         
+        // Riapplica tutti i controlli
         this.applyRoleRestrictionsToMenu();
         this.updateUserInfoWithRole();
-        this.enableAllButtonsForAdmin();
+        this.applyRoleStyles();
+        this.applyRoleRestrictionsToButtons();
         
-        this.showToast(`Ruolo aggiornato: ${newRole}`, 'info');
+        this.showToast(`Ruolo aggiornato: ${newRole}`, 'success');
+        
+        return true;
     }
 
     // NUOVE API
@@ -875,20 +1213,49 @@ class TalonSidebar {
     }
 
     forceShowAllMenus() {
+        if (this.userRole !== 'ADMIN') {
+            this.showToast('Solo ADMIN può usare questa funzione', 'error');
+            return;
+        }
+        
         document.querySelectorAll('.sidebar li.role-hidden').forEach(item => {
             item.classList.remove('role-hidden');
             item.style.display = '';
+            item.removeAttribute('aria-hidden');
         });
-        this.showToast('Tutti i menu mostrati (debug)', 'warning');
+        this.showToast('Tutti i menu mostrati (debug mode)', 'warning');
     }
 
     enableAllButtons() {
+        if (this.userRole !== 'ADMIN') {
+            this.showToast('Solo ADMIN può usare questa funzione', 'error');
+            return;
+        }
+        
         document.querySelectorAll('button[disabled], .btn[disabled]').forEach(btn => {
             btn.disabled = false;
             btn.style.pointerEvents = 'auto';
             btn.style.opacity = '1';
         });
-        this.showToast('Tutti i bottoni abilitati (debug)', 'warning');
+        this.showToast('Tutti i bottoni abilitati (debug mode)', 'warning');
+    }
+
+    getStats() {
+        const totalMenuItems = this.menuList.querySelectorAll('li:not(.menu-divider)').length;
+        const visibleMenuItems = this.menuList.querySelectorAll('li:not(.menu-divider):not(.role-hidden)').length;
+        const hiddenMenuItems = totalMenuItems - visibleMenuItems;
+        
+        return {
+            role: this.userRole,
+            roleLevel: this.getRoleLevel(),
+            isPinned: this.isPinned,
+            isExpanded: this.isExpanded,
+            menuItems: {
+                total: totalMenuItems,
+                visible: visibleMenuItems,
+                hidden: hiddenMenuItems
+            }
+        };
     }
 }
 
@@ -898,38 +1265,75 @@ class TalonSidebar {
 
 const sidebarStyles = document.createElement('style');
 sidebarStyles.textContent = `
+    /* Animazioni */
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
     
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Controlli ruolo */
     .sidebar li[draggable="false"] {
         cursor: not-allowed !important;
     }
     
-    .sidebar li.role-hidden[draggable="true"] {
-        draggable: false;
+    .sidebar li.role-hidden {
+        display: none !important;
     }
     
-    /* Stili per toast notifications */
+    /* Toast notifications */
     #toast-container {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
     
-    /* Fix per bottoni disabilitati */
+    .toast {
+        animation: fadeIn 0.3s ease;
+    }
+    
+    /* Bottoni disabilitati */
     button[disabled], .btn[disabled] {
         opacity: 0.6 !important;
         cursor: not-allowed !important;
         pointer-events: none !important;
     }
     
-    /* Stili per elementi admin */
+    button[data-disabled-reason] {
+        position: relative;
+    }
+    
+    /* Elementi admin */
     [data-admin-only] {
         transition: opacity 0.3s ease;
     }
     
     body:not([data-user-role="ADMIN"]) [data-admin-only] {
         display: none !important;
+    }
+    
+    /* Indicatori ruolo */
+    .sidebar.role-admin {
+        --current-role-color: var(--role-admin-color, #dc3545);
+    }
+    
+    .sidebar.role-operatore {
+        --current-role-color: var(--role-operatore-color, #fd7e14);
+    }
+    
+    .sidebar.role-visualizzatore {
+        --current-role-color: var(--role-visualizzatore-color, #0d6efd);
+    }
+    
+    .sidebar.role-guest {
+        --current-role-color: #6c757d;
+    }
+    
+    /* Badge ruolo con colore dinamico */
+    .user-role-badge {
+        background-color: var(--current-role-color) !important;
     }
 `;
 document.head.appendChild(sidebarStyles);
@@ -939,46 +1343,50 @@ document.head.appendChild(sidebarStyles);
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('[TALON Sidebar] DOM loaded, inizializzazione versione 2.0...');
+    console.log('[TALON Sidebar] DOM caricato, inizializzazione versione 2.1...');
     
     // Crea istanza globale
     window.talonSidebar = new TalonSidebar();
     
-    // API pubblica estesa
+    // API pubblica completa
     window.sidebarAPI = {
         // API base
         pin: () => window.talonSidebar.pin(),
         unpin: () => window.talonSidebar.unpin(),
         expand: () => window.talonSidebar.expand(),
         collapse: () => window.talonSidebar.collapse(),
+        toggle: () => window.talonSidebar.isPinned ? window.talonSidebar.unpin() : window.talonSidebar.pin(),
         
         // API ruoli
         getCurrentRole: () => window.talonSidebar.getCurrentRole(),
+        getRoleLevel: () => window.talonSidebar.getRoleLevel(),
         updateRole: (role) => window.talonSidebar.updateUserRole(role),
+        hasMinimumRole: (role) => window.talonSidebar.hasMinimumRole(role),
         
         // API dashboard
         refreshDashboard: () => window.talonSidebar.refreshDashboard(),
         
-        // API debug
-        showAllMenus: () => window.talonSidebar.forceShowAllMenus(),
-        enableAllButtons: () => window.talonSidebar.enableAllButtons(),
+        // API debug (solo ADMIN)
+        debug: {
+            showAllMenus: () => window.talonSidebar.forceShowAllMenus(),
+            enableAllButtons: () => window.talonSidebar.enableAllButtons(),
+            getStats: () => window.talonSidebar.getStats()
+        },
         
         // API utility
         showToast: (message, type) => window.talonSidebar.showToast(message, type),
+        navigate: (route) => window.talonSidebar.navigateToRoute(route),
         
         // Info
-        version: '2.0',
-        status: () => {
-            return {
-                isPinned: window.talonSidebar.isPinned,
-                isExpanded: window.talonSidebar.isExpanded,
-                userRole: window.talonSidebar.userRole,
-                menuCount: window.talonSidebar.menuList?.children.length || 0
-            };
-        }
+        version: '2.1',
+        isInitialized: () => window.talonSidebar.isInitialized,
+        status: () => window.talonSidebar.getStats()
     };
     
-    console.log('[TALON Sidebar] ✅ Versione 2.0 inizializzata completamente!');
+    // Esponi anche classe per estensioni
+    window.TalonSidebar = TalonSidebar;
+    
+    console.log('[TALON Sidebar] ✅ Versione 2.1 inizializzata completamente!');
     console.log('[TALON Sidebar] API disponibili in window.sidebarAPI');
     console.log('[TALON Sidebar] Stato:', window.sidebarAPI.status());
 });

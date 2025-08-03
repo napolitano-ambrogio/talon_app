@@ -1,5 +1,4 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from services.database import get_db_connection
 from auth import (
     login_required, permission_required,
     admin_required, operatore_or_admin_required,
@@ -8,7 +7,20 @@ from auth import (
     ROLE_ADMIN, ROLE_OPERATORE, ROLE_VISUALIZZATORE
 )
 import sqlite3
+import os
 from datetime import datetime
+
+# ===========================================
+# CONFIGURAZIONE DATABASE
+# ===========================================
+
+DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'talon_data.db')
+
+def get_db_connection():
+    """Connessione al database"""
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 operazioni_bp = Blueprint('operazioni', __name__, template_folder='../templates')
 

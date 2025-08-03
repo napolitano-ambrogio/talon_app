@@ -4,223 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TALON - Login</title>
-    
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        
-        .login-container {
-            background: white;
-            border-radius: 12px;
-            padding: 40px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-            width: 100%;
-        }
-        
-        .login-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        .login-header h1 {
-            color: #2c3e50;
-            margin: 0 0 10px 0;
-            font-size: 1.8rem;
-            font-weight: 600;
-            font-style: italic;
-        }
-        
-        .login-header p {
-            color: #7f8c8d;
-            margin: 0;
-            font-size: 0.9rem;
-        }
-        
-        .flash-messages {
-            margin-bottom: 20px;
-        }
-        
-        .alert {
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 10px;
-            font-size: 0.9rem;
-        }
-        
-        .alert-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .alert-warning {
-            background-color: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
-        }
-        
-        .alert-info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #b8daff;
-        }
-        
-        .login-form {
-            margin-bottom: 30px;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #2c3e50;
-            font-size: 0.9rem;
-        }
-        
-        .form-group input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e9ecef;
-            border-radius: 6px;
-            font-size: 16px;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-            background: white;
-        }
-        
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        .form-group input::placeholder {
-            color: #adb5bd;
-        }
-        
-        .login-btn {
-            width: 100%;
-            padding: 14px;
-            background-color: #667eea;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .login-btn:hover {
-            background-color: #5a67d8;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-        }
-        
-        .login-btn:active {
-            transform: translateY(0);
-        }
-        
-        .login-footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e9ecef;
-        }
-        
-        .test-credentials {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            text-align: center;
-            border-left: 4px solid #28a745;
-        }
-        
-        .test-credentials strong {
-            color: #155724;
-            display: block;
-            margin-bottom: 8px;
-        }
-        
-        .test-credentials code {
-            background: #e9ecef;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-            color: #495057;
-            font-weight: 600;
-        }
-        
-        .credential-row {
-            margin: 4px 0;
-        }
-        
-        /* Animazione di caricamento */
-        .login-btn:disabled {
-            background-color: #adb5bd;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .login-btn.loading::after {
-            content: '';
-            width: 16px;
-            height: 16px;
-            margin-left: 10px;
-            border: 2px solid transparent;
-            border-top: 2px solid white;
-            border-radius: 50%;
-            display: inline-block;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* Responsive */
-        @media (max-width: 480px) {
-            .login-container {
-                padding: 30px 20px;
-                margin: 10px;
-            }
-            
-            .login-header h1 {
-                font-size: 1.5rem;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
 </head>
 <body>
+    <!-- Canvas per l'animazione neural network -->
+    <canvas id="network-canvas"></canvas>
+    
     <div class="login-container">
         <div class="login-header">
-            <h1>🎯 TALON</h1>
+            <img src="{{ url_for('static', filename='giogo.png') }}" alt="TALON Logo" class="login-logo">
+            <h1>TALON</h1>
             <p>Task Analysis & Logistics Operations Node</p>
         </div>
         
@@ -263,62 +56,15 @@
             </div>
             
             <button type="submit" class="login-btn" id="loginBtn">
-                Accedi al Sistema
+                ACCEDI
             </button>
         </form>
-        
-        <!-- Test Credentials -->
-        <div class="login-footer">
-            <div class="test-credentials">
-                <strong>🧪 CREDENZIALI DI TEST</strong>
-                <div class="credential-row">
-                    <strong>Username:</strong> <code>admin</code>
-                </div>
-                <div class="credential-row">
-                    <strong>Password:</strong> <code>admin123</code>
-                </div>
-            </div>
-        </div>
     </div>
 
-    <script>
-        // Script per gestire il form di login
-        document.addEventListener('DOMContentLoaded', function() {
-            const form = document.getElementById('loginForm');
-            const btn = document.getElementById('loginBtn');
-            
-            // Gestione submit form
-            form.addEventListener('submit', function(e) {
-                // Disabilita il pulsante e mostra loading
-                btn.disabled = true;
-                btn.classList.add('loading');
-                btn.textContent = 'Accesso in corso';
-                
-                // Se c'è un errore, riabilita dopo 3 secondi
-                setTimeout(() => {
-                    if (btn.disabled) {
-                        btn.disabled = false;
-                        btn.classList.remove('loading');
-                        btn.textContent = 'Accedi al Sistema';
-                    }
-                }, 3000);
-            });
-            
-            // Auto-fill per test rapido (solo in sviluppo)
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                const usernameField = document.getElementById('username');
-                const passwordField = document.getElementById('password');
-                
-                // Doppio click per auto-fill
-                document.querySelector('.test-credentials').addEventListener('dblclick', function() {
-                    usernameField.value = 'admin';
-                    passwordField.value = 'admin123';
-                    usernameField.focus();
-                });
-            }
-            
-            console.log('[TALON Login] Pagina di login caricata');
-        });
-    </script>
+    <!-- Script per neural network (auto-inizializzazione) -->
+    <script src="{{ url_for('static', filename='js/neural-network.js') }}"></script>
+    
+    <!-- Script per logica login -->
+    <script src="{{ url_for('static', filename='js/login.js') }}"></script>
 </body>
 </html>

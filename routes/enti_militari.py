@@ -1,18 +1,102 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from services.database import get_db_connection, get_all_descendants, build_tree
 from auth import (
     login_required, permission_required, entity_access_required,
     admin_required, operatore_or_admin_required,
-    log_user_action, get_accessible_entities, get_current_user_info,
+    log_user_action, get_user_accessible_entities, get_current_user_info,
     is_admin, is_operatore_or_above, get_user_role,
     ROLE_ADMIN, ROLE_OPERATORE, ROLE_VISUALIZZATORE
 )
 import sqlite3
+import os
 from datetime import datetime
+
+# ===========================================
+# CONFIGURAZIONE DATABASE
+# ===========================================
+
+DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'talon_data.db')
+
+def get_db_connection():
+    """Connessione al database"""
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 enti_militari_bp = Blueprint('enti_militari', __name__, template_folder='../templates')
 
 ROOT_ENTE_ID = 1
+
+# ===========================================
+# FUNZIONI DATABASE MANCANTI
+# ===========================================
+
+def get_all_descendants(conn, parent_id):
+    """Recupera tutti i discendenti di un ente (ricorsivo)"""
+    descendants = []
+    
+    def get_children(pid, level=0):
+        children = conn.execute(
+            'SELECT * FROM enti_militari WHERE parent_id = ? ORDER BY nome',
+            (pid,)
+        ).fetchall()
+        
+        for child in children:
+            child_dict = dict(child)
+            child_dict['level'] = level
+            descendants.append(child_dict)
+            get_children(child['id'], level + 1)
+    
+    # Includi l'ente stesso
+    parent = conn.execute(
+        'SELECT * FROM enti_militari WHERE id = ?',
+        (parent_id,)
+    ).fetchone()
+    
+    if parent:
+        parent_dict = dict(parent)
+        parent_dict['level'] = 0
+        descendants.append(parent_dict)
+        get_children(parent_id, 1)
+    
+    return descendants
+
+def build_tree(enti_list):
+    """Costruisce struttura ad albero da lista piatta di enti"""
+    if not enti_list:
+        return []
+    
+    # Converti in dizionari se necessario
+    enti_dict = {}
+    for ente in enti_list:
+        if hasattr(ente, 'keys'):
+            ente_dict = dict(ente)
+        else:
+            ente_dict = ente
+        ente_dict['children'] = []
+        enti_dict[ente_dict['id']] = ente_dict
+    
+    # Costruisci l'albero
+    tree = []
+    for ente in enti_dict.values():
+        if ente.get('parent_id') is None:
+            tree.append(ente)
+        else:
+            parent = enti_dict.get(ente['parent_id'])
+            if parent:
+                parent['children'].append(ente)
+            else:
+                # Se il parent non è nella lista, aggiungi come root
+                tree.append(ente)
+    
+    return tree
+
+def get_accessible_entities():
+    """Wrapper per recuperare enti accessibili dell'utente corrente"""
+    from flask import session
+    user_id = session.get('user_id')
+    if user_id:
+        return get_user_accessible_entities(user_id)
+    return []
 
 # ===========================================
 # FUNZIONI HELPER

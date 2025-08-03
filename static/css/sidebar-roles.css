@@ -1,291 +1,481 @@
-/* sidebar-roles.css - Stili per la gestione dei ruoli */
+/* ============================================
+   SIDEBAR ROLES CSS - ESTENSIONI E OVERRIDE
+   File: static/css/sidebar-roles.css
+   
+   Questo file contiene stili aggiuntivi specifici
+   per la gestione dei ruoli nella sidebar.
+   Deve essere caricato DOPO sidebar.css
+   ============================================ */
 
 /* ===========================================
-   BADGE RUOLI
+   BADGE RUOLI AVANZATI
    =========================================== */
 
+/* Badge ruolo con animazione di ingresso */
 .user-role-badge {
     display: inline-block;
-    padding: 2px 6px;
-    border-radius: 10px;
-    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.65rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-left: 8px;
     vertical-align: middle;
+    position: relative;
+    overflow: hidden;
+    animation: fadeInBadge 0.5s ease;
+    transition: all 0.3s ease;
 }
 
-/* Colori badge per i diversi ruoli */
-.user-role-badge {
-    background-color: #6c757d;
-    color: white;
+/* Effetto shimmer sui badge */
+.user-role-badge::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+        45deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.3) 50%,
+        transparent 70%
+    );
+    transform: rotate(45deg);
+    transition: all 0.6s;
+    opacity: 0;
 }
 
-/* Admin - Rosso */
-body.role-admin .user-role-badge,
-.user-role-badge[data-role="ADMIN"] {
-    background-color: #dc3545;
-    color: white;
-    box-shadow: 0 0 0 1px rgba(220, 53, 69, 0.3);
+.user-role-badge:hover::before {
+    animation: shimmer 0.6s ease;
 }
 
-/* Operatore - Arancione */
-body.role-operatore .user-role-badge,
-.user-role-badge[data-role="OPERATORE"] {
-    background-color: #fd7e14;
-    color: white;
-    box-shadow: 0 0 0 1px rgba(253, 126, 20, 0.3);
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%) translateY(-100%) rotate(45deg);
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(100%) translateY(100%) rotate(45deg);
+        opacity: 0;
+    }
 }
 
-/* Visualizzatore - Blu */
-body.role-visualizzatore .user-role-badge,
-.user-role-badge[data-role="VISUALIZZATORE"] {
-    background-color: #0d6efd;
+/* Colori badge per i diversi ruoli con ombre */
+body[data-user-role="ADMIN"] .user-role-badge {
+    background-color: var(--role-admin-color);
     color: white;
-    box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.3);
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+}
+
+body[data-user-role="OPERATORE"] .user-role-badge {
+    background-color: var(--role-operatore-color);
+    color: white;
+    box-shadow: 0 2px 4px rgba(253, 126, 20, 0.3);
+}
+
+body[data-user-role="VISUALIZZATORE"] .user-role-badge {
+    background-color: var(--role-visualizzatore-color);
+    color: white;
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.3);
+}
+
+/* Badge compatto per sidebar compressa */
+.sidebar:not(.expanded):not(.pinned) .user-role-badge {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    margin: 0;
+    font-size: 0;
+    border-radius: 50%;
+    position: absolute;
+    top: 5px;
+    right: 5px;
 }
 
 /* ===========================================
-   ELEMENTI MENU DISABILITATI
+   INDICATORI DI STATO AVANZATI
    =========================================== */
 
-.disabled-menu-item {
+/* Indicatore di permessi limitati */
+.limited-access-indicator {
+    display: none;
+    font-size: 0.65rem;
+    color: #ffc107;
+    margin-left: 8px;
+    opacity: 0.8;
+}
+
+body[data-user-role="VISUALIZZATORE"] .limited-access-indicator {
+    display: inline-block;
+}
+
+/* Icona di lucchetto per elementi ristretti */
+.sidebar li[data-min-role] a::after {
+    content: '🔒';
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
     opacity: 0.5;
+    display: none;
+}
+
+body[data-user-role="VISUALIZZATORE"] .sidebar li[data-min-role="OPERATORE"] a::after,
+body[data-user-role="VISUALIZZATORE"] .sidebar li[data-min-role="ADMIN"] a::after,
+body[data-user-role="OPERATORE"] .sidebar li[data-min-role="ADMIN"] a::after {
+    display: block;
+}
+
+/* ===========================================
+   ELEMENTI MENU DISABILITATI AVANZATI
+   =========================================== */
+
+/* Overlay per elementi disabilitati */
+.sidebar .disabled-menu-item {
+    position: relative;
+    opacity: 0.4;
     cursor: not-allowed !important;
     pointer-events: none;
 }
 
-.disabled-menu-item:hover {
-    background-color: transparent !important;
-    color: inherit !important;
-}
-
-/* Elementi nascosti per ruolo */
-[aria-hidden="true"] {
-    display: none !important;
-}
-
-/* ===========================================
-   INDICATORI VISIVI PER RUOLO
-   =========================================== */
-
-/* Barra laterale colorata per ruolo */
-body.role-admin .sidebar {
-    border-left: 3px solid #dc3545;
-}
-
-body.role-operatore .sidebar {
-    border-left: 3px solid #fd7e14;
-}
-
-body.role-visualizzatore .sidebar {
-    border-left: 3px solid #0d6efd;
-}
-
-/* Indicatore ruolo nel header della sidebar */
-.sidebar::before {
+.sidebar .disabled-menu-item::after {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    height: 2px;
-    z-index: 10;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(255, 255, 255, 0.05) 10px,
+        rgba(255, 255, 255, 0.05) 20px
+    );
+    pointer-events: none;
 }
 
-body.role-admin .sidebar::before {
-    background: linear-gradient(90deg, #dc3545, #c82333);
-}
-
-body.role-operatore .sidebar::before {
-    background: linear-gradient(90deg, #fd7e14, #e55a00);
-}
-
-body.role-visualizzatore .sidebar::before {
-    background: linear-gradient(90deg, #0d6efd, #0b5ed7);
+/* Tooltip per elementi disabilitati */
+.sidebar .disabled-menu-item[data-disabled-reason]:hover::before {
+    content: attr(data-disabled-reason);
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #333;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    margin-left: 10px;
+    z-index: 1002;
+    pointer-events: none;
 }
 
 /* ===========================================
-   SEPARATORI SEZIONI
+   SEZIONI DINAMICHE PER RUOLO
    =========================================== */
 
-.menu-divider {
-    list-style: none;
-    margin: 20px 0 10px 0;
-    padding: 0;
+/* Sezione Admin Tools */
+.admin-section {
+    border-top: 2px solid var(--role-admin-color);
+    margin-top: 20px;
+    padding-top: 10px;
+    display: none;
 }
 
-.sidebar-divider {
-    border: none;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #dee2e6, transparent);
-    margin: 0 15px;
-}
-
-.divider-label {
+body[data-user-role="ADMIN"] .admin-section {
     display: block;
-    padding: 5px 20px 0;
-    font-size: 0.7rem;
+}
+
+/* Header sezione con icona ruolo */
+.section-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 18px;
+    font-size: 0.75rem;
     font-weight: 600;
-    color: #6c757d;
+    color: rgba(255, 255, 255, 0.7);
     text-transform: uppercase;
     letter-spacing: 1px;
 }
 
+.section-header::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    margin-right: 8px;
+    border-radius: 2px;
+}
+
+body[data-user-role="ADMIN"] .admin-section .section-header::before {
+    background-color: var(--role-admin-color);
+}
+
 /* ===========================================
-   USER INFO SECTION ENHANCED
+   TRANSIZIONI DI RUOLO
    =========================================== */
 
+/* Animazione cambio ruolo */
+.sidebar.role-transitioning * {
+    transition: all 0.5s ease !important;
+}
+
+/* Fade out/in durante cambio ruolo */
+@keyframes roleChange {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.sidebar.role-changing .sidebar-menu {
+    animation: roleChange 0.6s ease;
+}
+
+/* ===========================================
+   USER INFO SECTION MIGLIORATA
+   =========================================== */
+
+/* Container info utente con gradient */
 .user-info {
-    display: flex;
-    align-items: center;
-    padding: 10px 15px;
-    border-radius: 8px;
-    background: rgba(0,0,0,0.05);
-    margin-bottom: 10px;
-    transition: all 0.2s ease;
-}
-
-.user-info:hover {
-    background: rgba(0,0,0,0.1);
-}
-
-.user-info svg {
-    margin-right: 10px;
-    flex-shrink: 0;
-}
-
-.user-text {
-    flex: 1;
-    min-width: 0;
-    white-space: nowrap;
+    background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    position: relative;
     overflow: hidden;
-    text-overflow: ellipsis;
+}
+
+/* Indicatore di stato online */
+.user-info::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 6px;
+    height: 6px;
+    background: #4caf50;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+/* Username con troncamento elegante */
+.user-text {
+    max-width: 150px;
+    position: relative;
+}
+
+.user-text.truncated::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    background: linear-gradient(90deg, transparent, var(--sidebar-bg-color) 50%);
+    padding-left: 20px;
 }
 
 /* ===========================================
-   TOOLTIP MIGLIORATI
+   NOTIFICHE PERMESSI
    =========================================== */
 
-[title]:hover::after {
-    content: attr(title);
+/* Badge contatore restrizioni */
+.restrictions-count {
     position: absolute;
-    z-index: 1000;
-    background: #333;
+    top: -5px;
+    right: -5px;
+    background: #ff5252;
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+    display: none;
+}
+
+body[data-user-role="VISUALIZZATORE"] .restrictions-count {
+    display: block;
+}
+
+/* ===========================================
+   MENU CONTEXTUAL ACTIONS
+   =========================================== */
+
+/* Azioni rapide al hover (solo per ruoli autorizzati) */
+.sidebar li .quick-actions {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    display: none;
+}
+
+body[data-user-role="ADMIN"] .sidebar li:hover .quick-actions,
+body[data-user-role="OPERATORE"] .sidebar li:hover .quick-actions {
+    opacity: 1;
+    display: flex;
+    gap: 5px;
+}
+
+.quick-actions button {
+    background: rgba(255,255,255,0.1);
+    border: none;
     color: white;
     padding: 4px 8px;
     border-radius: 4px;
-    font-size: 0.8rem;
-    white-space: nowrap;
-    pointer-events: none;
-    margin-left: 10px;
-}
-
-/* ===========================================
-   STATI RESPONSIVE PER RUOLI
-   =========================================== */
-
-@media (max-width: 768px) {
-    .user-role-badge {
-        display: none;
-    }
-    
-    .user-info {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 5px;
-    }
-    
-    .divider-label {
-        padding-left: 15px;
-    }
-}
-
-/* ===========================================
-   ANIMAZIONI E TRANSIZIONI
-   =========================================== */
-
-.sidebar li {
+    font-size: 0.65rem;
+    cursor: pointer;
     transition: all 0.2s ease;
 }
 
-.sidebar li[aria-hidden="true"] {
-    opacity: 0;
-    transform: translateX(-10px);
-    transition: all 0.3s ease;
+.quick-actions button:hover {
+    background: rgba(255,255,255,0.2);
+    transform: scale(1.1);
 }
 
-.user-role-badge {
-    animation: fadeInBadge 0.5s ease;
+/* ===========================================
+   RESPONSIVE ADATTAMENTI
+   =========================================== */
+
+@media (max-width: 768px) {
+    /* Badge più piccoli su mobile */
+    .user-role-badge {
+        font-size: 0.6rem;
+        padding: 2px 6px;
+    }
+    
+    /* Nascondi indicatori complessi */
+    .restrictions-count,
+    .limited-access-indicator,
+    .quick-actions {
+        display: none !important;
+    }
+    
+    /* Semplifica le sezioni */
+    .section-header {
+        font-size: 0.7rem;
+        padding: 6px 15px;
+    }
 }
 
+/* ===========================================
+   TEMA SCURO/CHIARO PER RUOLI
+   =========================================== */
+
+/* Modalità alto contrasto per accessibilità */
+@media (prefers-contrast: high) {
+    .user-role-badge {
+        border: 2px solid white;
+        font-weight: 700;
+    }
+    
+    .sidebar li[data-min-role] a::after {
+        font-size: 1rem;
+        opacity: 1;
+    }
+}
+
+/* ===========================================
+   ANIMAZIONI E TRANSIZIONI FINALI
+   =========================================== */
+
+/* Animazione ingresso badge */
 @keyframes fadeInBadge {
     from {
         opacity: 0;
-        transform: scale(0.8);
+        transform: scale(0.8) translateY(-5px);
     }
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: scale(1) translateY(0);
     }
+}
+
+/* Effetto hover migliorato per voci menu con restrizioni */
+.sidebar li[data-min-role] a {
+    transition: all 0.3s ease, filter 0.3s ease;
+}
+
+.sidebar li[data-min-role] a:hover {
+    filter: brightness(1.1);
+}
+
+/* Loading state per cambio ruolo */
+.sidebar.loading-role::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--secondary-color), transparent);
+    animation: loading 1.5s linear infinite;
+}
+
+@keyframes loading {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
 }
 
 /* ===========================================
    DEBUG INFO (solo in sviluppo)
    =========================================== */
 
-#role-debug-info {
+/* Pannello debug ruoli */
+#role-debug-panel {
     position: fixed;
-    bottom: 10px;
-    right: 10px;
-    background: rgba(0,0,0,0.8);
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.9);
     color: white;
-    padding: 10px;
-    border-radius: 5px;
-    font-size: 0.8rem;
-    font-family: monospace;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-family: 'Courier New', monospace;
     z-index: 9999;
     max-width: 300px;
-    display: none; /* Mostra solo quando necessario */
+    display: none;
+    border: 1px solid rgba(255,255,255,0.2);
 }
 
-body.debug-mode #role-debug-info {
+body.debug-mode #role-debug-panel {
     display: block;
 }
 
-/* ===========================================
-   PERMESSI SPECIFICI PER PULSANTI
-   =========================================== */
-
-/* Pulsanti che richiedono permessi specifici */
-.btn[data-requires-permission="delete"] {
-    background-color: #dc3545;
-    border-color: #dc3545;
+#role-debug-panel h4 {
+    margin: 0 0 10px 0;
+    font-size: 0.85rem;
+    color: #4caf50;
 }
 
-.btn[data-requires-permission="edit"] {
-    background-color: #ffc107;
-    border-color: #ffc107;
-    color: #000;
+#role-debug-panel ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
-.btn[data-requires-permission="create"] {
-    background-color: #28a745;
-    border-color: #28a745;
+#role-debug-panel li {
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
 }
 
-/* Stati disabilitati per permessi */
-body.role-visualizzatore .btn[data-requires-permission="edit"],
-body.role-visualizzatore .btn[data-requires-permission="delete"],
-body.role-visualizzatore .btn[data-requires-permission="create"] {
-    opacity: 0.5;
-    pointer-events: none;
-    cursor: not-allowed;
+#role-debug-panel .key {
+    color: #ff9800;
 }
 
-body.role-operatore .btn[data-requires-permission="delete"] {
-    opacity: 0.5;
-    pointer-events: none;
-    cursor: not-allowed;
+#role-debug-panel .value {
+    color: #03a9f4;
 }

@@ -1,14 +1,22 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from auth import (
     login_required, admin_required, operatore_or_admin_required,
-    get_current_user_info, log_user_action, get_accessible_entities,
+    get_current_user_info, log_user_action, get_user_accessible_entities,
     is_admin, is_operatore_or_above, get_user_role,
     ROLE_ADMIN, ROLE_OPERATORE, ROLE_VISUALIZZATORE
 )
-from services.database import get_db_connection
 import sqlite3
-import sys
+import os
 from datetime import datetime, timedelta
+
+# Definizione percorso database
+DATABASE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'talon_data.db')
+
+def get_db_connection():
+    """Connessione al database"""
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 # Definiamo un "Blueprint", un modulo per le nostre rotte
 main_bp = Blueprint(
@@ -25,7 +33,8 @@ main_bp = Blueprint(
 @main_bp.route('/')
 def index():
     """Redirect dalla root alla dashboard appropriata."""
-    if 'user_id' in request.cookies or 'logged_in' in request.cookies:
+    from flask import session
+    if session.get('logged_in'):
         return redirect(url_for('main.dashboard'))
     else:
         return redirect(url_for('show_login'))
@@ -37,20 +46,32 @@ def dashboard():
     user_id = request.current_user['user_id']
     user_info = get_current_user_info()
     user_role = get_user_role()
-    accessible_entities = get_accessible_entities()
+    accessible_entities = get_user_accessible_entities(user_id)
+    
+    # Recupera statistiche per la dashboard
+    stats = get_dashboard_stats(user_id, accessible_entities)
+    
+    # Attività recenti
+    recent_activities = get_recent_activities(user_id, accessible_entities, 5)
+    
+    # Notifiche utente
+    notifications = get_user_notifications(user_id)
     
     # Log accesso dashboard
     log_user_action(
         user_id,
         'ACCESS_DASHBOARD',
-        f'Accesso dashboard Superset - Ruolo: {user_role}',
+        f'Accesso dashboard - Ruolo: {user_role}',
         'dashboard'
     )
     
-    # Dashboard Superset per tutti gli utenti
+    # Dashboard per tutti gli utenti con dati appropriati al ruolo
     return render_template('dashboard.html',
                          user_info=user_info,
                          user_role=user_role,
+                         stats=stats,
+                         recent_activities=recent_activities,
+                         notifications=notifications,
                          accessible_entities_count=len(accessible_entities))
 
 @main_bp.route('/dashboard_admin')
@@ -60,22 +81,25 @@ def dashboard_admin():
     user_id = request.current_user['user_id']
     user_info = get_current_user_info()
     user_role = get_user_role()
-    accessible_entities = get_accessible_entities()
+    accessible_entities = get_user_accessible_entities(user_id)
     
-    # Recupera statistiche per la dashboard admin
-    stats = get_dashboard_stats(user_id, accessible_entities)
+    # Recupera statistiche avanzate per admin
+    stats = get_admin_dashboard_stats()
     
-    # Attività recenti per admin
-    recent_activities = get_recent_activities(user_id, accessible_entities, 5)
+    # Attività recenti sistema
+    recent_activities = get_system_recent_activities(10)
     
-    # Notifiche utente
-    notifications = get_user_notifications(user_id)
+    # Log di sistema
+    system_logs = get_system_logs(5)
+    
+    # Notifiche admin
+    notifications = get_admin_notifications()
     
     # Log accesso dashboard admin
     log_user_action(
         user_id,
         'ACCESS_ADMIN_DASHBOARD',
-        f'Accesso dashboard amministratore - Enti accessibili: {len(accessible_entities)}',
+        f'Accesso dashboard amministratore - Enti totali: {stats.get("enti_militari", 0)}',
         'dashboard_admin'
     )
     
@@ -84,195 +108,113 @@ def dashboard_admin():
                          user_role=user_role,
                          stats=stats,
                          recent_activities=recent_activities,
+                         system_logs=system_logs,
                          notifications=notifications,
                          accessible_entities_count=len(accessible_entities))
 
 # ===========================================
-# ROUTE PER SUPPORTARE LA SIDEBAR - SEMPLIFICATE
+# ROUTE DI SUPPORTO CORRETTE
 # ===========================================
 
-@main_bp.route('/enti_militari/organigramma')
-@login_required 
-def enti_militari_organigramma():
-    """Organigramma enti militari - DIRETTO"""
-    # Implementazione diretta senza redirect loop
-    user_info = get_current_user_info()
-    user_role = get_user_role()
-    
-    try:
-        # Prova a caricare i dati per l'organigramma
-        conn = get_db_connection()
-        
-        # Query per l'organigramma (struttura ad albero)
-        enti_query = '''
-            SELECT id, nome, codice, parent_id, livello, descrizione
-            FROM enti_militari 
-            ORDER BY parent_id, nome
-        '''
-        enti = conn.execute(enti_query).fetchall()
-        conn.close()
-        
-        # Costruisci la struttura ad albero
-        tree = build_tree_structure(enti)
-        
-        return render_template('organigramma.html',
-                             tree=tree,
-                             user_info=user_info,
-                             user_role=user_role,
-                             view_all=request.args.get('view') == 'all')
-        
-    except Exception as e:
-        print(f"Errore organigramma: {e}")
-        # Fallback: carica template senza dati
-        return render_template('organigramma.html',
-                             tree=[],
-                             user_info=user_info,
-                             user_role=user_role,
-                             view_all=False)
-
-@main_bp.route('/enti_civili')
-@login_required
-def enti_civili_list():
-    """Lista enti civili - DIRETTO"""
-    user_info = get_current_user_info()
-    user_role = get_user_role()
-    
-    try:
-        conn = get_db_connection()
-        enti_civili = conn.execute('''
-            SELECT id, nome, citta, provincia, codice_fiscale, telefono, email
-            FROM enti_civili 
-            ORDER BY nome
-        ''').fetchall()
-        conn.close()
-        
-        return render_template('enti_civili/lista_civili.html',
-                             enti_civili=enti_civili,
-                             user_info=user_info,
-                             user_role=user_role)
-        
-    except Exception as e:
-        print(f"Errore enti civili: {e}")
-        # Template placeholder
-        return render_template('placeholder.html',
-                             page_title='Enti Civili',
-                             message='Modulo Enti Civili in fase di sviluppo',
-                             user_info=user_info)
-
-@main_bp.route('/attivita')
-@operatore_or_admin_required
-def attivita_list():
-    """Lista attività - OPERATORE e ADMIN"""
-    user_info = get_current_user_info()
-    return render_template('placeholder.html',
-                         page_title='Attività',
-                         message='Modulo Attività in fase di sviluppo',
-                         user_info=user_info)
-
-@main_bp.route('/operazioni')
-@operatore_or_admin_required  
-def operazioni_list():
-    """Lista operazioni - OPERATORE e ADMIN"""
-    user_info = get_current_user_info()
-    return render_template('placeholder.html',
-                         page_title='Operazioni',
-                         message='Modulo Operazioni in fase di sviluppo',
-                         user_info=user_info)
-
-@main_bp.route('/admin/users')
+@main_bp.route('/impostazioni')
 @admin_required
-def admin_users():
+def impostazioni():
+    """Pagina impostazioni principali - ADMIN ONLY"""
+    user_info = get_current_user_info()
+    return render_template('impostazioni.html', user_info=user_info)
+
+@main_bp.route('/impostazioni/utenti')
+@admin_required
+def gestione_utenti():
     """Gestione utenti - ADMIN ONLY"""
-    user_info = get_current_user_info()
-    return render_template('placeholder.html',
-                         page_title='Gestione Utenti',
-                         message='Modulo Gestione Utenti in fase di sviluppo',
-                         user_info=user_info)
-
-@main_bp.route('/admin/system-info')
-@admin_required
-def admin_system_info():
-    """Informazioni sistema - ADMIN ONLY"""
-    user_info = get_current_user_info()
-    return render_template('placeholder.html',
-                         page_title='Informazioni Sistema',
-                         message='Modulo Info Sistema in fase di sviluppo',
-                         user_info=user_info)
-
-# ===========================================
-# ROUTE AZIONI RAPIDE DASHBOARD ADMIN
-# ===========================================
-
-@main_bp.route('/admin/users/new')
-@admin_required
-def admin_users_new():
-    """Nuovo utente"""
-    flash('Funzione "Nuovo Utente" non ancora implementata', 'info')
-    return redirect(url_for('main.dashboard_admin'))
-
-@main_bp.route('/enti_civili/new')
-@operatore_or_admin_required
-def enti_civili_new():
-    """Nuovo ente civile"""
-    flash('Funzione "Nuovo Ente Civile" non ancora implementata', 'info')
-    return redirect(url_for('main.dashboard_admin'))
-
-@main_bp.route('/enti_militari/new')
-@operatore_or_admin_required
-def enti_militari_new():
-    """Nuovo ente militare"""
-    flash('Funzione "Nuovo Ente Militare" non ancora implementata', 'info')
-    return redirect(url_for('main.dashboard_admin'))
-
-@main_bp.route('/operazioni/new')
-@operatore_or_admin_required
-def operazioni_new():
-    """Nuova operazione"""
-    flash('Funzione "Nuova Operazione" non ancora implementata', 'info')
-    return redirect(url_for('main.dashboard_admin'))
-
-@main_bp.route('/admin/backup')
-@admin_required
-def admin_backup():
-    """Backup database"""
     try:
-        flash('Backup avviato con successo', 'success')
-        log_user_action(
-            request.current_user['user_id'],
-            'BACKUP_DATABASE',
-            'Avvio backup database'
-        )
-        return redirect(url_for('main.dashboard_admin'))
-    except Exception as e:
-        flash(f'Errore durante il backup: {str(e)}', 'error')
-        return redirect(url_for('main.dashboard_admin'))
-
-@main_bp.route('/admin/logs')
-@admin_required
-def admin_logs():
-    """Visualizza log sistema"""
-    try:
-        user_id = request.current_user['user_id']
         conn = get_db_connection()
-        
-        logs = conn.execute('''
-            SELECT l.*, u.username, u.nome, u.cognome
-            FROM log_utenti l
-            LEFT JOIN utenti u ON l.utente_id = u.id
-            ORDER BY l.timestamp DESC
-            LIMIT 100
-        ''').fetchall()
-        
+        users = conn.execute(
+            '''SELECT u.*, r.nome as ruolo_nome, em.nome as ente_nome
+               FROM utenti u
+               LEFT JOIN ruoli r ON r.id = u.ruolo_id
+               LEFT JOIN enti_militari em ON em.id = u.ente_militare_id
+               ORDER BY u.cognome, u.nome'''
+        ).fetchall()
         conn.close()
-        
-        log_user_action(user_id, 'VIEW_LOGS', 'Visualizzazione log sistema')
         
         user_info = get_current_user_info()
-        return render_template('admin/logs.html', logs=logs, user_info=user_info)
-        
+        return render_template('admin/users.html', users=users, user_info=user_info)
     except Exception as e:
-        flash(f'Errore nel caricamento log: {str(e)}', 'error')
-        return redirect(url_for('main.dashboard_admin'))
+        flash(f'Errore nel caricamento utenti: {str(e)}', 'error')
+        return redirect(url_for('main.dashboard'))
+
+@main_bp.route('/impostazioni/sistema')
+@admin_required
+def info_sistema():
+    """Informazioni sistema - ADMIN ONLY"""
+    try:
+        stats = get_system_info()
+        user_info = get_current_user_info()
+        return render_template('admin/system_info.html', 
+                             stats=stats, 
+                             user_info=user_info)
+    except Exception as e:
+        flash(f'Errore nel caricamento info sistema: {str(e)}', 'error')
+        return redirect(url_for('main.dashboard'))
+
+# ===========================================
+# ROUTE PLACEHOLDER PER MODULI NON IMPLEMENTATI
+# ===========================================
+
+@main_bp.route('/reports')
+@operatore_or_admin_required
+def reports():
+    """Reports - OPERATORE e ADMIN"""
+    user_info = get_current_user_info()
+    return render_template('placeholder.html',
+                         page_title='Reports',
+                         message='Modulo Reports in fase di sviluppo. Sarà disponibile nella prossima versione.',
+                         user_info=user_info)
+
+@main_bp.route('/export')
+@operatore_or_admin_required
+def export():
+    """Export dati - OPERATORE e ADMIN"""
+    user_info = get_current_user_info()
+    return render_template('placeholder.html',
+                         page_title='Export Dati',
+                         message='Funzionalità di export avanzato in fase di sviluppo.',
+                         user_info=user_info)
+
+# ===========================================
+# ROUTE AZIONI RAPIDE
+# ===========================================
+
+@main_bp.route('/quick-action/new-user')
+@admin_required
+def quick_new_user():
+    """Azione rapida: nuovo utente"""
+    return redirect(url_for('main.gestione_utenti'))
+
+@main_bp.route('/quick-action/new-ente-civile')
+@operatore_or_admin_required
+def quick_new_ente_civile():
+    """Azione rapida: nuovo ente civile"""
+    return redirect(url_for('enti_civili.inserisci_civile_form'))
+
+@main_bp.route('/quick-action/new-ente-militare')
+@operatore_or_admin_required
+def quick_new_ente_militare():
+    """Azione rapida: nuovo ente militare"""
+    return redirect(url_for('enti_militari.inserisci_militare_form'))
+
+@main_bp.route('/quick-action/new-operazione')
+@operatore_or_admin_required
+def quick_new_operazione():
+    """Azione rapida: nuova operazione"""
+    return redirect(url_for('operazioni.inserisci_operazione_form'))
+
+@main_bp.route('/quick-action/new-attivita')
+@operatore_or_admin_required
+def quick_new_attivita():
+    """Azione rapida: nuova attività"""
+    return redirect(url_for('attivita.inserisci_attivita_form'))
 
 # ===========================================
 # FUNZIONI HELPER
@@ -288,6 +230,7 @@ def get_dashboard_stats(user_id, accessible_entities):
         stats['enti_militari'] = 0
         stats['enti_civili'] = 0
         stats['operazioni'] = 0
+        stats['attivita'] = 0
         stats['utenti'] = 0
         
         # Enti civili (visibili a tutti)
@@ -297,19 +240,38 @@ def get_dashboard_stats(user_id, accessible_entities):
         except:
             pass
         
-        # Enti militari
-        try:
-            enti_militari = conn.execute('SELECT COUNT(*) as count FROM enti_militari').fetchone()
-            stats['enti_militari'] = enti_militari['count'] if enti_militari else 0
-        except:
-            pass
+        # Enti militari (solo accessibili)
+        if accessible_entities:
+            try:
+                placeholders = ','.join(['?' for _ in accessible_entities])
+                enti_militari = conn.execute(
+                    f'SELECT COUNT(*) as count FROM enti_militari WHERE id IN ({placeholders})',
+                    accessible_entities
+                ).fetchone()
+                stats['enti_militari'] = enti_militari['count'] if enti_militari else 0
+            except:
+                pass
         
         # Operazioni
         try:
-            operazioni = conn.execute('SELECT COUNT(*) as count FROM operazioni').fetchone()
+            operazioni = conn.execute(
+                'SELECT COUNT(*) as count FROM operazioni WHERE data_fine IS NULL OR data_fine >= date("now")'
+            ).fetchone()
             stats['operazioni'] = operazioni['count'] if operazioni else 0
         except:
             pass
+        
+        # Attività (solo quelle accessibili)
+        if accessible_entities:
+            try:
+                placeholders = ','.join(['?' for _ in accessible_entities])
+                attivita = conn.execute(
+                    f'SELECT COUNT(*) as count FROM attivita WHERE ente_svolgimento_id IN ({placeholders})',
+                    accessible_entities
+                ).fetchone()
+                stats['attivita'] = attivita['count'] if attivita else 0
+            except:
+                pass
         
         # Utenti (solo per admin)
         if is_admin():
@@ -327,43 +289,226 @@ def get_dashboard_stats(user_id, accessible_entities):
     
     return stats
 
+def get_admin_dashboard_stats():
+    """Statistiche avanzate per dashboard admin"""
+    conn = get_db_connection()
+    stats = get_dashboard_stats(1, None)  # Admin ha accesso a tutto
+    
+    try:
+        # Statistiche aggiuntive per admin
+        # Utenti per ruolo
+        users_by_role = conn.execute(
+            '''SELECT r.nome as ruolo, COUNT(u.id) as count
+               FROM ruoli r
+               LEFT JOIN utenti u ON u.ruolo_id = r.id AND u.attivo = 1
+               GROUP BY r.id, r.nome'''
+        ).fetchall()
+        stats['users_by_role'] = {row['ruolo']: row['count'] for row in users_by_role}
+        
+        # Attività ultimo mese
+        activities_month = conn.execute(
+            '''SELECT COUNT(*) as count 
+               FROM attivita 
+               WHERE data_creazione >= date('now', '-30 days')'''
+        ).fetchone()
+        stats['activities_month'] = activities_month['count'] if activities_month else 0
+        
+        # Operazioni attive vs concluse
+        ops_status = conn.execute(
+            '''SELECT 
+                COUNT(CASE WHEN data_fine IS NULL OR data_fine >= date('now') THEN 1 END) as attive,
+                COUNT(CASE WHEN data_fine < date('now') THEN 1 END) as concluse
+               FROM operazioni'''
+        ).fetchone()
+        stats['ops_attive'] = ops_status['attive'] if ops_status else 0
+        stats['ops_concluse'] = ops_status['concluse'] if ops_status else 0
+        
+    except Exception as e:
+        print(f"Errore admin stats: {e}")
+    finally:
+        conn.close()
+    
+    return stats
+
 def get_recent_activities(user_id, accessible_entities, limit=10):
     """Recupera attività recenti per la dashboard"""
-    return []  # Placeholder
+    if not accessible_entities:
+        return []
+    
+    conn = get_db_connection()
+    activities = []
+    
+    try:
+        placeholders = ','.join(['?' for _ in accessible_entities])
+        activities = conn.execute(f'''
+            SELECT a.id, a.descrizione, a.data_inizio, em.nome as ente_nome, 
+                   ta.nome as tipologia, a.data_creazione
+            FROM attivita a
+            JOIN enti_militari em ON a.ente_svolgimento_id = em.id
+            JOIN tipologie_attivita ta ON a.tipologia_id = ta.id
+            WHERE a.ente_svolgimento_id IN ({placeholders})
+            ORDER BY a.data_creazione DESC
+            LIMIT ?
+        ''', accessible_entities + [limit]).fetchall()
+    except Exception as e:
+        print(f"Errore recent activities: {e}")
+    finally:
+        conn.close()
+    
+    return activities
+
+def get_system_recent_activities(limit=10):
+    """Attività recenti di sistema (per admin)"""
+    conn = get_db_connection()
+    activities = []
+    
+    try:
+        activities = conn.execute('''
+            SELECT l.*, u.username, u.nome, u.cognome
+            FROM log_utenti l
+            JOIN utenti u ON l.utente_id = u.id
+            WHERE l.esito = 'SUCCESS'
+            ORDER BY l.timestamp DESC
+            LIMIT ?
+        ''', (limit,)).fetchall()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+    
+    return activities
+
+def get_system_logs(limit=5):
+    """Log di sistema recenti (per admin)"""
+    conn = get_db_connection()
+    logs = []
+    
+    try:
+        logs = conn.execute('''
+            SELECT l.*, u.username
+            FROM log_utenti l
+            JOIN utenti u ON l.utente_id = u.id
+            WHERE l.azione IN ('LOGIN_SUCCESS', 'LOGOUT', 'ACCESS_DENIED_ADMIN', 
+                              'CREATE_ENTE_MILITARE', 'DELETE_ENTE_MILITARE',
+                              'CREATE_OPERAZIONE', 'DELETE_OPERAZIONE')
+            ORDER BY l.timestamp DESC
+            LIMIT ?
+        ''', (limit,)).fetchall()
+    except Exception:
+        pass
+    finally:
+        conn.close()
+    
+    return logs
 
 def get_user_notifications(user_id):
     """Recupera notifiche per l'utente"""
     user_role = get_user_role()
     notifications = []
     
+    # Notifiche base per tutti
+    notifications.append({
+        'type': 'info',
+        'message': f'Benvenuto nel sistema TALON. Il tuo ruolo è: {user_role}',
+        'timestamp': datetime.now()
+    })
+    
+    # Notifiche specifiche per ruolo
     if user_role == ROLE_ADMIN:
         notifications.append({
+            'type': 'success',
+            'message': 'Sistema di autenticazione a 3 ruoli attivo e funzionante.',
+            'timestamp': datetime.now()
+        })
+    elif user_role == ROLE_OPERATORE:
+        notifications.append({
+            'type': 'warning',
+            'message': 'Ricorda: puoi modificare solo gli enti nel tuo cono d\'ombra.',
+            'timestamp': datetime.now()
+        })
+    elif user_role == ROLE_VISUALIZZATORE:
+        notifications.append({
             'type': 'info',
-            'message': 'Sistema aggiornato con successo ai nuovi ruoli.',
+            'message': 'Accesso in sola lettura. Contatta un amministratore per modifiche.',
             'timestamp': datetime.now()
         })
     
     return notifications
 
-def build_tree_structure(enti):
-    """Costruisce la struttura ad albero per l'organigramma"""
-    tree = []
-    enti_dict = {ente['id']: dict(ente) for ente in enti}
+def get_admin_notifications():
+    """Notifiche specifiche per admin"""
+    notifications = get_user_notifications(1)  # Base notifications
     
-    # Aggiungi lista children a ogni ente
-    for ente in enti_dict.values():
-        ente['children'] = []
+    conn = get_db_connection()
+    try:
+        # Controlla utenti inattivi
+        inactive_users = conn.execute(
+            '''SELECT COUNT(*) as count 
+               FROM utenti 
+               WHERE attivo = 1 AND ultimo_accesso < date('now', '-30 days')'''
+        ).fetchone()
+        
+        if inactive_users and inactive_users['count'] > 0:
+            notifications.append({
+                'type': 'warning',
+                'message': f'{inactive_users["count"]} utenti non accedono da oltre 30 giorni.',
+                'timestamp': datetime.now()
+            })
+        
+        # Controlla attività sospette
+        failed_logins = conn.execute(
+            '''SELECT COUNT(*) as count 
+               FROM log_utenti 
+               WHERE azione = 'LOGIN_FAILED' 
+               AND timestamp >= datetime('now', '-1 hour')'''
+        ).fetchone()
+        
+        if failed_logins and failed_logins['count'] > 5:
+            notifications.append({
+                'type': 'danger',
+                'message': f'{failed_logins["count"]} tentativi di login falliti nell\'ultima ora.',
+                'timestamp': datetime.now()
+            })
+    except Exception:
+        pass
+    finally:
+        conn.close()
     
-    # Costruisci l'albero
-    for ente in enti_dict.values():
-        if ente['parent_id'] is None:
-            tree.append(ente)
-        else:
-            parent = enti_dict.get(ente['parent_id'])
-            if parent:
-                parent['children'].append(ente)
+    return notifications
+
+def get_system_info():
+    """Informazioni di sistema"""
+    conn = get_db_connection()
+    info = {
+        'database_size': 0,
+        'total_records': 0,
+        'last_backup': None,
+        'system_version': '2.0.0',
+        'python_version': '3.x'
+    }
     
-    return tree
+    try:
+        # Dimensione database
+        if os.path.exists(DATABASE_PATH):
+            info['database_size'] = os.path.getsize(DATABASE_PATH) / (1024 * 1024)  # MB
+        
+        # Totale record
+        tables = ['utenti', 'enti_militari', 'enti_civili', 'operazioni', 'attivita']
+        total = 0
+        for table in tables:
+            try:
+                count = conn.execute(f'SELECT COUNT(*) as count FROM {table}').fetchone()
+                total += count['count'] if count else 0
+            except:
+                pass
+        info['total_records'] = total
+        
+    except Exception as e:
+        print(f"Errore system info: {e}")
+    finally:
+        conn.close()
+    
+    return info
 
 # ===========================================
 # GESTIONE ERRORI
@@ -388,7 +533,7 @@ def inject_globals():
     """Inietta variabili globali nei template"""
     return {
         'current_year': datetime.now().year,
-        'app_version': '2.0.1',
+        'app_version': '2.0.0',
         'role_admin': ROLE_ADMIN,
         'role_operatore': ROLE_OPERATORE,
         'role_visualizzatore': ROLE_VISUALIZZATORE

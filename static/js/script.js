@@ -1,1001 +1,892 @@
 /**
  * ========================================
- * TALON SIDEBAR MODULE - COMPLETE UPDATED VERSION
- * File: static/js/sidebar.js
+ * TALON MAIN APPLICATION SCRIPT
+ * File: static/js/script.js
  * 
- * Versione: 2.0 - Completamente aggiornata
- * Data: 2025
- * Funzionalità: Menu navigazione, controlli ruoli, drag&drop, logout
+ * Versione: 1.0
+ * Funzionalità: Inizializzazione applicazione,
+ *               gestione globale, utility comuni
  * ========================================
  */
 
-class TalonSidebar {
-    constructor() {
-        // Elementi DOM
-        this.sidebar = document.getElementById('sidebar');
-        this.menuToggleBtn = document.getElementById('menu-toggle-btn');
-        this.tooltip = document.getElementById('tooltip');
-        this.menuList = document.getElementById('menu-list');
-        this.logoutBtn = document.getElementById('logout-btn');
-        this.userInfo = document.getElementById('user-info');
-        this.userName = document.getElementById('user-name');
+(function(window, document) {
+    'use strict';
+
+    // ========================================
+    // CONFIGURAZIONE GLOBALE
+    // ========================================
+    
+    const TALON_CONFIG = {
+        APP_NAME: 'TALON',
+        VERSION: '2.0',
+        DEBUG_MODE: localStorage.getItem('talonDebugMode') === 'true',
         
-        // Stati
-        this.isPinned = localStorage.getItem('sidebarPinned') === 'true';
-        this.isExpanded = false;
-        this.isLocked = false;
+        // Endpoints API
+        API_ENDPOINTS: {
+            AUTH: '/auth',
+            ENTI_CIVILI: '/api/enti_civili',
+            ENTI_MILITARI: '/api/enti_militari',
+            OPERAZIONI: '/api/operazioni',
+            ATTIVITA: '/api/attivita',
+            USERS: '/api/users',
+            SYSTEM: '/api/system'
+        },
         
-        // Controlli ruoli
-        this.userRole = this.getUserRole();
-        this.roleHierarchy = { 'GUEST': 0, 'VISUALIZZATORE': 1, 'OPERATORE': 2, 'ADMIN': 3 };
+        // Configurazione UI
+        UI: {
+            ANIMATION_DURATION: 300,
+            TOAST_DURATION: 4000,
+            DEBOUNCE_DELAY: 300,
+            LOADER_DELAY: 500
+        },
         
-        // Drag & Drop
-        this.draggedItem = null;
-        
-        // Inizializza solo se la sidebar esiste
-        if (this.sidebar) {
-            this.init();
+        // Ruoli e permessi
+        ROLES: {
+            ADMIN: { level: 100, label: 'Amministratore' },
+            OPERATORE: { level: 50, label: 'Operatore' },
+            VISUALIZZATORE: { level: 10, label: 'Visualizzatore' },
+            GUEST: { level: 0, label: 'Ospite' }
         }
-    }
+    };
 
-    init() {
-        console.log('[TALON Sidebar] Inizializzazione versione 2.0...');
-        this.applyInitialState();
-        this.bindEvents();
-        this.initializeDragAndDrop();
-        this.loadMenuOrder();
-        this.initializeUserInfo();
-        this.initializeLogout();
-        this.initializeRoleControls();
-        
-        // FIX: Gestione menu e bottoni
-        this.fixMenuLinks();
-        this.initializeDashboardButtons();
-        
-        console.log('[TALON Sidebar] Inizializzazione completata ✅');
-    }
-
-    /**
-     * AGGIORNATO: Rileva ruolo utente con priorità corretta
-     */
-    getUserRole() {
-        // Ordine di priorità per il rilevamento ruolo
-        const roleFromWindow = window.userRole;
-        const roleFromBody = document.body.getAttribute('data-user-role');
-        const roleFromSession = sessionStorage.getItem('userRole');
-        const roleFromTemplate = this.getRoleFromTemplate();
-        
-        const detectedRole = roleFromWindow || roleFromBody || roleFromTemplate || roleFromSession || 'GUEST';
-        
-        console.log('[TALON Sidebar] Rilevamento ruolo:');
-        console.log('  - Window:', roleFromWindow);
-        console.log('  - Body:', roleFromBody);
-        console.log('  - Session:', roleFromSession);
-        console.log('  - Template:', roleFromTemplate);
-        console.log('  - Finale:', detectedRole);
-        
-        return detectedRole;
-    }
-
-    /**
-     * NUOVO: Estrae ruolo dal template Flask (se disponibile)
-     */
-    getRoleFromTemplate() {
-        // Cerca script tags con informazioni ruolo
-        const scripts = document.querySelectorAll('script');
-        for (let script of scripts) {
-            const content = script.textContent;
-            if (content.includes('ruolo_nome') || content.includes('userRole')) {
-                const roleMatch = content.match(/['"]ADMIN['"]|['"]OPERATORE['"]|['"]VISUALIZZATORE['"]|['"]GUEST['"]/);
-                if (roleMatch) {
-                    return roleMatch[0].replace(/['"]/g, '');
-                }
+    // ========================================
+    // CLASSE PRINCIPALE TALON
+    // ========================================
+    
+    class TalonApp {
+        constructor() {
+            this.config = TALON_CONFIG;
+            this.modules = {};
+            this.initialized = false;
+            this.currentUser = null;
+            this.currentRole = null;
+            
+            // Bind globale per console
+            if (this.config.DEBUG_MODE) {
+                window.TALON = this;
             }
         }
-        
-        // Cerca in attributi data del body
-        const bodyRole = document.body.getAttribute('data-user-role');
-        if (bodyRole && bodyRole !== 'null' && bodyRole !== 'undefined') {
-            return bodyRole;
-        }
-        
-        return null;
-    }
 
-    /**
-     * AGGIORNATO: Corregge link menu senza href e gestisce navigazione
-     */
-    fixMenuLinks() {
-        const menuLinks = this.menuList.querySelectorAll('a');
-        
-        menuLinks.forEach(link => {
-            const menuItem = link.closest('li');
-            const menuId = menuItem?.dataset.menuId;
-            const href = link.getAttribute('href');
+        /**
+         * Inizializza l'applicazione
+         */
+        async init() {
+            console.log(`[${this.config.APP_NAME}] Inizializzazione applicazione v${this.config.VERSION}...`);
             
-            // Se il link ha href="#" o è vuoto, sostituiscilo con navigazione JavaScript
-            if (!href || href === '#' || href === 'javascript:void(0)') {
-                link.removeAttribute('href');
-                link.style.cursor = 'pointer';
+            try {
+                // 1. Setup ambiente
+                this.setupEnvironment();
                 
-                // Rimuovi vecchi event listeners
-                const newLink = link.cloneNode(true);
-                link.parentNode.replaceChild(newLink, link);
+                // 2. Rileva informazioni utente
+                await this.detectUserInfo();
                 
-                // Aggiungi nuovo event listener
-                newLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.handleMenuNavigation(menuId, newLink);
+                // 3. Inizializza moduli core
+                await this.initializeModules();
+                
+                // 4. Setup handler globali
+                this.setupGlobalHandlers();
+                
+                // 5. Inizializza componenti UI
+                this.initializeUIComponents();
+                
+                // 6. Carica dati iniziali se necessario
+                await this.loadInitialData();
+                
+                this.initialized = true;
+                console.log(`[${this.config.APP_NAME}] ✅ Applicazione inizializzata`);
+                
+                // Emetti evento ready
+                this.emit('talon:ready', {
+                    version: this.config.VERSION,
+                    user: this.currentUser,
+                    role: this.currentRole
                 });
                 
-                console.log(`[TALON Sidebar] Fixed menu link: ${menuId}`);
-            }
-        });
-    }
-
-    /**
-     * AGGIORNATO: Gestisce navigazione menu con rotte corrette
-     */
-    handleMenuNavigation(menuId, linkElement) {
-        console.log(`[TALON Sidebar] Menu clicked: ${menuId}`);
-        
-        // Verifica accesso
-        const menuItem = linkElement.closest('li');
-        if (!this.hasAccessToMenuItem(menuItem)) {
-            this.showAccessDeniedMessage(menuItem);
-            return;
-        }
-        
-        // Mappa completa delle rotte CORRETTE
-        const menuRoutes = {
-            'dashboard': '/dashboard',                    // Dashboard Superset (dashboard.html)
-            'dashboard_admin': '/dashboard_admin',        // Dashboard Admin (dashboard_admin.html)
-            'enti_militari': '/enti_militari/organigramma', // Organigramma (organigramma.html)
-            'enti_civili': '/enti_civili',               // Lista Enti Civili
-            'attivita': '/attivita',                     // Lista Attività (lista_attivita.html)
-            'operazioni': '/operazioni',                 // Lista Operazioni (lista_operazioni.html)
-            'gestione_utenti': '/admin/users',           // Gestione Utenti
-            'sistema': '/admin/system-info'              // Sistema
-        };
-        
-        // Rimuovi il caso speciale per dashboard_admin - ora funziona
-        const route = menuRoutes[menuId];
-        if (route) {
-            console.log(`[TALON Sidebar] Navigating to: ${route}`);
-            
-            // Animazione di feedback
-            this.animateMenuClick(linkElement);
-            
-            // Navigazione ritardata per mostrare l'animazione
-            setTimeout(() => {
-                window.location.href = route;
-            }, 150);
-        } else {
-            console.warn(`[TALON Sidebar] Route not found for menu: ${menuId}`);
-            this.showNotImplementedMessage(menuId);
-        }
-        
-        const route = menuRoutes[menuId];
-        if (route) {
-            console.log(`[TALON Sidebar] Navigating to: ${route}`);
-            
-            // Animazione di feedback
-            this.animateMenuClick(linkElement);
-            
-            // Navigazione ritardata per mostrare l'animazione
-            setTimeout(() => {
-                window.location.href = route;
-            }, 150);
-        } else {
-            console.warn(`[TALON Sidebar] Route not found for menu: ${menuId}`);
-            this.showNotImplementedMessage(menuId);
-        }
-    }
-
-    /**
-     * NUOVO: Inizializza bottoni dashboard
-     */
-    initializeDashboardButtons() {
-        console.log('[TALON Sidebar] Inizializzazione bottoni dashboard...');
-        
-        // Aspetta che la pagina sia completamente caricata
-        setTimeout(() => {
-            this.setupActionButtons();
-            this.setupViewButtons();
-            this.enableAllButtonsForAdmin();
-        }, 1000);
-    }
-
-    /**
-     * NUOVO: Configura bottoni azioni rapide con rotte corrette
-     */
-    setupActionButtons() {
-        const buttonActions = {
-            'Nuovo Utente': () => this.navigateToRoute('/admin/users/new'),
-            'Nuovo Ente Civile': () => this.navigateToRoute('/enti_civili/new'),
-            'Nuovo Ente Militare': () => this.navigateToRoute('/enti_militari/new'),
-            'Nuova Operazione': () => this.navigateToRoute('/operazioni/new'),
-            'Backup Database': () => this.confirmAndNavigate('/admin/backup', 'Avviare il backup del database?'),
-            'Visualizza Log': () => this.openInNewTab('/admin/logs')
-        };
-        
-        Object.entries(buttonActions).forEach(([buttonText, action]) => {
-            const buttons = this.findButtonsByText(buttonText);
-            buttons.forEach(btn => {
-                this.enableButton(btn, action);
-                console.log(`[TALON Sidebar] Configured button: ${buttonText}`);
-            });
-        });
-    }
-
-    /**
-     * NUOVO: Configura bottoni visualizza
-     */
-    setupViewButtons() {
-        const viewButtons = document.querySelectorAll('button, .btn');
-        
-        viewButtons.forEach(btn => {
-            if (btn.textContent.trim() === 'Visualizza') {
-                const route = this.detectViewButtonRoute(btn);
-                if (route) {
-                    this.enableButton(btn, () => this.navigateToRoute(route));
-                    console.log(`[TALON Sidebar] Configured view button for: ${route}`);
-                }
-            }
-        });
-    }
-
-    /**
-     * NUOVO: Rileva rotta per bottoni visualizza
-     */
-    detectViewButtonRoute(button) {
-        const container = button.closest('.card, .section, .widget, .dashboard-item');
-        if (!container) return null;
-        
-        const heading = container.querySelector('h3, h4, h5, .card-title, .section-title');
-        const section = heading?.textContent.trim().toLowerCase();
-        
-        const routeMap = {
-            'enti civili': '/enti_civili',
-            'enti militari': '/enti_militari/organigramma',
-            'operazioni': '/operazioni',
-            'attività': '/attivita',
-            'utenti totali': '/admin/users',
-            'attività recenti': '/attivita',
-            'sistema': '/admin/system-info'
-        };
-        
-        return routeMap[section] || null;
-    }
-
-    /**
-     * NUOVO: Abilita tutti i bottoni per ADMIN
-     */
-    enableAllButtonsForAdmin() {
-        if (this.userRole === 'ADMIN') {
-            document.querySelectorAll('button[disabled], .btn[disabled]').forEach(btn => {
-                btn.disabled = false;
-                btn.style.pointerEvents = 'auto';
-                btn.style.opacity = '1';
-                btn.style.cursor = 'pointer';
-            });
-            
-            // Mostra elementi nascosti per admin
-            document.querySelectorAll('[data-admin-only]').forEach(el => {
-                el.style.display = '';
-            });
-            
-            console.log('[TALON Sidebar] Tutti i bottoni abilitati per ADMIN');
-        }
-    }
-
-    /**
-     * UTILITY: Trova bottoni per testo
-     */
-    findButtonsByText(text) {
-        return Array.from(document.querySelectorAll('button, .btn')).filter(btn => 
-            btn.textContent.trim() === text
-        );
-    }
-
-    /**
-     * UTILITY: Abilita bottone con azione
-     */
-    enableButton(button, action) {
-        // Abilita il bottone
-        button.disabled = false;
-        button.style.pointerEvents = 'auto';
-        button.style.opacity = '1';
-        button.style.cursor = 'pointer';
-        
-        // Rimuovi vecchi event listeners clonando
-        const newButton = button.cloneNode(true);
-        button.parentNode.replaceChild(newButton, button);
-        
-        // Aggiungi nuovo event listener
-        newButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            action();
-        });
-        
-        return newButton;
-    }
-
-    /**
-     * UTILITY: Navigazione
-     */
-    navigateToRoute(route) {
-        console.log(`[TALON Sidebar] Navigating to: ${route}`);
-        window.location.href = route;
-    }
-
-    /**
-     * UTILITY: Navigazione con conferma
-     */
-    confirmAndNavigate(route, message) {
-        if (confirm(message)) {
-            this.navigateToRoute(route);
-        }
-    }
-
-    /**
-     * UTILITY: Apri in nuova tab
-     */
-    openInNewTab(route) {
-        console.log(`[TALON Sidebar] Opening in new tab: ${route}`);
-        window.open(route, '_blank');
-    }
-
-    /**
-     * AGGIORNATO: Mostra messaggio per funzioni non implementate
-     */
-    showNotImplementedMessage(menuId) {
-        const message = `Menu "${menuId}" non ancora implementato`;
-        console.warn(`[TALON Sidebar] ${message}`);
-        
-        // Mostra notifica invece di alert
-        this.showToast(message, 'warning');
-    }
-
-    /**
-     * NUOVO: Sistema di notifiche toast
-     */
-    showToast(message, type = 'info') {
-        // Crea container toast se non esiste
-        let toastContainer = document.getElementById('toast-container');
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.id = 'toast-container';
-            toastContainer.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                z-index: 10000;
-                pointer-events: none;
-            `;
-            document.body.appendChild(toastContainer);
-        }
-        
-        // Crea toast
-        const toast = document.createElement('div');
-        toast.style.cssText = `
-            background: ${type === 'error' ? '#dc3545' : type === 'warning' ? '#ffc107' : '#17a2b8'};
-            color: ${type === 'warning' ? '#000' : '#fff'};
-            padding: 12px 20px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            opacity: 0;
-            transform: translateX(100%);
-            transition: all 0.3s ease;
-            pointer-events: auto;
-            font-size: 14px;
-            max-width: 300px;
-            word-wrap: break-word;
-        `;
-        toast.textContent = message;
-        
-        toastContainer.appendChild(toast);
-        
-        // Animazione entrata
-        setTimeout(() => {
-            toast.style.opacity = '1';
-            toast.style.transform = 'translateX(0)';
-        }, 100);
-        
-        // Rimozione automatica
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 300);
-        }, 3000);
-    }
-
-    // ==========================================
-    // METODI ESISTENTI (aggiornati dove necessario)
-    // ==========================================
-
-    applyInitialState() {
-        this.sidebar.classList.add('loading');
-        
-        if (this.isPinned) {
-            this.sidebar.classList.add('pinned');
-            this.sidebar.classList.add('expanded');
-            this.isExpanded = true;
-        }
-        
-        const wasLocked = sessionStorage.getItem('sidebarLocked') === 'true';
-        if (wasLocked && !this.isPinned) {
-            this.isLocked = true;
-            this.sidebar.classList.add('expanded');
-            this.sidebar.classList.add('locked');
-            this.isExpanded = true;
-        }
-        
-        this.updateTooltipText();
-        
-        requestAnimationFrame(() => {
-            this.sidebar.classList.remove('loading');
-        });
-    }
-
-    expandSidebar() {
-        if (!this.isPinned) {
-            this.sidebar.classList.add('expanded');
-            this.isExpanded = true;
-        }
-    }
-
-    collapseSidebar() {
-        if (!this.isPinned && !this.isLocked) {
-            this.sidebar.classList.remove('expanded');
-            this.sidebar.classList.remove('locked');
-            this.isExpanded = false;
-            this.isLocked = false;
-            sessionStorage.removeItem('sidebarLocked');
-        }
-    }
-
-    updateTooltipText() {
-        if (this.tooltip) {
-            this.tooltip.textContent = this.isPinned ? 
-                'Comprimi il menu' : 'Mantieni il menu espanso';
-        }
-    }
-
-    bindEvents() {
-        this.bindToggleEvents();
-        this.bindHoverEvents();
-        this.bindMenuClickEvents();
-    }
-
-    bindToggleEvents() {
-        if (!this.menuToggleBtn) return;
-        
-        this.menuToggleBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.togglePinned();
-        });
-    }
-
-    togglePinned() {
-        const svg = this.menuToggleBtn.querySelector('svg');
-        
-        if (!this.isPinned) {
-            this.animateIcon(svg, 0, 90);
-        } else {
-            this.animateIcon(svg, 90, 0);
-        }
-        
-        this.isPinned = !this.isPinned;
-        
-        if (this.isPinned) {
-            this.sidebar.classList.add('pinned');
-            this.sidebar.classList.add('expanded');
-            this.isExpanded = true;
-            this.isLocked = false;
-            sessionStorage.removeItem('sidebarLocked');
-        } else {
-            this.sidebar.classList.remove('pinned');
-        }
-        
-        localStorage.setItem('sidebarPinned', this.isPinned.toString());
-        this.updateTooltipText();
-        this.menuToggleBtn.setAttribute('aria-expanded', this.isPinned.toString());
-    }
-
-    animateIcon(svg, fromDeg, toDeg) {
-        if (!svg) return;
-        
-        svg.style.transition = 'none';
-        svg.style.transform = `rotate(${fromDeg}deg) scale(1)`;
-        
-        void svg.getBoundingClientRect();
-        
-        svg.style.transition = 'transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
-        svg.style.transform = `rotate(${toDeg}deg) scale(${toDeg === 90 ? 1.1 : 1})`;
-        
-        setTimeout(() => {
-            svg.style.transition = '';
-            svg.style.transform = '';
-        }, 600);
-    }
-
-    bindHoverEvents() {
-        if (!this.sidebar) return;
-        
-        this.sidebar.addEventListener('mouseenter', () => {
-            if (!this.isPinned) {
-                if (this.isLocked) {
-                    this.isLocked = false;
-                    this.sidebar.classList.remove('locked');
-                    sessionStorage.removeItem('sidebarLocked');
-                }
-                this.expandSidebar();
-            }
-            this.updateTooltipText();
-        });
-        
-        this.sidebar.addEventListener('mouseleave', () => {
-            if (!this.isPinned) {
-                this.collapseSidebar();
-                
-                if (this.tooltip) {
-                    this.tooltip.textContent = 'Espandi il menu';
-                }
-            }
-        });
-    }
-
-    bindMenuClickEvents() {
-        if (!this.menuList) return;
-        
-        const menuLinks = this.menuList.querySelectorAll('a');
-        
-        menuLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
-                const menuItem = link.closest('li');
-                if (!this.hasAccessToMenuItem(menuItem)) {
-                    e.preventDefault();
-                    this.showAccessDeniedMessage(menuItem);
-                    return;
-                }
-                
-                this.handleMenuClick(e, link);
-            });
-        });
-    }
-
-    handleMenuClick(e, link) {
-        if (this.isPinned) {
-            this.animateMenuClick(link);
-            return;
-        }
-        
-        if (this.isExpanded) {
-            this.isLocked = true;
-            this.sidebar.classList.add('locked');
-            sessionStorage.setItem('sidebarLocked', 'true');
-        }
-        
-        this.animateMenuClick(link);
-    }
-
-    animateMenuClick(link) {
-        link.style.transform = 'scale(0.98)';
-        setTimeout(() => {
-            link.style.transform = '';
-        }, 150);
-    }
-
-    initializeRoleControls() {
-        console.log(`[TALON Sidebar] Inizializzazione controlli ruoli per: ${this.userRole}`);
-        this.applyRoleRestrictionsToMenu();
-        this.updateUserInfoWithRole();
-        
-        // Aggiorna ruolo globalmente
-        window.userRole = this.userRole;
-        document.body.setAttribute('data-user-role', this.userRole);
-        sessionStorage.setItem('userRole', this.userRole);
-    }
-
-    applyRoleRestrictionsToMenu() {
-        const menuItems = this.menuList.querySelectorAll('li');
-        const userLevel = this.roleHierarchy[this.userRole] || 0;
-        
-        menuItems.forEach(item => {
-            const minRole = item.getAttribute('data-min-role');
-            if (minRole) {
-                const minLevel = this.roleHierarchy[minRole] || 3;
-                if (userLevel < minLevel) {
-                    this.hideMenuItem(item, `Richiede ruolo: ${minRole}`);
-                    return;
-                }
-            }
-            
-            if (item.hasAttribute('data-admin-only') && this.userRole !== 'ADMIN') {
-                this.hideMenuItem(item, 'Solo per ADMIN');
-                return;
-            }
-            
-            if (item.hasAttribute('data-visualizzatore-hidden') && this.userRole === 'VISUALIZZATORE') {
-                this.hideMenuItem(item, 'Non disponibile per VISUALIZZATORE');
-                return;
-            }
-            
-            this.showMenuItem(item);
-        });
-        
-        console.log(`[TALON Sidebar] Controlli ruoli applicati a ${menuItems.length} menu items`);
-    }
-
-    hideMenuItem(item, reason = '') {
-        item.classList.add('role-hidden');
-        item.style.display = 'none';
-        item.setAttribute('data-access-denied', reason);
-        item.setAttribute('draggable', 'false');
-    }
-
-    showMenuItem(item) {
-        item.classList.remove('role-hidden');
-        item.style.display = '';
-        item.removeAttribute('data-access-denied');
-        item.setAttribute('draggable', 'true');
-    }
-
-    hasAccessToMenuItem(menuItem) {
-        if (!menuItem) return false;
-        
-        if (menuItem.classList.contains('role-hidden') || 
-            menuItem.style.display === 'none') {
-            return false;
-        }
-        
-        const userLevel = this.roleHierarchy[this.userRole] || 0;
-        
-        const minRole = menuItem.getAttribute('data-min-role');
-        if (minRole) {
-            const minLevel = this.roleHierarchy[minRole] || 3;
-            if (userLevel < minLevel) return false;
-        }
-        
-        if (menuItem.hasAttribute('data-admin-only') && this.userRole !== 'ADMIN') {
-            return false;
-        }
-        
-        if (menuItem.hasAttribute('data-visualizzatore-hidden') && this.userRole === 'VISUALIZZATORE') {
-            return false;
-        }
-        
-        return true;
-    }
-
-    showAccessDeniedMessage(menuItem) {
-        const reason = menuItem.getAttribute('data-access-denied') || 'Accesso non autorizzato';
-        console.log(`[TALON Sidebar] Accesso negato: ${reason}`);
-        this.showToast(reason, 'error');
-    }
-
-    updateUserInfoWithRole() {
-        if (!this.userInfo) return;
-        
-        this.userInfo.setAttribute('data-user-role', this.userRole);
-        
-        const roleBadge = this.userInfo.querySelector('.user-role-badge');
-        if (roleBadge) {
-            roleBadge.textContent = this.userRole;
-            roleBadge.title = `Ruolo attuale: ${this.userRole}`;
-        }
-        
-        console.log(`[TALON Sidebar] Info utente aggiornate per ruolo: ${this.userRole}`);
-    }
-
-    initializeUserInfo() {
-        if (this.userName && this.userInfo) {
-            console.log('[TALON Sidebar] Info utente caricate dal template');
-        }
-    }
-
-    initializeLogout() {
-        if (this.logoutBtn) {
-            this.logoutBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.handleLogout();
-            });
-        }
-    }
-
-    async handleLogout() {
-        if (confirm('Sei sicuro di voler effettuare il logout?')) {
-            try {
-                console.log('[TALON Sidebar] Logout in corso...');
-                
-                // Mostra toast di conferma
-                this.showToast('Logout in corso...', 'info');
-                
-                // Redirect
-                setTimeout(() => {
-                    window.location.href = '/auth/logout';
-                }, 500);
-                
             } catch (error) {
-                console.error('Errore durante il logout:', error);
+                console.error(`[${this.config.APP_NAME}] ❌ Errore inizializzazione:`, error);
+                this.showError('Errore durante l\'inizializzazione dell\'applicazione');
+            }
+        }
+
+        /**
+         * Setup ambiente applicazione
+         */
+        setupEnvironment() {
+            // Aggiungi meta tag viewport se mancante
+            if (!document.querySelector('meta[name="viewport"]')) {
+                const viewport = document.createElement('meta');
+                viewport.name = 'viewport';
+                viewport.content = 'width=device-width, initial-scale=1.0';
+                document.head.appendChild(viewport);
+            }
+            
+            // Setup CSRF token per richieste AJAX
+            this.setupCSRFToken();
+            
+            // Abilita/disabilita debug mode
+            if (this.config.DEBUG_MODE) {
+                console.log(`[${this.config.APP_NAME}] 🐛 Debug mode attivo`);
+                document.body.classList.add('debug-mode');
+            }
+        }
+
+        /**
+         * Setup CSRF token per jQuery/AJAX
+         */
+        setupCSRFToken() {
+            const token = document.querySelector('meta[name="csrf-token"]');
+            if (token) {
+                // Per jQuery
+                if (window.$ && window.$.ajaxSetup) {
+                    $.ajaxSetup({
+                        headers: {
+                            'X-CSRF-TOKEN': token.content
+                        }
+                    });
+                }
+                
+                // Per fetch
+                window.fetchWithCSRF = (url, options = {}) => {
+                    options.headers = {
+                        ...options.headers,
+                        'X-CSRF-TOKEN': token.content
+                    };
+                    return fetch(url, options);
+                };
+            }
+        }
+
+        /**
+         * Rileva informazioni utente
+         */
+        async detectUserInfo() {
+            // Priorità: Flask global > Meta > Body > Session
+            this.currentRole = 
+                window.FLASK_USER_ROLE ||
+                document.querySelector('meta[name="user-role"]')?.content ||
+                document.body.getAttribute('data-user-role') ||
+                sessionStorage.getItem('userRole') ||
+                'GUEST';
+            
+            this.currentUser = 
+                window.FLASK_USER_NAME ||
+                document.querySelector('meta[name="user-name"]')?.content ||
+                document.getElementById('user-name')?.textContent ||
+                'Utente';
+            
+            console.log(`[${this.config.APP_NAME}] Utente: ${this.currentUser} (${this.currentRole})`);
+            
+            // Propaga informazioni
+            document.body.setAttribute('data-user-role', this.currentRole);
+            document.body.setAttribute('data-user-name', this.currentUser);
+        }
+
+        /**
+         * Inizializza moduli
+         */
+        async initializeModules() {
+            console.log(`[${this.config.APP_NAME}] Caricamento moduli...`);
+            
+            // Attendi che i moduli siano pronti
+            const moduleChecks = [
+                { name: 'sidebar', check: () => window.talonSidebar, api: () => window.sidebarAPI },
+                { name: 'roleManager', check: () => window.roleManager, api: () => window.RoleManagerAPI }
+            ];
+            
+            for (let module of moduleChecks) {
+                await this.waitForModule(module.name, module.check);
+                if (module.api()) {
+                    this.modules[module.name] = module.api();
+                    console.log(`[${this.config.APP_NAME}] ✓ Modulo ${module.name} caricato`);
+                }
+            }
+        }
+
+        /**
+         * Attende che un modulo sia disponibile
+         */
+        async waitForModule(name, checkFn, maxWait = 5000) {
+            const startTime = Date.now();
+            
+            while (!checkFn()) {
+                if (Date.now() - startTime > maxWait) {
+                    console.warn(`[${this.config.APP_NAME}] ⚠️ Timeout attesa modulo ${name}`);
+                    return false;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            return true;
+        }
+
+        /**
+         * Setup handler globali
+         */
+        setupGlobalHandlers() {
+            // Gestione errori globali
+            window.addEventListener('error', (e) => {
+                if (this.config.DEBUG_MODE) {
+                    console.error('Errore globale:', e);
+                }
+            });
+            
+            // Gestione navigazione
+            this.setupNavigationHandlers();
+            
+            // Gestione form
+            this.setupFormHandlers();
+            
+            // Gestione shortcuts
+            this.setupKeyboardShortcuts();
+            
+            // Auto-logout su inattività
+            this.setupInactivityTimer();
+        }
+
+        /**
+         * Setup handler navigazione
+         */
+        setupNavigationHandlers() {
+            // Intercetta link con data-confirm
+            document.addEventListener('click', (e) => {
+                const link = e.target.closest('a[data-confirm]');
+                if (link) {
+                    e.preventDefault();
+                    const message = link.getAttribute('data-confirm');
+                    if (confirm(message)) {
+                        window.location.href = link.href;
+                    }
+                }
+            });
+            
+            // Gestione back button
+            window.addEventListener('popstate', (e) => {
+                this.emit('talon:navigation', { state: e.state });
+            });
+        }
+
+        /**
+         * Setup handler form
+         */
+        setupFormHandlers() {
+            // Auto-uppercase per campi testo
+            document.addEventListener('input', (e) => {
+                if (e.target.matches('input[data-uppercase], textarea[data-uppercase]')) {
+                    e.target.value = e.target.value.toUpperCase();
+                }
+            });
+            
+            // Validazione real-time
+            document.addEventListener('blur', (e) => {
+                if (e.target.matches('input[required], textarea[required], select[required]')) {
+                    this.validateField(e.target);
+                }
+            });
+            
+            // Conferma per form pericolosi
+            document.addEventListener('submit', (e) => {
+                const form = e.target;
+                if (form.matches('[data-confirm-submit]')) {
+                    const message = form.getAttribute('data-confirm-submit') || 'Confermare l\'operazione?';
+                    if (!confirm(message)) {
+                        e.preventDefault();
+                    }
+                }
+            });
+        }
+
+        /**
+         * Valida campo form
+         */
+        validateField(field) {
+            const isValid = field.checkValidity();
+            
+            if (!isValid) {
+                field.classList.add('is-invalid');
+                field.classList.remove('is-valid');
+            } else {
+                field.classList.add('is-valid');
+                field.classList.remove('is-invalid');
+            }
+            
+            return isValid;
+        }
+
+        /**
+         * Setup keyboard shortcuts
+         */
+        setupKeyboardShortcuts() {
+            const shortcuts = {
+                'ctrl+s': (e) => {
+                    e.preventDefault();
+                    this.saveCurrentForm();
+                },
+                'ctrl+shift+f': (e) => {
+                    e.preventDefault();
+                    this.focusSearch();
+                },
+                'ctrl+shift+h': (e) => {
+                    e.preventDefault();
+                    this.navigateHome();
+                },
+                'escape': (e) => {
+                    this.closeAllModals();
+                }
+            };
+            
+            document.addEventListener('keydown', (e) => {
+                const key = this.getShortcutKey(e);
+                if (shortcuts[key]) {
+                    shortcuts[key](e);
+                }
+            });
+        }
+
+        /**
+         * Ottiene chiave shortcut da evento
+         */
+        getShortcutKey(e) {
+            const keys = [];
+            if (e.ctrlKey) keys.push('ctrl');
+            if (e.shiftKey) keys.push('shift');
+            if (e.altKey) keys.push('alt');
+            if (e.key && e.key !== 'Control' && e.key !== 'Shift' && e.key !== 'Alt') {
+                keys.push(e.key.toLowerCase());
+            }
+            return keys.join('+');
+        }
+
+        /**
+         * Setup timer inattività
+         */
+        setupInactivityTimer() {
+            let inactivityTimer;
+            const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minuti
+            
+            const resetTimer = () => {
+                clearTimeout(inactivityTimer);
+                inactivityTimer = setTimeout(() => {
+                    this.handleInactivity();
+                }, INACTIVITY_TIMEOUT);
+            };
+            
+            // Eventi che resettano il timer
+            ['mousedown', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+                document.addEventListener(event, resetTimer, true);
+            });
+            
+            resetTimer();
+        }
+
+        /**
+         * Gestisce inattività utente
+         */
+        handleInactivity() {
+            if (confirm('Sessione inattiva. Vuoi continuare?')) {
+                // Refresh sessione
+                this.refreshSession();
+            } else {
+                // Logout
                 window.location.href = '/auth/logout';
             }
         }
-    }
 
-    // ==========================================
-    // DRAG & DROP (invariato)
-    // ==========================================
-
-    initializeDragAndDrop() {
-        if (!this.menuList) return;
-
-        this.menuList.addEventListener('dragstart', this.handleDragStart.bind(this));
-        this.menuList.addEventListener('dragend', this.handleDragEnd.bind(this));
-        this.menuList.addEventListener('dragover', this.handleDragOver.bind(this));
-        this.menuList.addEventListener('drop', this.handleDrop.bind(this));
-    }
-
-    handleDragStart(e) {
-        this.draggedItem = e.target.closest('li');
-        if (!this.draggedItem) return;
-        
-        if (this.draggedItem.classList.contains('role-hidden') ||
-            this.draggedItem.classList.contains('menu-divider')) {
-            e.preventDefault();
-            return;
-        }
-        
-        if (e.dataTransfer) {
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setDragImage(this.draggedItem, 20, 20);
-        }
-        
-        setTimeout(() => {
-            this.draggedItem.classList.add('dragging');
-        }, 0);
-    }
-
-    handleDragEnd() {
-        if (!this.draggedItem) return;
-        
-        this.draggedItem.classList.remove('dragging');
-        
-        const placeholder = this.menuList.querySelector('.drag-over');
-        if (placeholder) {
-            placeholder.classList.remove('drag-over');
-        }
-        
-        this.saveMenuOrder();
-        this.draggedItem = null;
-    }
-
-    handleDragOver(e) {
-        e.preventDefault();
-        if (!this.draggedItem) return;
-        
-        const afterElement = this.getDragAfterElement(this.menuList, e.clientY);
-        
-        const currentPlaceholder = this.menuList.querySelector('.drag-over');
-        if (currentPlaceholder) {
-            currentPlaceholder.classList.remove('drag-over');
-        }
-        
-        if (afterElement) {
-            afterElement.classList.add('drag-over');
-            this.menuList.insertBefore(this.draggedItem, afterElement);
-        } else {
-            this.menuList.appendChild(this.draggedItem);
-        }
-    }
-
-    handleDrop(e) {
-        e.preventDefault();
-    }
-
-    getDragAfterElement(container, y) {
-        const draggableElements = [...container.querySelectorAll(':scope > li:not(.dragging):not(.role-hidden):not(.menu-divider)')];
-        
-        return draggableElements.reduce((closest, child) => {
-            const box = child.getBoundingClientRect();
-            const offset = y - box.top - box.height / 2;
-            
-            if (offset < 0 && offset > closest.offset) {
-                return { offset: offset, element: child };
-            } else {
-                return closest;
+        /**
+         * Refresh sessione
+         */
+        async refreshSession() {
+            try {
+                const response = await fetch('/auth/refresh', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Refresh fallito');
+                }
+                
+                this.showSuccess('Sessione aggiornata');
+            } catch (error) {
+                this.showError('Errore aggiornamento sessione');
+                console.error(error);
             }
-        }, { offset: Number.NEGATIVE_INFINITY }).element;
-    }
+        }
 
-    saveMenuOrder() {
-        const order = [...this.menuList.children]
-            .filter(item => item.dataset.menuId && !item.classList.contains('role-hidden'))
-            .map(item => item.dataset.menuId);
-        localStorage.setItem('sidebarMenuOrder', JSON.stringify(order));
-        console.log('[TALON Sidebar] Ordine menu salvato:', order);
-    }
+        /**
+         * Inizializza componenti UI
+         */
+        initializeUIComponents() {
+            // Inizializza tooltip Bootstrap se disponibile
+            if (window.$ && $.fn.tooltip) {
+                $('[data-toggle="tooltip"]').tooltip();
+            }
+            
+            // Inizializza select2 se disponibile
+            if (window.$ && $.fn.select2) {
+                $('.select2').select2();
+            }
+            
+            // Inizializza date picker se disponibile
+            if (window.$ && $.fn.datepicker) {
+                $('.datepicker').datepicker({
+                    format: 'dd/mm/yyyy',
+                    language: 'it',
+                    autoclose: true
+                });
+            }
+            
+            // Inizializza componenti custom
+            this.initializeCustomComponents();
+        }
 
-    loadMenuOrder() {
-        const savedOrder = JSON.parse(localStorage.getItem('sidebarMenuOrder') || '[]');
-        
-        if (savedOrder && Array.isArray(savedOrder)) {
-            savedOrder.forEach(menuId => {
-                const itemToMove = this.menuList.querySelector(`li[data-menu-id="${menuId}"]`);
-                if (itemToMove && !itemToMove.classList.contains('role-hidden')) {
-                    this.menuList.appendChild(itemToMove);
+        /**
+         * Inizializza componenti custom
+         */
+        initializeCustomComponents() {
+            // Tabelle ordinabili
+            this.initializeSortableTables();
+            
+            // Form con auto-save
+            this.initializeAutoSaveForms();
+            
+            // Contatori caratteri
+            this.initializeCharCounters();
+            
+            // Lazy loading immagini
+            this.initializeLazyLoading();
+        }
+
+        /**
+         * Inizializza tabelle ordinabili
+         */
+        initializeSortableTables() {
+            document.querySelectorAll('table.sortable').forEach(table => {
+                const headers = table.querySelectorAll('th[data-sortable]');
+                
+                headers.forEach(header => {
+                    header.style.cursor = 'pointer';
+                    header.addEventListener('click', () => {
+                        this.sortTable(table, header);
+                    });
+                });
+            });
+        }
+
+        /**
+         * Ordina tabella
+         */
+        sortTable(table, header) {
+            const column = header.cellIndex;
+            const order = header.getAttribute('data-order') || 'asc';
+            const newOrder = order === 'asc' ? 'desc' : 'asc';
+            
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            rows.sort((a, b) => {
+                const aValue = a.cells[column].textContent.trim();
+                const bValue = b.cells[column].textContent.trim();
+                
+                if (newOrder === 'asc') {
+                    return aValue.localeCompare(bValue, 'it', { numeric: true });
+                } else {
+                    return bValue.localeCompare(aValue, 'it', { numeric: true });
                 }
             });
-            console.log('[TALON Sidebar] Ordine menu caricato:', savedOrder);
+            
+            // Riordina righe
+            rows.forEach(row => tbody.appendChild(row));
+            
+            // Aggiorna header
+            table.querySelectorAll('th[data-sortable]').forEach(th => {
+                th.removeAttribute('data-order');
+                th.classList.remove('sorted-asc', 'sorted-desc');
+            });
+            
+            header.setAttribute('data-order', newOrder);
+            header.classList.add(`sorted-${newOrder}`);
         }
-    }
 
-    // ==========================================
-    // API PUBBLICA (aggiornata)
-    // ==========================================
-
-    pin() {
-        if (!this.isPinned) {
-            this.togglePinned();
+        /**
+         * Inizializza form con auto-save
+         */
+        initializeAutoSaveForms() {
+            document.querySelectorAll('form[data-autosave]').forEach(form => {
+                const formId = form.id || `form-${Date.now()}`;
+                let saveTimeout;
+                
+                form.addEventListener('input', () => {
+                    clearTimeout(saveTimeout);
+                    saveTimeout = setTimeout(() => {
+                        this.autoSaveForm(form, formId);
+                    }, 2000);
+                });
+                
+                // Recupera dati salvati
+                this.restoreFormData(form, formId);
+            });
         }
-    }
 
-    unpin() {
-        if (this.isPinned) {
-            this.togglePinned();
+        /**
+         * Auto-salva form
+         */
+        autoSaveForm(form, formId) {
+            const formData = new FormData(form);
+            const data = {};
+            
+            formData.forEach((value, key) => {
+                data[key] = value;
+            });
+            
+            localStorage.setItem(`talon-form-${formId}`, JSON.stringify(data));
+            this.showInfo('Bozza salvata automaticamente', 1000);
         }
-    }
 
-    expand() {
-        this.expandSidebar();
-    }
+        /**
+         * Ripristina dati form
+         */
+        restoreFormData(form, formId) {
+            const savedData = localStorage.getItem(`talon-form-${formId}`);
+            if (!savedData) return;
+            
+            try {
+                const data = JSON.parse(savedData);
+                Object.entries(data).forEach(([key, value]) => {
+                    const field = form.elements[key];
+                    if (field) {
+                        field.value = value;
+                    }
+                });
+                
+                this.showInfo('Bozza precedente ripristinata');
+            } catch (error) {
+                console.error('Errore ripristino form:', error);
+            }
+        }
 
-    collapse() {
-        this.isLocked = false;
-        this.collapseSidebar();
-    }
+        /**
+         * Inizializza contatori caratteri
+         */
+        initializeCharCounters() {
+            document.querySelectorAll('[data-char-counter]').forEach(field => {
+                const maxLength = field.getAttribute('maxlength');
+                if (!maxLength) return;
+                
+                const counter = document.createElement('div');
+                counter.className = 'char-counter text-muted small';
+                counter.style.textAlign = 'right';
+                field.parentNode.appendChild(counter);
+                
+                const updateCounter = () => {
+                    const current = field.value.length;
+                    counter.textContent = `${current}/${maxLength}`;
+                    
+                    if (current > maxLength * 0.9) {
+                        counter.classList.add('text-danger');
+                        counter.classList.remove('text-muted');
+                    } else {
+                        counter.classList.remove('text-danger');
+                        counter.classList.add('text-muted');
+                    }
+                };
+                
+                field.addEventListener('input', updateCounter);
+                updateCounter();
+            });
+        }
 
-    getCurrentRole() {
-        return this.userRole;
-    }
+        /**
+         * Inizializza lazy loading
+         */
+        initializeLazyLoading() {
+            if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            img.src = img.dataset.src;
+                            img.classList.add('loaded');
+                            imageObserver.unobserve(img);
+                        }
+                    });
+                });
+                
+                document.querySelectorAll('img[data-src]').forEach(img => {
+                    imageObserver.observe(img);
+                });
+            }
+        }
 
-    updateUserRole(newRole) {
-        const oldRole = this.userRole;
-        this.userRole = newRole;
-        
-        console.log(`[TALON Sidebar] Ruolo aggiornato da ${oldRole} a ${newRole}`);
-        
-        // Aggiorna tutto il sistema
-        window.userRole = newRole;
-        document.body.setAttribute('data-user-role', newRole);
-        sessionStorage.setItem('userRole', newRole);
-        
-        this.applyRoleRestrictionsToMenu();
-        this.updateUserInfoWithRole();
-        this.enableAllButtonsForAdmin();
-        
-        this.showToast(`Ruolo aggiornato: ${newRole}`, 'info');
-    }
+        /**
+         * Carica dati iniziali
+         */
+        async loadInitialData() {
+            // Carica dati solo se necessario per la pagina corrente
+            const page = document.body.getAttribute('data-page');
+            
+            switch (page) {
+                case 'dashboard':
+                    await this.loadDashboardData();
+                    break;
+                case 'enti-civili':
+                    await this.loadEntiCiviliData();
+                    break;
+                // ... altri casi
+            }
+        }
 
-    // NUOVE API
-    refreshDashboard() {
-        this.initializeDashboardButtons();
-        this.showToast('Dashboard aggiornata', 'info');
-    }
+        /**
+         * Carica dati dashboard
+         */
+        async loadDashboardData() {
+            // Implementazione specifica per dashboard
+            console.log(`[${this.config.APP_NAME}] Caricamento dati dashboard...`);
+        }
 
-    forceShowAllMenus() {
-        document.querySelectorAll('.sidebar li.role-hidden').forEach(item => {
-            item.classList.remove('role-hidden');
-            item.style.display = '';
-        });
-        this.showToast('Tutti i menu mostrati (debug)', 'warning');
-    }
+        /**
+         * Carica dati enti civili
+         */
+        async loadEntiCiviliData() {
+            // Implementazione specifica per enti civili
+            console.log(`[${this.config.APP_NAME}] Caricamento dati enti civili...`);
+        }
 
-    enableAllButtons() {
-        document.querySelectorAll('button[disabled], .btn[disabled]').forEach(btn => {
-            btn.disabled = false;
-            btn.style.pointerEvents = 'auto';
-            btn.style.opacity = '1';
-        });
-        this.showToast('Tutti i bottoni abilitati (debug)', 'warning');
-    }
-}
+        // ========================================
+        // METODI UTILITY
+        // ========================================
 
-// ==========================================
-// STILI CSS AGGIUNTIVI
-// ==========================================
+        /**
+         * Mostra messaggio di successo
+         */
+        showSuccess(message, duration = this.config.UI.TOAST_DURATION) {
+            this.showToast(message, 'success', duration);
+        }
 
-const sidebarStyles = document.createElement('style');
-sidebarStyles.textContent = `
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
-    .sidebar li[draggable="false"] {
-        cursor: not-allowed !important;
-    }
-    
-    .sidebar li.role-hidden[draggable="true"] {
-        draggable: false;
-    }
-    
-    /* Stili per toast notifications */
-    #toast-container {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-    
-    /* Fix per bottoni disabilitati */
-    button[disabled], .btn[disabled] {
-        opacity: 0.6 !important;
-        cursor: not-allowed !important;
-        pointer-events: none !important;
-    }
-    
-    /* Stili per elementi admin */
-    [data-admin-only] {
-        transition: opacity 0.3s ease;
-    }
-    
-    body:not([data-user-role="ADMIN"]) [data-admin-only] {
-        display: none !important;
-    }
-`;
-document.head.appendChild(sidebarStyles);
+        /**
+         * Mostra messaggio di errore
+         */
+        showError(message, duration = this.config.UI.TOAST_DURATION) {
+            this.showToast(message, 'error', duration);
+        }
 
-// ==========================================
-// INIZIALIZZAZIONE GLOBALE
-// ==========================================
+        /**
+         * Mostra messaggio informativo
+         */
+        showInfo(message, duration = this.config.UI.TOAST_DURATION) {
+            this.showToast(message, 'info', duration);
+        }
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('[TALON Sidebar] DOM loaded, inizializzazione versione 2.0...');
-    
-    // Crea istanza globale
-    window.talonSidebar = new TalonSidebar();
-    
-    // API pubblica estesa
-    window.sidebarAPI = {
-        // API base
-        pin: () => window.talonSidebar.pin(),
-        unpin: () => window.talonSidebar.unpin(),
-        expand: () => window.talonSidebar.expand(),
-        collapse: () => window.talonSidebar.collapse(),
-        
-        // API ruoli
-        getCurrentRole: () => window.talonSidebar.getCurrentRole(),
-        updateRole: (role) => window.talonSidebar.updateUserRole(role),
-        
-        // API dashboard
-        refreshDashboard: () => window.talonSidebar.refreshDashboard(),
-        
-        // API debug
-        showAllMenus: () => window.talonSidebar.forceShowAllMenus(),
-        enableAllButtons: () => window.talonSidebar.enableAllButtons(),
-        
-        // API utility
-        showToast: (message, type) => window.talonSidebar.showToast(message, type),
-        
-        // Info
-        version: '2.0',
-        status: () => {
-            return {
-                isPinned: window.talonSidebar.isPinned,
-                isExpanded: window.talonSidebar.isExpanded,
-                userRole: window.talonSidebar.userRole,
-                menuCount: window.talonSidebar.menuList?.children.length || 0
+        /**
+         * Mostra toast notification
+         */
+        showToast(message, type = 'info', duration = this.config.UI.TOAST_DURATION) {
+            // Usa sidebar API se disponibile
+            if (this.modules.sidebar && this.modules.sidebar.showToast) {
+                this.modules.sidebar.showToast(message, type);
+            } else {
+                // Fallback semplice
+                console.log(`[${type.toUpperCase()}] ${message}`);
+            }
+        }
+
+        /**
+         * Emette evento custom
+         */
+        emit(eventName, detail = {}) {
+            const event = new CustomEvent(eventName, {
+                detail: detail,
+                bubbles: true,
+                cancelable: true
+            });
+            document.dispatchEvent(event);
+            
+            if (this.config.DEBUG_MODE) {
+                console.log(`[${this.config.APP_NAME}] Event emitted:`, eventName, detail);
+            }
+        }
+
+        /**
+         * Ascolta evento custom
+         */
+        on(eventName, handler) {
+            document.addEventListener(eventName, handler);
+        }
+
+        /**
+         * Rimuove listener evento
+         */
+        off(eventName, handler) {
+            document.removeEventListener(eventName, handler);
+        }
+
+        /**
+         * Debounce function
+         */
+        debounce(func, wait = this.config.UI.DEBOUNCE_DELAY) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
             };
         }
+
+        /**
+         * Throttle function
+         */
+        throttle(func, limit = this.config.UI.DEBOUNCE_DELAY) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        // ========================================
+        // SHORTCUTS METODI
+        // ========================================
+
+        saveCurrentForm() {
+            const form = document.querySelector('form:not([data-no-shortcut])');
+            if (form) {
+                form.dispatchEvent(new Event('submit', { cancelable: true }));
+            }
+        }
+
+        focusSearch() {
+            const search = document.querySelector('input[type="search"], .search-input');
+            if (search) {
+                search.focus();
+                search.select();
+            }
+        }
+
+        navigateHome() {
+            window.location.href = '/';
+        }
+
+        closeAllModals() {
+            // Bootstrap modals
+            if (window.$ && $.fn.modal) {
+                $('.modal').modal('hide');
+            }
+            
+            // Custom modals
+            document.querySelectorAll('.modal, [data-modal]').forEach(modal => {
+                modal.style.display = 'none';
+            });
+        }
+
+        // ========================================
+        // API PUBBLICA
+        // ========================================
+
+        /**
+         * Ottiene configurazione
+         */
+        getConfig() {
+            return { ...this.config };
+        }
+
+        /**
+         * Ottiene moduli caricati
+         */
+        getModules() {
+            return { ...this.modules };
+        }
+
+        /**
+         * Ottiene info utente corrente
+         */
+        getCurrentUser() {
+            return {
+                name: this.currentUser,
+                role: this.currentRole,
+                roleLevel: this.config.ROLES[this.currentRole]?.level || 0
+            };
+        }
+
+        /**
+         * Verifica se app è inizializzata
+         */
+        isReady() {
+            return this.initialized;
+        }
+
+        /**
+         * Attende che app sia pronta
+         */
+        async ready() {
+            if (this.initialized) return true;
+            
+            return new Promise((resolve) => {
+                this.on('talon:ready', () => resolve(true));
+            });
+        }
+    }
+
+    // ========================================
+    // INIZIALIZZAZIONE
+    // ========================================
+
+    // Crea istanza applicazione
+    const app = new TalonApp();
+
+    // Esponi API globale
+    window.TalonApp = app;
+
+    // API pubblica semplificata
+    window.TALON_API = {
+        // Info
+        version: TALON_CONFIG.VERSION,
+        ready: () => app.ready(),
+        isReady: () => app.isReady(),
+        
+        // User
+        getUser: () => app.getCurrentUser(),
+        
+        // UI
+        showSuccess: (msg) => app.showSuccess(msg),
+        showError: (msg) => app.showError(msg),
+        showInfo: (msg) => app.showInfo(msg),
+        
+        // Eventi
+        on: (event, handler) => app.on(event, handler),
+        off: (event, handler) => app.off(event, handler),
+        emit: (event, data) => app.emit(event, data),
+        
+        // Utility
+        debounce: (fn, wait) => app.debounce(fn, wait),
+        throttle: (fn, limit) => app.throttle(fn, limit),
+        
+        // Debug
+        debug: {
+            getConfig: () => app.getConfig(),
+            getModules: () => app.getModules(),
+            enable: () => {
+                localStorage.setItem('talonDebugMode', 'true');
+                location.reload();
+            },
+            disable: () => {
+                localStorage.removeItem('talonDebugMode');
+                location.reload();
+            }
+        }
     };
-    
-    console.log('[TALON Sidebar] ✅ Versione 2.0 inizializzata completamente!');
-    console.log('[TALON Sidebar] API disponibili in window.sidebarAPI');
-    console.log('[TALON Sidebar] Stato:', window.sidebarAPI.status());
-});
+
+    // Inizializza quando DOM è pronto
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    } else {
+        app.init();
+    }
+
+    console.log('[TALON] Script principale caricato. API disponibile in window.TALON_API');
+
+})(window, document);

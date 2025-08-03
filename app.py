@@ -3,7 +3,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Flask, request, jsonify, render_template, redirect, session, flash, url_for
+from flask import Flask, request, jsonify, render_template, redirect, session, flash, url_for, Response
 import sqlite3
 import hashlib
 import datetime
@@ -93,9 +93,25 @@ def create_app():
         return token
 
     # ===========================================
+    # ROUTE PER FAVICON
+    # ===========================================
+    
+    @app.route('/favicon.ico')
+    def favicon():
+        """Gestisce la richiesta del favicon"""
+        # Prova a servire il favicon dalla cartella static
+        favicon_path = os.path.join(app.static_folder, 'favicon.ico')
+        if os.path.exists(favicon_path):
+            return app.send_static_file('favicon.ico')
+        else:
+            # Se non esiste, ritorna 204 No Content
+            return Response(status=204)
+
+    # ===========================================
     # ROUTE DI AUTENTICAZIONE
     # ===========================================
 
+    @app.route('/login', methods=['GET'])
     @app.route('/auth/login', methods=['GET'])
     def show_login():
         """Mostra pagina di login"""
@@ -105,6 +121,7 @@ def create_app():
         
         return render_template('login.html')
 
+    @app.route('/login', methods=['POST'])
     @app.route('/auth/login', methods=['POST'])
     def process_login():
         """Processa il login sia web che API"""
@@ -218,6 +235,7 @@ def create_app():
             user_role = session.get('ruolo_nome', '').upper()
             return redirect(url_for('main.dashboard'))
 
+    @app.route('/logout', methods=['GET', 'POST'])
     @app.route('/auth/logout', methods=['GET', 'POST'])
     def logout():
         """Logout dell'utente"""
@@ -296,9 +314,16 @@ def create_app():
             return redirect(url_for('show_login'))
 
     # ===========================================
-    # ROUTE DI AMMINISTRAZIONE
+    # ROUTE DI AMMINISTRAZIONE (IMPOSTAZIONI)
     # ===========================================
     
+    @app.route('/impostazioni')
+    @admin_required
+    def impostazioni():
+        """Pagina impostazioni (solo admin)"""
+        return render_template('impostazioni.html')
+    
+    @app.route('/impostazioni/utenti')
     @app.route('/admin/users')
     @admin_required
     def admin_users():
@@ -319,6 +344,7 @@ def create_app():
             flash(f'Errore nel caricamento utenti: {str(e)}', 'error')
             return redirect(url_for('main.dashboard'))
 
+    @app.route('/impostazioni/sistema')
     @app.route('/admin/system-info')
     @admin_required
     def admin_system_info():
@@ -345,7 +371,6 @@ def create_app():
             return jsonify({'error': 'Debug non disponibile in produzione'}), 403
         
         user_info = get_current_user_info()
-        session_data = get_current_user_session() if 'get_current_user_session' in globals() else None
         
         debug_info = {
             'flask_session': dict(session),
@@ -356,8 +381,7 @@ def create_app():
             'user_role': session.get('ruolo_nome'),
             'is_admin': session.get('is_admin', False),
             'user_info': user_info,
-            'session_data': session_data,
-            'accessible_entities_count': len(get_accessible_entities()) if session.get('logged_in') else 0
+            'accessible_entities_count': len(get_user_accessible_entities(session.get('user_id'))) if session.get('user_id') else 0
         }
         
         return jsonify(debug_info)
@@ -470,6 +494,16 @@ def create_app():
             'current_year': datetime.datetime.now().year,
             'debug_mode': app.debug
         }
+    
+    # ✅ CONTEXT PROCESSOR PER CSRF TOKEN DUMMY
+    @app.context_processor
+    def inject_csrf_token():
+        """Inietta csrf_token dummy nei template per evitare errori"""
+        def csrf_token():
+            # Ritorna una stringa vuota o un token dummy
+            # Questo previene errori nei template senza bisogno di Flask-WTF
+            return ''
+        return dict(csrf_token=csrf_token)
 
     # ===========================================
     # TEMPLATE FILTERS
@@ -562,8 +596,9 @@ def main():
     print(f"   • {ROLE_VISUALIZZATORE} - Solo visualizzazione")
     print("=" * 50)
     print("🌐 ENDPOINTS PRINCIPALI:")
-    print("   • /auth/login - Login web/API")
-    print("   • /admin/users - Gestione utenti (admin)")
+    print("   • /login - Login web")
+    print("   • /logout - Logout")
+    print("   • /impostazioni - Gestione sistema (admin)")
     print("   • /debug/session - Debug sessione (dev)")
     print("=" * 50)
     
