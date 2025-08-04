@@ -3,77 +3,148 @@
 {% block title %}Elenco Enti Civili - TALON{% endblock %}
 
 {% block content %}
-    <div class="detail-header">
-        <h3>Elenco Enti Civili</h3>
-        <a href="{{ url_for('enti_civili.inserisci_civile_form') }}" class="btn-modifica" style="background-color: #28a745;">Nuovo Ente Civile</a>
+<div class="detail-header">
+    <h3>Elenco Enti Civili</h3>
+    {% if user_role in ['ADMIN', 'OPERATORE'] %}
+    <a href="{{ url_for('enti_civili.inserisci_civile_form') }}" class="btn-modifica" style="background-color: #28a745;">Nuovo Ente Civile</a>
+    {% endif %}
+</div>
+
+<div class="list-container">
+    <div class="search-bar">
+        <input type="search" id="searchInput" placeholder="CERCA PER NOME, INDIRIZZO, CITTÀ, NAZIONE...">
     </div>
 
-    <!-- Contenitore per ricerca e tabella -->
-    <div class="list-container">
-        <!-- Barra di Ricerca -->
-        <div class="search-bar">
-            <input type="search" id="searchInput" placeholder="CERCA PER NOME, INDIRIZZO, CITTÀ, NAZIONE...">
-        </div>
+    <table class="styled-table">
+        <thead>
+            <tr>
+                <th class="sortable" data-column="0">
+                    <span class="th-label">Nome</span>
+                    <span class="th-arrow" data-arrow="">▲▼</span>
+                </th>
+                <th class="sortable" data-column="1">
+                    <span class="th-label">Indirizzo Completo</span>
+                    <span class="th-arrow" data-arrow="">▲▼</span>
+                </th>
+                <th class="sortable" data-column="2">
+                    <span class="th-label">Nazione</span>
+                    <span class="th-arrow" data-arrow="">▲▼</span>
+                </th>
+            </tr>
+        </thead>
+        <tbody id="entiTableBody">
+            {% for ente in enti_civili %}
+            <tr class="clickable-row" data-href="{{ url_for('enti_civili.visualizza_civile', id=ente.id) }}">
+                <td>{{ ente.nome }}</td>
+                <td>
+                    {{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})
+                </td>
+                <td>{{ ente.nazione or 'N/D' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="3" style="text-align: center;">Nessun ente civile inserito.</td>
+            </tr>
+            {% endfor %}
+            <tr id="no-results-row" style="display: none;">
+                <td colspan="3" style="text-align: center;">Nessun risultato trovato.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
-        <table class="styled-table">
-            <thead>
-                <tr>
-                    <th>Nome</th>
-                    <th>Indirizzo Completo</th>
-                    <th>Nazione</th>
-                </tr>
-            </thead>
-            <tbody id="entiTableBody">
-                {% for ente in enti_civili %}
-                <tr class="clickable-row" data-href="{{ url_for('enti_civili.visualizza_civile', id=ente.id) }}">
-                    <td>{{ ente.nome }}</td>
-                    <td>
-                        {{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})
-                    </td>
-                    <td>{{ ente.nazione or 'N/D' }}</td>
-                </tr>
-                {% endfor %}
-                <tr id="no-results-row" style="display: none;">
-                    <td colspan="3" style="text-align: center;">Nessun risultato trovato.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+<style>
+/* Stili per ordinamento colonne */
+.sortable {
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+}
 
-    <script>
-        // Script per rendere le righe della tabella cliccabili
-        document.querySelectorAll('.clickable-row').forEach(row => {
-            row.addEventListener('click', () => {
-                window.location.href = row.dataset.href;
-            });
+.sortable:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.th-label {
+    margin-right: 15px;
+}
+
+.th-arrow {
+    position: absolute;
+    right: 10px;
+    color: #999;
+    font-size: 12px;
+}
+
+.sorted-asc .th-arrow,
+.sorted-desc .th-arrow {
+    color: #333;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Click su righe
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', () => {
+            window.location.href = row.dataset.href;
         });
+    });
 
-        // SCRIPT per la ricerca dinamica
-        const searchInput = document.getElementById('searchInput');
-        const tableBody = document.getElementById('entiTableBody');
-        const allRows = tableBody.querySelectorAll('tr.clickable-row');
-        const noResultsRow = document.getElementById('no-results-row');
+    // Ricerca
+    const searchInput = document.getElementById('searchInput');
+    const tableBody = document.getElementById('entiTableBody');
+    const allRows = tableBody.querySelectorAll('tr.clickable-row');
+    const noResultsRow = document.getElementById('no-results-row');
 
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toUpperCase();
-            let visibleRows = 0;
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toUpperCase();
+        let visibleRows = 0;
 
-            allRows.forEach(row => {
-                const rowText = row.textContent.toUpperCase();
-                if (rowText.includes(searchTerm)) {
-                    row.style.display = ''; // Mostra la riga
-                    visibleRows++;
-                } else {
-                    row.style.display = 'none'; // Nasconde la riga
-                }
-            });
-
-            // Mostra o nasconde il messaggio "Nessun risultato"
-            if (visibleRows === 0 && allRows.length > 0) {
-                noResultsRow.style.display = 'table-row';
+        allRows.forEach(row => {
+            const rowText = row.textContent.toUpperCase();
+            if (rowText.includes(searchTerm)) {
+                row.style.display = '';
+                visibleRows++;
             } else {
-                noResultsRow.style.display = 'none';
+                row.style.display = 'none';
             }
         });
-    </script>
+
+        noResultsRow.style.display = (visibleRows === 0 && allRows.length > 0) ? 'table-row' : 'none';
+    });
+
+    // Ordinamento colonne
+    document.querySelectorAll('.styled-table th.sortable').forEach(header => {
+        header.addEventListener('click', () => {
+            const column = parseInt(header.dataset.column);
+            const isAsc = header.classList.contains('sorted-asc');
+            const order = isAsc ? 'desc' : 'asc';
+            const rows = Array.from(tableBody.querySelectorAll('tr.clickable-row'));
+
+            // Reset altri header
+            document.querySelectorAll('.styled-table th.sortable').forEach(h => {
+                h.classList.remove('sorted-asc', 'sorted-desc');
+                const arrow = h.querySelector('[data-arrow]');
+                if (arrow) arrow.textContent = '▲▼';
+            });
+
+            // Aggiorna header corrente
+            header.classList.add(order === 'asc' ? 'sorted-asc' : 'sorted-desc');
+            const arrow = header.querySelector('[data-arrow]');
+            if (arrow) arrow.textContent = order === 'asc' ? '▲' : '▼';
+
+            // Ordina righe
+            rows.sort((a, b) => {
+                const textA = a.children[column].textContent.trim().toUpperCase();
+                const textB = b.children[column].textContent.trim().toUpperCase();
+                return order === 'asc' ? textA.localeCompare(textB) : textB.localeCompare(textA);
+            });
+
+            // Riordina righe nel DOM
+            rows.forEach(row => tableBody.appendChild(row));
+        });
+    });
+});
+</script>
 {% endblock %}

@@ -1,6 +1,11 @@
-# app.py - Versione ottimizzata con sistema auth a 3 ruoli
+# app.py - Versione ottimizzata con sistema auth a 3 ruoli + Anti-Cache + DEBUG FORZATO
 import sys
 import os
+
+# FORZA DEBUG MODE PER SVILUPPO
+os.environ['FLASK_ENV'] = 'development'
+os.environ['FLASK_DEBUG'] = '1'
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from flask import Flask, request, jsonify, render_template, redirect, session, flash, url_for, Response
@@ -36,6 +41,10 @@ def create_app():
         static_folder='static'
     )
     
+    # FORZA DEBUG MODE
+    app.config['DEBUG'] = True
+    app.debug = True
+    
     # ===========================================
     # CONFIGURAZIONE APP E SESSIONI
     # ===========================================
@@ -53,6 +62,57 @@ def create_app():
     
     # Database configuration
     app.config['DATABASE'] = DATABASE
+    
+    # ==========================================
+    # CONFIGURAZIONE ANTI-CACHE PER DEBUG
+    # ==========================================
+    
+    # Configura anti-cache per modalità debug
+    if app.debug:
+        # Disabilita cache per file statici
+        app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+        
+        # Headers anti-cache per tutte le risposte in debug
+        @app.after_request
+        def disable_caching_in_debug(response):
+            # Disabilita cache per file statici (CSS, JS, immagini)
+            if request.endpoint == 'static':
+                response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                response.headers['Pragma'] = 'no-cache'
+                response.headers['Expires'] = '0'
+                response.headers['Last-Modified'] = ''
+            
+            # Disabilita cache anche per le pagine HTML in debug
+            elif request.endpoint and not request.endpoint.startswith('api'):
+                response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                response.headers['Pragma'] = 'no-cache'
+                response.headers['Expires'] = '0'
+            
+            return response
+        
+        print("🔧 Cache disabilitata per modalità debug")
+    
+    # ==========================================
+    # CACHE BUSTER PER TEMPLATE
+    # ==========================================
+    
+    @app.context_processor
+    def inject_cache_buster():
+        """Inietta cache buster nei template per forzare reload"""
+        import time
+        import random
+        
+        if app.debug:
+            # In debug, usa timestamp corrente per forzare reload
+            cache_buster = f"{int(time.time())}_{random.randint(1000, 9999)}"
+        else:
+            # In produzione, usa versione statica
+            cache_buster = "2.0.0"
+        
+        return {
+            'cache_buster': cache_buster,
+            'is_debug': app.debug
+        }
     
     # 🎯 CONFIGURA IL CONTEXT PROCESSOR PER I TEMPLATE
     setup_auth_context_processor(app)
@@ -566,8 +626,11 @@ def main():
     """Funzione principale"""
     app = create_app()
     
+    # FORZA SEMPRE DEBUG PER SVILUPPO
+    FORCE_DEBUG = True  # Cambia a False per produzione vera
+    
     # Configurazione logging
-    if not app.debug:
+    if not FORCE_DEBUG and not app.debug:
         import logging
         from logging.handlers import RotatingFileHandler
         
@@ -602,11 +665,17 @@ def main():
     print("   • /debug/session - Debug sessione (dev)")
     print("=" * 50)
     
-    if app.debug:
-        print("🚨 MODALITÀ DEBUG ATTIVA")
+    if FORCE_DEBUG or app.debug:
+        print("🚨 MODALITÀ DEBUG ATTIVA (FORZATA)")
+        print("🔧 Cache disabilitata per modalità debug")
+        print("💾 Cache disabilitata - modifiche immediate")
+        print("🔄 Per vedere le modifiche: Ctrl+Shift+R o F12 > Disable cache")
+        print("=" * 50)
         app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
     else:
         print("🚀 MODALITÀ PRODUZIONE")
+        print("💾 Cache abilitata per performance")
+        print("=" * 50)
         serve(app, host='0.0.0.0', port=5000, threads=16)
 
 if __name__ == '__main__':

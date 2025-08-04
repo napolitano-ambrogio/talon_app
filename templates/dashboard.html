@@ -3,901 +3,833 @@
 {% block title %}Dashboard - TALON{% endblock %}
 
 {% block content %}
-    <!-- Status refresh in alto a destra -->
-    <div id="refresh-status-top"></div>
-    
-    <!-- Controlli dashboard -->
-    <div class="dashboard-controls">
-        <button onclick="saveLayout()" class="btn btn-primary">Salva Layout</button>
-        <button onclick="clearLayout()" class="btn btn-danger">Cancella Layout</button>
-        <button onclick="exportLayout()" class="btn btn-secondary">Esporta</button>
-        <input type="file" id="importFile" style="display:none" onchange="importLayout(event)" accept=".json">
-        <button onclick="document.getElementById('importFile').click()" class="btn btn-secondary">Importa</button>
-        <button onclick="refreshAllCharts()" class="btn btn-success">Aggiorna Tutti</button>
-        <button onclick="cycleAutoRefresh()" class="btn btn-info" id="autoRefreshBtn">AUTO-REFRESH OFF</button>
+<!-- Status refresh in alto a destra -->
+<div id="refresh-status-top"></div>
+
+<!-- Controlli dashboard -->
+<div class="dashboard-controls">
+    <button onclick="saveLayout()" class="btn btn-primary">Salva Layout</button>
+    <button onclick="clearLayout()" class="btn btn-danger">Cancella Layout</button>
+    <button onclick="exportLayout()" class="btn btn-secondary">Esporta</button>
+    <input type="file" id="importFile" style="display:none" onchange="importLayout(event)" accept=".json">
+    <button onclick="document.getElementById('importFile').click()" class="btn btn-secondary">Importa</button>
+    <button onclick="refreshAllCharts()" class="btn btn-success">Aggiorna Tutti</button>
+    <button onclick="cycleAutoRefresh()" class="btn btn-info" id="autoRefreshBtn">AUTO-REFRESH OFF</button>
+</div>
+
+<div id="dashboard-grid" class="dashboard-grid">
+    <div class="dashboard-card add-card" onclick="addNewChart()">
+        <div class="plus-icon">+</div>
     </div>
+</div>
+
+<style>
+/* Reset e layout base */
+body {
+    overflow-x: hidden;
+}
+
+.page-wrapper {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Status refresh */
+#refresh-status-top {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    font-size: 12px;
+    color: #6c757d;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 5px 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Controlli dashboard */
+.dashboard-controls {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    margin: 20px;
+    flex-wrap: wrap;
+}
+
+/* Grid container */
+#dashboard-grid {
+    padding: 0 20px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    max-width: 100%;
+}
+
+/* Dashboard cards */
+.dashboard-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    position: relative;
+    display: inline-block;
+    vertical-align: top;
+    min-width: 300px;
+    min-height: 200px;
+}
+
+.dashboard-card.resizable {
+    max-width: calc(100vw - 100px);
+    overflow: hidden;
+}
+
+/* Add card */
+.dashboard-card.add-card {
+    width: 200px;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 2px dashed #ddd;
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.dashboard-card.add-card:hover {
+    border-color: #007bff;
+    background: #e7f3ff;
+}
+
+.plus-icon {
+    font-size: 48px;
+    color: #6c757d;
+}
+
+/* Chart title bar */
+.chart-title {
+    padding: 8px 12px;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 600;
+    font-size: 14px;
+    color: #495057;
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 40px;
+}
+
+/* Close button */
+.close-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #6c757d;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.close-button:hover {
+    background: #dc3545;
+    color: white;
+}
+
+/* Iframe container */
+.iframe-container {
+    position: relative;
+    width: 100%;
+    height: calc(100% - 40px);
+    overflow: hidden;
+}
+
+/* Dashboard iframe */
+.dashboard-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+}
+
+/* Loading overlay */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.9);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Notification */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 6px;
+    color: white;
+    font-weight: 500;
+    z-index: 10000;
+    max-width: 400px;
+    word-wrap: break-word;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Resize handle */
+.dashboard-card.resizable::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: se-resize;
+    background: linear-gradient(135deg, transparent 50%, #ccc 50%);
+    border-bottom-right-radius: 8px;
+}
+
+/* Button styles */
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* Media queries */
+@media (max-width: 768px) {
+    .dashboard-controls {
+        justify-content: center;
+        margin: 10px;
+    }
     
-    <div id="dashboard-grid" class="dashboard-grid">
-        <div class="dashboard-card add-card" onclick="addNewChart()">
-            <div class="plus-icon">+</div>
-        </div>
-    </div>
+    .dashboard-controls button {
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+    
+    #dashboard-grid {
+        padding: 0 10px;
+        gap: 10px;
+    }
+    
+    .dashboard-card.resizable {
+        max-width: calc(100vw - 40px);
+        width: 100% !important;
+    }
+    
+    #refresh-status-top {
+        font-size: 10px;
+        top: 10px;
+        right: 10px;
+    }
+}
+</style>
 
-    <script>
-        // Funzione di controllo autenticazione Login
-        function checkAuth() {
-            const token = localStorage.getItem('auth_token');
-            if (!token) {
-                window.location.href = '/components/login';
-                return;
-            }
-            
-            // Verifica validità token
-            fetch('/api/auth/me', {
-                headers: { 'Authorization': 'Bearer ' + token }
-            }).then(response => {
-                if (!response.ok) {
-                    localStorage.removeItem('auth_token');
-                    window.location.href = '/components/login';
-                }
-            }).catch(error => {
-                console.error('Errore verifica auth:', error);
-                localStorage.removeItem('auth_token');
-                window.location.href = '/components/login';
-            });
-        }
+<script>
+// ==========================================
+// CONFIGURAZIONE
+// ==========================================
+const CONFIG = {
+    STORAGE_KEY: 'talon_dashboard_layout',
+    DEFAULT_WIDTH: 600,
+    DEFAULT_HEIGHT: 400,
+    MIN_WIDTH: 300,
+    MIN_HEIGHT: 200,
+    SUPERSET_BASE_URL: 'http://127.0.0.1:8088'
+};
 
-        // Controllo autenticazione all'avvio
-        checkAuth();
+// ==========================================
+// VARIABILI GLOBALI
+// ==========================================
+let chartCounter = 0;
+let charts = [];
+let autoRefreshInterval = null;
+let autoRefreshState = 0;
+let lastRefreshTime = null;
 
-        // Configurazione e variabili globali
-        const CONFIG = {
-            STORAGE_KEY: 'talon_dashboard_layout',
-            DEFAULT_WIDTH: 400,
-            DEFAULT_HEIGHT: 400,
-            MIN_WIDTH: 300,
-            MIN_HEIGHT: 200,
-            MAX_WIDTH: 3000,
-            MAX_HEIGHT: 1200,
-            SUPERSET_BASE_URL: 'http://127.0.0.1:8088'
+// ==========================================
+// INIZIALIZZAZIONE
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    checkProtocol();
+    loadLayout();
+    initializeResizable();
+    updateRefreshStatusTop();
+    loadAutoRefreshSettings();
+    setupWindowResize();
+});
+
+// Check HTTPS e redirect
+function checkProtocol() {
+    if (window.location.protocol === "https:") {
+        const httpURL = `http://${window.location.hostname}${window.location.pathname}`;
+        alert(`⚠ Superset supporta solo HTTP.\nVerrai reindirizzato a: ${httpURL}`);
+        window.location.href = httpURL;
+    }
+}
+
+// ==========================================
+// GESTIONE GRAFICI
+// ==========================================
+function addNewChart(chartData = null) {
+    if (!chartData) {
+        chartData = promptForChartData();
+        if (!chartData) return;
+    }
+
+    const uniqueId = chartData.id || `chart_${Date.now()}_${chartCounter++}`;
+    const dimensions = getResponsiveDimensions(chartData.width, chartData.height);
+    
+    const grid = document.getElementById("dashboard-grid");
+    const chartCard = createChartCard(uniqueId, chartData, dimensions.width, dimensions.height);
+    
+    grid.insertBefore(chartCard, grid.lastElementChild);
+    
+    if (!chartData.id) {
+        const newChartData = {
+            id: uniqueId,
+            ...chartData,
+            width: dimensions.width,
+            height: dimensions.height
         };
+        charts.push(newChartData);
+        saveLayout();
+    }
+    
+    initializeResizableElement(chartCard);
+}
 
-        let chartCounter = 0;
-        let charts = [];
-        let autoRefreshInterval = null;
-        let autoRefreshState = 0; // 0=OFF, 1=15min, 2=30min, 3=60min
-        let lastRefreshTime = null;
+function promptForChartData() {
+    const contentType = prompt(
+        "Che tipo di contenuto vuoi aggiungere?\n\n" +
+        "1. Dashboard completa\n" +
+        "2. Singolo grafico\n\n" +
+        "Digita 1 o 2:"
+    );
+    
+    if (!contentType || (contentType !== '1' && contentType !== '2')) {
+        if (contentType) alert("Scelta non valida.");
+        return null;
+    }
+    
+    const isDashboard = contentType === '1';
+    const urlExample = isDashboard 
+        ? "http://127.0.0.1:8088/superset/dashboard/2/"
+        : "http://127.0.0.1:8088/explore/?form_data_key=xxx&slice_id=1";
+    
+    const userUrl = prompt(
+        `Incolla l'URL ${isDashboard ? 'della dashboard' : 'del grafico'} Superset:\n\n` +
+        `Esempio: ${urlExample}`
+    );
+    
+    if (!userUrl) return null;
+    
+    try {
+        return parseSupsersetUrl(userUrl, isDashboard);
+    } catch (e) {
+        alert("URL non valido: " + e.message);
+        return null;
+    }
+}
 
-        // Redirect HTTPS -> HTTP
-        if (window.location.protocol === "https:") {
-            const httpURL = `http://${window.location.hostname}${window.location.pathname}`;
-            alert(`⚠ Superset supporta solo HTTP.\nVerrai reindirizzato a: ${httpURL}`);
-            window.location.href = httpURL;
+function parseSupsersetUrl(userUrl, isDashboard) {
+    const url = new URL(userUrl);
+    
+    if (isDashboard) {
+        const pathMatch = url.pathname.match(/\/superset\/dashboard\/(\d+)/);
+        if (!pathMatch) throw new Error("URL dashboard non valido");
+        
+        return {
+            type: 'dashboard',
+            dashboardId: pathMatch[1],
+            nativeFiltersKey: url.searchParams.get('native_filters_key'),
+            title: `Dashboard ${pathMatch[1]}`
+        };
+    } else {
+        const formDataKey = url.searchParams.get('form_data_key');
+        const sliceId = url.searchParams.get('slice_id');
+        
+        if (!formDataKey || !sliceId) {
+            throw new Error("URL grafico non valido");
         }
+        
+        return {
+            type: 'chart',
+            formDataKey: formDataKey,
+            sliceId: sliceId,
+            dashboardPageId: url.searchParams.get('dashboard_page_id'),
+            title: `Chart ${sliceId}`
+        };
+    }
+}
 
-        // Inizializzazione
-        document.addEventListener('DOMContentLoaded', () => {
-            loadLayout();
-            initializeResizable();
-            updateRefreshStatusTop();
-            loadAutoRefreshSettings();
-        });
+function createChartCard(chartId, chartData, width, height) {
+    const chartCard = document.createElement("div");
+    chartCard.classList.add("dashboard-card", "resizable");
+    chartCard.id = chartId;
+    chartCard.style.width = `${width}px`;
+    chartCard.style.height = `${height}px`;
 
-        // Funzione per aggiungere un nuovo grafico
-        function addNewChart(chartData = null) {
-            if (!chartData) {
-                // Chiedi all'utente che tipo di contenuto vuole aggiungere
-                const contentType = prompt(
-                    "Che tipo di contenuto vuoi aggiungere?\n\n" +
-                    "1. Dashboard completa (inserisci '1' o 'dashboard')\n" +
-                    "2. Singolo grafico (inserisci '2' o 'grafico')\n\n" +
-                    "Digita la tua scelta:"
-                );
-                
-                if (!contentType) return;
-                
-                const isDashboard = contentType === '1' || contentType.toLowerCase().includes('dashboard');
-                const isChart = contentType === '2' || contentType.toLowerCase().includes('grafico');
-                
-                if (!isDashboard && !isChart) {
-                    alert("Scelta non valida. Riprova.");
-                    return;
-                }
-                
-                // Richiedi l'URL appropriato
-                const urlExample = isDashboard 
-                    ? "http://127.0.0.1:8088/superset/dashboard/2/?native_filters_key=lPnU4kYwtIY"
-                    : "http://127.0.0.1:8088/explore/?form_data_key=pjCeuizIF1s&slice_id=1";
-                
-                const promptMessage = isDashboard
-                    ? "Incolla l'URL della dashboard Superset.\nEsempio: " + urlExample
-                    : "Incolla l'URL del grafico Superset.\nEsempio: " + urlExample;
-                
-                const userUrl = prompt(promptMessage);
-                
-                if (!userUrl) return;
-                
-                // Estrai parametri dall'URL
-                try {
-                    const url = new URL(userUrl);
-                    
-                    if (isDashboard) {
-                        // Gestione URL dashboard
-                        const pathMatch = url.pathname.match(/\/superset\/dashboard\/(\d+)\//);
-                        const nativeFiltersKey = url.searchParams.get('native_filters_key');
-                        
-                        if (!pathMatch) {
-                            alert("URL dashboard non valido. Deve contenere /superset/dashboard/ID/");
-                            return;
-                        }
-                        
-                        const dashboardId = pathMatch[1];
-                        
-                        chartData = {
-                            type: 'dashboard',
-                            dashboardId: dashboardId,
-                            nativeFiltersKey: nativeFiltersKey,
-                            title: `Dashboard ${dashboardId}`
-                        };
-                    } else {
-                        // Gestione URL grafico singolo
-                        const formDataKey = url.searchParams.get('form_data_key');
-                        const sliceId = url.searchParams.get('slice_id');
-                        const dashboardPageId = url.searchParams.get('dashboard_page_id');
-                        
-                        if (!formDataKey || !sliceId) {
-                            alert("URL grafico non valido. Deve contenere form_data_key e slice_id");
-                            return;
-                        }
-                        
-                        chartData = {
-                            type: 'chart',
-                            formDataKey: formDataKey,
-                            sliceId: sliceId,
-                            dashboardPageId: dashboardPageId,
-                            title: `Chart ${sliceId}`
-                        };
-                    }
-                } catch (e) {
-                    alert("URL non valido: " + e.message);
-                    return;
-                }
+    // Title bar
+    const titleDiv = document.createElement("div");
+    titleDiv.className = "chart-title";
+    titleDiv.style.background = chartData.type === 'dashboard' ? '#e3f2fd' : '#f8f9fa';
+
+    // Close button
+    const closeBtn = document.createElement("button");
+    closeBtn.innerHTML = "&times;";
+    closeBtn.className = "close-button";
+    closeBtn.onclick = () => removeChart(chartId);
+
+    // Iframe container
+    const iframeContainer = document.createElement("div");
+    iframeContainer.className = "iframe-container";
+
+    // Build iframe
+    const iframe = createIframe(chartData, chartId);
+    const loadingOverlay = createLoadingOverlay();
+
+    titleDiv.appendChild(closeBtn);
+    iframeContainer.appendChild(iframe);
+    iframeContainer.appendChild(loadingOverlay);
+    chartCard.appendChild(titleDiv);
+    chartCard.appendChild(iframeContainer);
+    
+    return chartCard;
+}
+
+function createIframe(chartData, chartId) {
+    const iframe = document.createElement("iframe");
+    const iframeUrl = buildIframeUrl(chartData);
+    
+    iframe.src = iframeUrl;
+    iframe.className = "dashboard-iframe";
+    iframe.loading = "lazy";
+    iframe.setAttribute('data-original-url', iframeUrl);
+    iframe.setAttribute('data-chart-id', chartId);
+    
+    iframe.onload = function() {
+        const overlay = this.parentElement.querySelector('.loading-overlay');
+        if (overlay) overlay.style.display = 'none';
+    };
+    
+    iframe.onerror = function() {
+        handleIframeError(this, chartData, chartId);
+    };
+    
+    return iframe;
+}
+
+function buildIframeUrl(chartData) {
+    if (chartData.type === 'dashboard') {
+        let url = `${CONFIG.SUPERSET_BASE_URL}/superset/dashboard/${chartData.dashboardId}/?`;
+        url += 'standalone=1&show_top_bar=0&hide_nav=1&embedded=1';
+        if (chartData.nativeFiltersKey) {
+            url += `&native_filters_key=${chartData.nativeFiltersKey}`;
+        }
+        return url;
+    } else {
+        let url = `${CONFIG.SUPERSET_BASE_URL}/explore/?`;
+        url += `form_data_key=${chartData.formDataKey}&slice_id=${chartData.sliceId}`;
+        url += '&standalone=1&show_tabs=false&embedded=1';
+        if (chartData.dashboardPageId) {
+            url += `&dashboard_page_id=${chartData.dashboardPageId}`;
+        }
+        return url;
+    }
+}
+
+function createLoadingOverlay() {
+    const overlay = document.createElement("div");
+    overlay.className = "loading-overlay";
+    overlay.innerHTML = `
+        <div style="text-align: center;">
+            <div style="font-size: 24px; margin-bottom: 8px;">🔄</div>
+            <div>Caricamento...</div>
+        </div>
+    `;
+    return overlay;
+}
+
+function handleIframeError(iframe, chartData, chartId) {
+    const container = iframe.parentElement;
+    const overlay = container.querySelector('.loading-overlay');
+    if (overlay) overlay.style.display = 'none';
+    
+    container.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; height: 100%; 
+                    color: #dc3545; flex-direction: column; padding: 20px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+            <div>Errore nel caricamento</div>
+            <button onclick="refreshSingleChart('${chartId}')" 
+                    class="btn btn-sm btn-primary" style="margin-top: 12px;">
+                Riprova
+            </button>
+        </div>
+    `;
+}
+
+function removeChart(chartId) {
+    if (confirm('Rimuovere questo elemento?')) {
+        document.getElementById(chartId).remove();
+        charts = charts.filter(chart => chart.id !== chartId);
+        saveLayout();
+        showNotification('Elemento rimosso!', 'success');
+    }
+}
+
+// ==========================================
+// DIMENSIONI RESPONSIVE
+// ==========================================
+function getResponsiveDimensions(requestedWidth, requestedHeight) {
+    const maxWidth = window.innerWidth - 120;
+    const maxHeight = window.innerHeight - 200;
+    
+    return {
+        width: Math.min(requestedWidth || CONFIG.DEFAULT_WIDTH, maxWidth),
+        height: Math.min(requestedHeight || CONFIG.DEFAULT_HEIGHT, maxHeight)
+    };
+}
+
+function setupWindowResize() {
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            adjustChartsToWindow();
+        }, 250);
+    });
+}
+
+function adjustChartsToWindow() {
+    const maxWidth = window.innerWidth - 120;
+    
+    document.querySelectorAll('.dashboard-card.resizable').forEach(card => {
+        const currentWidth = parseInt(card.style.width);
+        if (currentWidth > maxWidth) {
+            card.style.width = `${maxWidth}px`;
+            
+            const chart = charts.find(c => c.id === card.id);
+            if (chart) {
+                chart.width = maxWidth;
             }
+        }
+    });
+    
+    saveLayout();
+}
 
-            const uniqueId = chartData.id || `chart_${Date.now()}_${chartCounter++}`;
-            const width = chartData.width || CONFIG.DEFAULT_WIDTH;
-            const height = chartData.height || CONFIG.DEFAULT_HEIGHT;
-            
-            const grid = document.getElementById("dashboard-grid");
-            const chartCard = createChartCard(uniqueId, chartData, width, height);
-            
-            grid.insertBefore(chartCard, grid.lastElementChild);
-            
-            // Aggiungi alla lista dei grafici
-            if (!chartData.id) {
-                const newChartData = {
-                    id: uniqueId,
-                    type: chartData.type || 'chart',
-                    title: chartData.title || `Item ${uniqueId}`,
-                    width: width,
-                    height: height
-                };
-                
-                // Aggiungi i parametri specifici per tipo
-                if (chartData.type === 'dashboard') {
-                    newChartData.dashboardId = chartData.dashboardId;
-                    newChartData.nativeFiltersKey = chartData.nativeFiltersKey;
-                } else {
-                    newChartData.formDataKey = chartData.formDataKey;
-                    newChartData.sliceId = chartData.sliceId;
-                    newChartData.dashboardPageId = chartData.dashboardPageId;
+// ==========================================
+// INTERACT.JS RESIZE
+// ==========================================
+function initializeResizable() {
+    document.querySelectorAll('.dashboard-card.resizable').forEach(initializeResizableElement);
+}
+
+function initializeResizableElement(element) {
+    if (typeof interact === 'undefined') {
+        console.warn('interact.js non caricato');
+        return;
+    }
+
+    const maxWidth = window.innerWidth - 120;
+    const maxHeight = window.innerHeight - 200;
+
+    interact(element).resizable({
+        edges: { left: false, right: true, bottom: true, top: false },
+        listeners: {
+            move(event) {
+                const target = event.target;
+                let x = parseFloat(target.getAttribute('data-x')) || 0;
+                let y = parseFloat(target.getAttribute('data-y')) || 0;
+
+                // Calcola nuove dimensioni
+                const newWidth = Math.max(CONFIG.MIN_WIDTH, 
+                    Math.min(maxWidth, event.rect.width));
+                const newHeight = Math.max(CONFIG.MIN_HEIGHT, 
+                    Math.min(maxHeight, event.rect.height));
+
+                target.style.width = `${newWidth}px`;
+                target.style.height = `${newHeight}px`;
+
+                // Aggiorna dati
+                const chart = charts.find(c => c.id === target.id);
+                if (chart) {
+                    chart.width = newWidth;
+                    chart.height = newHeight;
                 }
-                
-                charts.push(newChartData);
+            },
+            end() {
                 saveLayout();
+                showNotification('Dimensioni aggiornate!', 'success');
             }
+        },
+        modifiers: [
+            interact.modifiers.restrictSize({
+                min: { width: CONFIG.MIN_WIDTH, height: CONFIG.MIN_HEIGHT }
+            })
+        ],
+        inertia: true
+    });
+}
+
+// ==========================================
+// STORAGE E PERSISTENZA
+// ==========================================
+function saveLayout() {
+    try {
+        localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(charts));
+    } catch (e) {
+        console.error('Errore salvataggio:', e);
+        showNotification('Errore nel salvataggio', 'error');
+    }
+}
+
+function loadLayout() {
+    try {
+        const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
+        if (saved) {
+            const loadedCharts = JSON.parse(saved);
+            charts = [];
             
-            // Inizializza il resize per il nuovo elemento
-            initializeResizableElement(chartCard);
-        }
-
-        // Crea elemento grafico - FIXED
-        function createChartCard(chartId, chartData, width, height) {
-            const chartCard = document.createElement("div");
-            chartCard.classList.add("dashboard-card", "resizable");
-            chartCard.id = chartId;
-            chartCard.style.width = `${width}px`;
-            chartCard.style.height = `${height}px`;
-
-            // Titolo del grafico con icona per tipo - RIMOSSO TITOLO
-            const titleDiv = document.createElement("div");
-            titleDiv.className = "chart-title";
-            titleDiv.style.cssText = `
-                padding: 8px 12px;
-                background: ${chartData.type === 'dashboard' ? '#e3f2fd' : '#f8f9fa'};
-                border-bottom: 1px solid #dee2e6;
-                font-weight: 600;
-                font-size: 14px;
-                color: #495057;
-                position: relative;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                height: 20px;
-            `;
-
-            // Pulsante chiusura
-            const closeBtn = document.createElement("button");
-            closeBtn.innerHTML = "&times;";
-            closeBtn.className = "close-button";
-            closeBtn.style.cssText = `
-                position: absolute;
-                top: 4px;
-                right: 8px;
-                background: none;
-                border: none;
-                font-size: 18px;
-                cursor: pointer;
-                color: #6c757d;
-                width: 24px;
-                height: 24px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                border-radius: 50%;
-                transition: all 0.2s;
-            `;
-            closeBtn.onmouseover = () => {
-                closeBtn.style.background = '#dc3545';
-                closeBtn.style.color = 'white';
-            };
-            closeBtn.onmouseout = () => {
-                closeBtn.style.background = 'none';
-                closeBtn.style.color = '#6c757d';
-            };
-            closeBtn.onclick = () => removeChart(chartId);
-
-            // Container per l'iframe
-            const iframeContainer = document.createElement("div");
-            iframeContainer.style.cssText = `
-                height: calc(100% - 20px);
-                overflow: hidden;
-                position: relative;
-            `;
-
-            // IFRAME Superset - Costruzione URL basata sul tipo
-            const iframe = document.createElement("iframe");
-            let iframeUrl;
-            
-            if (chartData.type === 'dashboard') {
-                // URL per dashboard completa - con parametri completi per nascondere tutto l'header
-                iframeUrl = `${CONFIG.SUPERSET_BASE_URL}/superset/dashboard/${chartData.dashboardId}/?standalone=1&show_top_bar=0&hide_nav=1&embedded=1`;
-                if (chartData.nativeFiltersKey) {
-                    iframeUrl += `&native_filters_key=${chartData.nativeFiltersKey}`;
-                }
-            } else {
-                // URL per grafico singolo - già configurato correttamente
-                iframeUrl = `${CONFIG.SUPERSET_BASE_URL}/explore/?form_data_key=${chartData.formDataKey}&slice_id=${chartData.sliceId}&standalone=1&show_tabs=false&embedded=1`;
-                if (chartData.dashboardPageId) {
-                    iframeUrl += `&dashboard_page_id=${chartData.dashboardPageId}`;
-                }
-            }
-            
-            console.log('Creating iframe with URL:', iframeUrl); // Debug log
-            
-            iframe.src = iframeUrl;
-            iframe.className = "dashboard-iframe";
-            iframe.style.cssText = `
-                width: 100%;
-                height: 100%;
-                border: none;
-                display: block;
-            `;
-            iframe.loading = "lazy";
-            
-            // Aggiungi attributi per il refresh
-            iframe.setAttribute('data-original-url', iframeUrl);
-            iframe.setAttribute('data-chart-id', chartId);
-            
-            // Loading overlay
-            const loadingOverlay = document.createElement("div");
-            loadingOverlay.className = "loading-overlay";
-            loadingOverlay.style.cssText = `
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(255,255,255,0.8);
-                display: none;
-                align-items: center;
-                justify-content: center;
-                z-index: 1000;
-            `;
-            loadingOverlay.innerHTML = `
-                <div style="text-align: center;">
-                    <div style="font-size: 24px; margin-bottom: 8px;">🔄</div>
-                    <div>Aggiornamento...</div>
-                </div>
-            `;
-            
-            // Gestione eventi iframe
-            iframe.onload = function() {
-                loadingOverlay.style.display = 'none';
-            };
-            
-            iframe.onerror = function() {
-                console.error('Errore caricamento iframe:', iframeUrl);
-                loadingOverlay.style.display = 'none';
-                iframeContainer.innerHTML = `
-                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #dc3545; flex-direction: column;">
-                        <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-                        <div>Errore nel caricamento del ${chartData.type === 'dashboard' ? 'dashboard' : 'grafico'}</div>
-                        <div style="font-size: 12px; margin-top: 8px; color: #6c757d;">
-                            ID: ${chartData.type === 'dashboard' ? chartData.dashboardId : chartData.sliceId}
-                        </div>
-                        <button onclick="refreshSingleChart('${chartId}')" class="btn btn-sm btn-primary" style="margin-top: 12px;">
-                            Riprova
-                        </button>
-                    </div>
-                `;
-            };
-
-            titleDiv.appendChild(closeBtn);
-            iframeContainer.appendChild(iframe);
-            iframeContainer.appendChild(loadingOverlay);
-            chartCard.appendChild(titleDiv);
-            chartCard.appendChild(iframeContainer);
-            
-            return chartCard;
-        }
-
-        // Rimuovi grafico
-        function removeChart(chartId) {
-            const chart = charts.find(c => c.id === chartId);
-            const itemType = chart?.type === 'dashboard' ? 'dashboard' : 'grafico';
-            
-            if (confirm(`Sei sicuro di voler rimuovere questo ${itemType}?`)) {
-                document.getElementById(chartId).remove();
-                charts = charts.filter(chart => chart.id !== chartId);
-                saveLayout();
-                showNotification(`${itemType.charAt(0).toUpperCase() + itemType.slice(1)} rimosso!`, 'success');
-            }
-        }
-
-        // Inizializza elementi ridimensionabili
-        function initializeResizable() {
-            document.querySelectorAll('.dashboard-card.resizable').forEach(el => {
-                initializeResizableElement(el);
-            });
-        }
-
-        function initializeResizableElement(element) {
-            // Verifica che interact.js sia caricato
-            if (typeof interact === 'undefined') {
-                console.warn('interact.js non è caricato. Funzionalità di resize disabilitata.');
-                return;
-            }
-
-            interact(element).resizable({
-                edges: { left: false, right: true, bottom: true, top: false },
-                listeners: {
-                    move(event) {
-                        const target = event.target;
-                        const currentWidth = parseFloat(target.style.width) || CONFIG.DEFAULT_WIDTH;
-                        const currentHeight = parseFloat(target.style.height) || CONFIG.DEFAULT_HEIGHT;
-                        
-                        const newWidth = Math.max(CONFIG.MIN_WIDTH, 
-                            Math.min(CONFIG.MAX_WIDTH, currentWidth + event.deltaRect.width));
-                        const newHeight = Math.max(CONFIG.MIN_HEIGHT, 
-                            Math.min(CONFIG.MAX_HEIGHT, currentHeight + event.deltaRect.height));
-
-                        target.style.width = `${newWidth}px`;
-                        target.style.height = `${newHeight}px`;
-
-                        // Aggiorna dati grafico
-                        const chart = charts.find(c => c.id === target.id);
-                        if (chart) {
-                            chart.width = newWidth;
-                            chart.height = newHeight;
-                        }
-                    },
-                    end() {
-                        saveLayout();
-                        showNotification('Dimensioni aggiornate!', 'success');
-                    }
-                },
-                modifiers: [
-                    interact.modifiers.restrictSize({
-                        min: { width: CONFIG.MIN_WIDTH, height: CONFIG.MIN_HEIGHT },
-                        max: { width: CONFIG.MAX_WIDTH, height: CONFIG.MAX_HEIGHT }
-                    })
-                ],
-                inertia: true
-            });
-        }
-
-        // Salvataggio/Caricamento Layout
-        function saveLayout() {
-            try {
-                localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(charts));
-                console.log('Layout salvato:', charts.length, 'grafici');
-            } catch (e) {
-                console.error('Errore salvataggio:', e);
-                showNotification('Errore nel salvataggio', 'error');
-            }
-        }
-
-        function loadLayout() {
-            try {
-                const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
-                if (saved) {
-                    const loadedCharts = JSON.parse(saved);
-                    console.log('Caricamento layout:', loadedCharts.length, 'elementi');
-                    charts = [];
-                    loadedCharts.forEach(chart => {
-                        console.log('Caricamento elemento:', chart);
-                        addNewChart(chart);
-                    });
-                    if (loadedCharts.length > 0) {
-                        const dashboards = loadedCharts.filter(c => c.type === 'dashboard').length;
-                        const chartsCount = loadedCharts.filter(c => c.type !== 'dashboard').length;
-                        let message = `Caricati: `;
-                        if (dashboards > 0) message += `${dashboards} dashboard`;
-                        if (dashboards > 0 && chartsCount > 0) message += `, `;
-                        if (chartsCount > 0) message += `${chartsCount} grafici`;
-                        showNotification(message, 'success');
-                    }
-                }
-            } catch (e) {
-                console.error('Errore caricamento:', e);
-                showNotification('Errore nel caricamento', 'error');
-            }
-        }
-
-        function clearLayout() {
-            if (confirm('Sei sicuro di voler cancellare tutti gli elementi?')) {
-                localStorage.removeItem(CONFIG.STORAGE_KEY);
-                document.querySelectorAll('.dashboard-card.resizable').forEach(el => el.remove());
-                charts = [];
-                showNotification('Layout cancellato!', 'success');
-            }
-        }
-
-        // Import/Export
-        function exportLayout() {
-            try {
-                const dataStr = JSON.stringify(charts, null, 2);
-                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-                
-                const exportFileDefaultName = `talon_dashboard_${new Date().toISOString().split('T')[0]}.json`;
-                
-                const linkElement = document.createElement('a');
-                linkElement.setAttribute('href', dataUri);
-                linkElement.setAttribute('download', exportFileDefaultName);
-                linkElement.click();
-                
-                showNotification('Layout esportato!', 'success');
-            } catch (e) {
-                console.error('Errore esportazione:', e);
-                showNotification('Errore nell\'esportazione', 'error');
-            }
-        }
-
-        function importLayout(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    if (Array.isArray(imported)) {
-                        // Verifica che i grafici importati abbiano i campi necessari
-                        const validCharts = imported.filter(chart => {
-                            if (chart.type === 'dashboard') {
-                                return chart.dashboardId;
-                            } else {
-                                return chart.formDataKey && chart.sliceId;
-                            }
-                        });
-                        
-                        if (validCharts.length !== imported.length) {
-                            console.warn('Alcuni elementi nel file importato non sono validi');
-                        }
-                        
-                        clearLayout();
-                        charts = [];
-                        validCharts.forEach(chart => addNewChart(chart));
-                        showNotification(`${validCharts.length} elementi importati!`, 'success');
-                    } else {
-                        throw new Error('Il file deve contenere un array di elementi');
-                    }
-                } catch (error) {
-                    console.error('Errore importazione:', error);
-                    showNotification('Errore nell\'importazione: ' + error.message, 'error');
-                }
-            };
-            reader.readAsText(file);
-            
-            // Reset del file input
-            event.target.value = '';
-        }
-
-        // Notifiche
-        function showNotification(message, type = 'info') {
-            // Rimuovi notifiche esistenti
-            document.querySelectorAll('.notification').forEach(n => n.remove());
-            
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 12px 20px;
-                border-radius: 6px;
-                color: white;
-                font-weight: 500;
-                z-index: 10000;
-                max-width: 400px;
-                word-wrap: break-word;
-                transition: all 0.3s ease;
-                transform: translateX(100%);
-            `;
-            
-            // Colori in base al tipo
-            const colors = {
-                success: '#28a745',
-                error: '#dc3545',
-                warning: '#ffc107',
-                info: '#17a2b8'
-            };
-            
-            notification.style.background = colors[type] || colors.info;
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            // Animazione di entrata
-            setTimeout(() => {
-                notification.style.transform = 'translateX(0)';
-            }, 10);
-            
-            // Auto rimozione
-            setTimeout(() => {
-                notification.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.remove();
-                    }
-                }, 300);
-            }, 3000);
-        }
-
-        // Gestione errori globali
-        window.addEventListener('error', function(e) {
-            console.error('Errore JavaScript:', e.error);
-            if (e.error.message.includes('interact')) {
-                showNotification('Libreria interact.js non caricata correttamente', 'warning');
-            }
-        });
-
-        // Debug info
-        console.log('TALON Dashboard inizializzato');
-        console.log('Config:', CONFIG);
-
-        // ===========================================
-        // FUNZIONE PER AGGIORNARE URL ESISTENTI
-        // ===========================================
-        
-        function updateExistingUrls() {
-            const iframes = document.querySelectorAll('.dashboard-iframe');
-            let updatedCount = 0;
-            
-            iframes.forEach(iframe => {
-                let originalUrl = iframe.getAttribute('data-original-url');
-                
-                if (originalUrl && originalUrl.includes('superset/dashboard/')) {
-                    // Ricostruisci l'URL completo con tutti i parametri necessari
-                    const urlParts = originalUrl.split('?')[0]; // URL base
-                    const urlParams = new URLSearchParams(originalUrl.split('?')[1] || '');
-                    
-                    // Aggiungi tutti i parametri per nascondere l'header
-                    urlParams.set('standalone', '1');
-                    urlParams.set('show_top_bar', '0');
-                    urlParams.set('hide_nav', '1');
-                    urlParams.set('embedded', '1');
-                    
-                    const newUrl = urlParts + '?' + urlParams.toString();
-                    iframe.setAttribute('data-original-url', newUrl);
-                    iframe.src = newUrl;
-                    updatedCount++;
-                    
-                    console.log(`Aggiornato URL dashboard: ${newUrl}`);
-                } else if (originalUrl && originalUrl.includes('/explore/')) {
-                    // Aggiorna anche gli URL dei grafici singoli
-                    const urlParts = originalUrl.split('?')[0];
-                    const urlParams = new URLSearchParams(originalUrl.split('?')[1] || '');
-                    
-                    urlParams.set('standalone', '1');
-                    urlParams.set('show_tabs', 'false');
-                    urlParams.set('embedded', '1');
-                    
-                    const newUrl = urlParts + '?' + urlParams.toString();
-                    iframe.setAttribute('data-original-url', newUrl);
-                    iframe.src = newUrl;
-                    updatedCount++;
-                    
-                    console.log(`Aggiornato URL grafico: ${newUrl}`);
-                }
+            // Carica con dimensioni responsive
+            loadedCharts.forEach(chart => {
+                const dimensions = getResponsiveDimensions(chart.width, chart.height);
+                chart.width = dimensions.width;
+                chart.height = dimensions.height;
+                addNewChart(chart);
             });
             
-            if (updatedCount > 0) {
-                showNotification(`${updatedCount} elementi aggiornati senza barra superiore!`, 'success');
-                saveLayout();
-            } else {
-                showNotification('Nessun elemento da aggiornare', 'info');
+            if (loadedCharts.length > 0) {
+                showNotification(`Caricati ${loadedCharts.length} elementi`, 'success');
             }
         }
+    } catch (e) {
+        console.error('Errore caricamento:', e);
+        showNotification('Errore nel caricamento', 'error');
+    }
+}
 
-        // ===========================================
-        // FUNZIONI DI REFRESH
-        // ===========================================
+function clearLayout() {
+    if (confirm('Cancellare tutti gli elementi?')) {
+        localStorage.removeItem(CONFIG.STORAGE_KEY);
+        document.querySelectorAll('.dashboard-card.resizable').forEach(el => el.remove());
+        charts = [];
+        showNotification('Layout cancellato!', 'success');
+    }
+}
 
-        // Refresh di tutti i grafici
-        function refreshAllCharts() {
-            const iframes = document.querySelectorAll('.dashboard-iframe');
-            
-            if (iframes.length === 0) {
-                showNotification('Nessun grafico da aggiornare', 'warning');
-                return;
-            }
-            
-            let refreshedCount = 0;
-            const totalCount = iframes.length;
-            
-            showNotification(`Aggiornamento di ${totalCount} grafici in corso...`, 'info');
-            
-            iframes.forEach((iframe, index) => {
-                // Mostra loading overlay
-                const container = iframe.parentElement;
-                const overlay = container.querySelector('.loading-overlay');
-                if (overlay) overlay.style.display = 'flex';
-                
-                // Aggiungi un piccolo delay per evitare sovraccarico
-                setTimeout(() => {
-                    let originalUrl = iframe.getAttribute('data-original-url');
-                    
-                    // AGGIORNA URL CON NUOVI PARAMETRI COMPLETI
-                    if (originalUrl.includes('superset/dashboard/')) {
-                        const urlParts = originalUrl.split('?')[0];
-                        const urlParams = new URLSearchParams(originalUrl.split('?')[1] || '');
-                        
-                        urlParams.set('standalone', '1');
-                        urlParams.set('show_top_bar', '0');
-                        urlParams.set('hide_nav', '1');
-                        urlParams.set('embedded', '1');
-                        
-                        originalUrl = urlParts + '?' + urlParams.toString();
-                        iframe.setAttribute('data-original-url', originalUrl);
-                    } else if (originalUrl.includes('/explore/')) {
-                        const urlParts = originalUrl.split('?')[0];
-                        const urlParams = new URLSearchParams(originalUrl.split('?')[1] || '');
-                        
-                        urlParams.set('standalone', '1');
-                        urlParams.set('show_tabs', 'false');
-                        urlParams.set('embedded', '1');
-                        
-                        originalUrl = urlParts + '?' + urlParams.toString();
-                        iframe.setAttribute('data-original-url', originalUrl);
-                    }
-                    
-                    const cacheBuster = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                    const separator = originalUrl.includes('?') ? '&' : '?';
-                    
-                    iframe.src = originalUrl + separator + 'refresh=' + cacheBuster;
-                    
-                    // Conta i refresh completati
-                    iframe.onload = function() {
-                        refreshedCount++;
-                        if (overlay) overlay.style.display = 'none';
-                        
-                        if (refreshedCount === totalCount) {
-                            lastRefreshTime = new Date();
-                            updateRefreshStatusTop();
-                            showNotification(`${totalCount} grafici aggiornati con successo!`, 'success');
-                        }
-                    };
-                }, index * 200); // 200ms di delay tra ogni refresh
-            });
-        }
-
-        // Refresh di un singolo grafico
-        function refreshSingleChart(chartId) {
-            const chartCard = document.getElementById(chartId);
-            if (!chartCard) return;
-            
-            const iframe = chartCard.querySelector('.dashboard-iframe');
-            const overlay = chartCard.querySelector('.loading-overlay');
-            
-            if (!iframe) return;
-            
-            if (overlay) overlay.style.display = 'flex';
-            
-            const originalUrl = iframe.getAttribute('data-original-url');
-            const cacheBuster = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            const separator = originalUrl.includes('?') ? '&' : '?';
-            
-            iframe.src = originalUrl + separator + 'refresh=' + cacheBuster;
-            
-            iframe.onload = function() {
-                if (overlay) overlay.style.display = 'none';
-                showNotification('Grafico aggiornato!', 'success');
-            };
-        }
-
-        // Ciclo Auto-Refresh (OFF -> 15min -> 30min -> 60min -> OFF)
-        function cycleAutoRefresh() {
-            // Ferma l'auto-refresh corrente se attivo
-            if (autoRefreshInterval) {
-                clearInterval(autoRefreshInterval);
-                autoRefreshInterval = null;
-            }
-            
-            // Cicla attraverso gli stati
-            autoRefreshState = (autoRefreshState + 1) % 4;
-            
-            const states = [
-                { text: 'AUTO-REFRESH OFF', minutes: 0, active: false },
-                { text: 'AUTO-REFRESH 15 MINUTI', minutes: 15, active: true },
-                { text: 'AUTO-REFRESH 30 MINUTI', minutes: 30, active: true },
-                { text: 'AUTO-REFRESH 60 MINUTI', minutes: 60, active: true }
-            ];
-            
-            const currentState = states[autoRefreshState];
-            
-            // Aggiorna il pulsante
-            const btn = document.getElementById('autoRefreshBtn');
-            if (btn) {
-                btn.textContent = currentState.text;
-                btn.className = currentState.active ? 'btn btn-warning' : 'btn btn-info';
-            }
-            
-            // Avvia auto-refresh se necessario
-            if (currentState.active) {
-                autoRefreshInterval = setInterval(() => {
-                    refreshAllCharts();
-                    console.log(`Auto-refresh eseguito ogni ${currentState.minutes} minuti`);
-                }, currentState.minutes * 60 * 1000);
-                
-                showNotification(`Auto-refresh attivato (ogni ${currentState.minutes} minuti)`, 'success');
-            } else {
-                showNotification('Auto-refresh disattivato', 'info');
-            }
-            
-            updateRefreshStatusTop();
-            saveAutoRefreshSettings();
-        }
-
-        // Toggle Auto-Refresh (mantenuto per compatibilità)
-        function toggleAutoRefresh() {
-            cycleAutoRefresh();
-        }
-
-        // Avvia Auto-Refresh (aggiornato per nuovo sistema)
-        function startAutoRefresh() {
-            if (autoRefreshState === 0) {
-                cycleAutoRefresh(); // Attiva al primo stato (15 minuti)
-            }
-        }
-
-        // Ferma Auto-Refresh
-        function stopAutoRefresh() {
-            if (autoRefreshInterval) {
-                clearInterval(autoRefreshInterval);
-                autoRefreshInterval = null;
-            }
-            
-            autoRefreshState = 0;
-            
-            const btn = document.getElementById('autoRefreshBtn');
-            if (btn) {
-                btn.textContent = 'AUTO-REFRESH OFF';
-                btn.className = 'btn btn-info';
-            }
-            
-            updateRefreshStatusTop();
-            saveAutoRefreshSettings();
-            
-            showNotification('Auto-refresh disattivato', 'info');
-        }
-
-        // Aggiorna lo status del refresh in alto a destra
-        function updateRefreshStatusTop() {
-            const statusText = lastRefreshTime 
-                ? `Ultimo aggiornamento: ${lastRefreshTime.toLocaleTimeString()}`
-                : '';
-            
-            let statusElement = document.getElementById('refresh-status-top');
-            if (statusElement) {
-                statusElement.textContent = statusText;
-            }
-        }
-
-        // Salva impostazioni Auto-Refresh
-        function saveAutoRefreshSettings() {
-            const settings = {
-                state: autoRefreshState
-            };
-            localStorage.setItem('talon_autorefresh_settings', JSON.stringify(settings));
-        }
-
-        // Carica impostazioni Auto-Refresh
-        function loadAutoRefreshSettings() {
-            try {
-                const saved = localStorage.getItem('talon_autorefresh_settings');
-                if (saved) {
-                    const settings = JSON.parse(saved);
-                    
-                    if (settings.state !== undefined) {
-                        autoRefreshState = settings.state;
-                        
-                        // Ripristina lo stato del pulsante senza attivare l'auto-refresh
-                        const states = [
-                            { text: 'AUTO-REFRESH OFF', active: false },
-                            { text: 'AUTO-REFRESH 15 MINUTI', active: true },
-                            { text: 'AUTO-REFRESH 30 MINUTI', active: true },
-                            { text: 'AUTO-REFRESH 60 MINUTI', active: true }
-                        ];
-                        
-                        const currentState = states[autoRefreshState];
-                        const btn = document.getElementById('autoRefreshBtn');
-                        if (btn) {
-                            btn.textContent = currentState.text;
-                            btn.className = currentState.active ? 'btn btn-warning' : 'btn btn-info';
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error('Errore caricamento impostazioni auto-refresh:', e);
-            }
-        }
-    </script>
-
-    <style>
-        /* Stili CSS rimossi - ora nel file style.css */
+// ==========================================
+// IMPORT/EXPORT
+// ==========================================
+function exportLayout() {
+    try {
+        const dataStr = JSON.stringify(charts, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        const fileName = `talon_dashboard_${new Date().toISOString().split('T')[0]}.json`;
         
-        /* Status refresh in alto a destra */
-        #refresh-status-top {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            font-size: 12px;
-            color: #6c757d;
-            z-index: 1000;
-        }
+        const link = document.createElement('a');
+        link.setAttribute('href', dataUri);
+        link.setAttribute('download', fileName);
+        link.click();
         
-        /* Controlli dashboard allineati a destra */
-        .dashboard-controls {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .loading-overlay {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        }
-        
-        .btn-sm {
-            padding: 4px 8px;
-            font-size: 12px;
-        }
-    </style>
+        showNotification('Layout esportato!', 'success');
+    } catch (e) {
+        console.error('Errore esportazione:', e);
+        showNotification('Errore nell\'esportazione', 'error');
+    }
+}
 
-    <script src="{{ url_for('static', filename='js/libs/interact.min.js') }}"></script>
+function importLayout(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const imported = JSON.parse(e.target.result);
+            if (!Array.isArray(imported)) {
+                throw new Error('Formato file non valido');
+            }
+            
+            clearLayout();
+            charts = [];
+            imported.forEach(chart => addNewChart(chart));
+            showNotification(`${imported.length} elementi importati!`, 'success');
+        } catch (error) {
+            console.error('Errore importazione:', error);
+            showNotification('Errore importazione: ' + error.message, 'error');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
 
+// ==========================================
+// REFRESH
+// ==========================================
+function refreshAllCharts() {
+    const iframes = document.querySelectorAll('.dashboard-iframe');
+    if (iframes.length === 0) {
+        showNotification('Nessun grafico da aggiornare', 'warning');
+        return;
+    }
+    
+    showNotification(`Aggiornamento ${iframes.length} grafici...`, 'info');
+    
+    iframes.forEach((iframe, index) => {
+        setTimeout(() => refreshIframe(iframe), index * 200);
+    });
+    
+    lastRefreshTime = new Date();
+    updateRefreshStatusTop();
+}
+
+function refreshSingleChart(chartId) {
+    const chartCard = document.getElementById(chartId);
+    if (!chartCard) return;
+    
+    const iframe = chartCard.querySelector('.dashboard-iframe');
+    if (iframe) {
+        refreshIframe(iframe);
+        showNotification('Grafico aggiornato!', 'success');
+    }
+}
+
+function refreshIframe(iframe) {
+    const container = iframe.parentElement;
+    const overlay = container.querySelector('.loading-overlay');
+    if (overlay) overlay.style.display = 'flex';
+    
+    const originalUrl = iframe.getAttribute('data-original-url');
+    const cacheBuster = `refresh=${Date.now()}`;
+    const separator = originalUrl.includes('?') ? '&' : '?';
+    
+    iframe.src = originalUrl + separator + cacheBuster;
+}
+
+// ==========================================
+// AUTO-REFRESH
+// ==========================================
+function cycleAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+    }
+    
+    const states = [
+        { text: 'AUTO-REFRESH OFF', minutes: 0 },
+        { text: 'AUTO-REFRESH 15 MIN', minutes: 15 },
+        { text: 'AUTO-REFRESH 30 MIN', minutes: 30 },
+        { text: 'AUTO-REFRESH 60 MIN', minutes: 60 }
+    ];
+    
+    autoRefreshState = (autoRefreshState + 1) % states.length;
+    const currentState = states[autoRefreshState];
+    
+    const btn = document.getElementById('autoRefreshBtn');
+    if (btn) {
+        btn.textContent = currentState.text;
+        btn.className = currentState.minutes > 0 ? 'btn btn-warning' : 'btn btn-info';
+    }
+    
+    if (currentState.minutes > 0) {
+        autoRefreshInterval = setInterval(refreshAllCharts, currentState.minutes * 60 * 1000);
+        showNotification(`Auto-refresh: ${currentState.minutes} minuti`, 'success');
+    } else {
+        showNotification('Auto-refresh disattivato', 'info');
+    }
+    
+    saveAutoRefreshSettings();
+}
+
+function saveAutoRefreshSettings() {
+    localStorage.setItem('talon_autorefresh_settings', JSON.stringify({ state: autoRefreshState }));
+}
+
+function loadAutoRefreshSettings() {
+    try {
+        const saved = localStorage.getItem('talon_autorefresh_settings');
+        if (saved) {
+            const settings = JSON.parse(saved);
+            autoRefreshState = settings.state || 0;
+            
+            // Applica stato salvato
+            if (autoRefreshState > 0) {
+                cycleAutoRefresh();
+            }
+        }
+    } catch (e) {
+        console.error('Errore caricamento auto-refresh:', e);
+    }
+}
+
+// ==========================================
+// UI FEEDBACK
+// ==========================================
+function showNotification(message, type = 'info') {
+    document.querySelectorAll('.notification').forEach(n => n.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    
+    const colors = {
+        success: '#28a745',
+        error: '#dc3545',
+        warning: '#ffc107',
+        info: '#17a2b8'
+    };
+    
+    notification.style.background = colors[type] || colors.info;
+    notification.style.transform = 'translateX(100%)';
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 10);
+    
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+function updateRefreshStatusTop() {
+    const statusElement = document.getElementById('refresh-status-top');
+    if (statusElement && lastRefreshTime) {
+        statusElement.textContent = `Ultimo aggiornamento: ${lastRefreshTime.toLocaleTimeString()}`;
+    }
+}
+
+// ==========================================
+// ERROR HANDLING
+// ==========================================
+window.addEventListener('error', function(e) {
+    console.error('Errore JavaScript:', e.error);
+    if (e.error && e.error.message && e.error.message.includes('interact')) {
+        showNotification('Libreria interact.js non caricata', 'warning');
+    }
+});
+
+console.log('TALON Dashboard inizializzato');
+</script>
+
+<script src="{{ url_for('static', filename='js/libs/interact.min.js') }}"></script>
 {% endblock %}

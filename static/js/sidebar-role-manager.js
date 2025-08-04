@@ -380,9 +380,6 @@
             }
         }
 
-        // ❌ RIMOSSA COMPLETAMENTE: addVisualIndicators()
-        // ❌ RIMOSSA COMPLETAMENTE: addRoleBadge() - causava il widget in basso
-
         /**
          * Aggiunge tooltip agli elementi disabilitati
          */

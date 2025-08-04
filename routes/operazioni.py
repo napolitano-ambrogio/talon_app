@@ -104,74 +104,14 @@ def get_operazioni_stats(conn):
                 'SELECT COUNT(*) as count FROM operazioni WHERE data_fine < date("now")'
             ).fetchone()['count'],
             'pianificate': conn.execute(
-                'SELECT COUNT(*) as count FROM operazioni WHERE data_inizio > date("now")'
+                'SELECT COUNT(*) as count FROM operazioni WHERE data_inizio > date("now") OR data_inizio IS NULL'
             ).fetchone()['count']
         }
         stats['per_stato'] = stati
         
-        # Operazioni per teatro
-        per_teatro = conn.execute(
-            '''SELECT teatro_operativo, COUNT(*) as count 
-               FROM operazioni 
-               GROUP BY teatro_operativo 
-               ORDER BY count DESC 
-               LIMIT 10'''
-        ).fetchall()
-        stats['per_teatro'] = per_teatro
-        
-        # Operazioni create negli ultimi 30 giorni
-        recenti = conn.execute(
-            '''SELECT COUNT(*) as count 
-               FROM operazioni 
-               WHERE data_creazione >= date('now', '-30 days')'''
-        ).fetchone()
-        stats['recenti'] = recenti['count'] if recenti else 0
-        
         return stats
     except sqlite3.OperationalError:
         return {}
-
-def check_operazione_dependencies(conn, operazione_id):
-    """Verifica le dipendenze di un'operazione"""
-    dependencies = []
-    
-    # Verifica attività collegate
-    try:
-        attivita = conn.execute(
-            'SELECT COUNT(*) as count FROM attivita WHERE operazione_id = ?',
-            (operazione_id,)
-        ).fetchone()
-        
-        if attivita and attivita['count'] > 0:
-            dependencies.append(f"{attivita['count']} attività")
-    except sqlite3.OperationalError:
-        pass
-    
-    # Verifica partecipazioni (se tabella esiste)
-    try:
-        partecipazioni = conn.execute(
-            'SELECT COUNT(*) as count FROM partecipazioni WHERE operazione_id = ?',
-            (operazione_id,)
-        ).fetchone()
-        
-        if partecipazioni and partecipazioni['count'] > 0:
-            dependencies.append(f"{partecipazioni['count']} partecipazioni")
-    except sqlite3.OperationalError:
-        pass
-    
-    # Verifica equipaggiamenti (se tabella esiste)
-    try:
-        equipaggiamenti = conn.execute(
-            'SELECT COUNT(*) as count FROM equipaggiamenti_operazione WHERE operazione_id = ?',
-            (operazione_id,)
-        ).fetchone()
-        
-        if equipaggiamenti and equipaggiamenti['count'] > 0:
-            dependencies.append(f"{equipaggiamenti['count']} equipaggiamenti")
-    except sqlite3.OperationalError:
-        pass
-    
-    return dependencies
 
 # ===========================================
 # ROUTE PRINCIPALI
@@ -180,93 +120,21 @@ def check_operazione_dependencies(conn, operazione_id):
 @operazioni_bp.route('/operazioni')
 @permission_required('VIEW_OPERAZIONI')
 def lista_operazioni():
-    """Lista tutte le operazioni con filtri avanzati"""
+    """Lista tutte le operazioni"""
     user_id = request.current_user['user_id']
     user_role = get_user_role()
-    
-    # Parametri di filtro
-    search = request.args.get('search', '').strip()
-    stato = request.args.get('stato', '')  # attiva, conclusa, pianificata
-    teatro = request.args.get('teatro', '')
-    nazione = request.args.get('nazione', '')
-    anno = request.args.get('anno', '')
-    page = request.args.get('page', 1, type=int)
-    per_page = 25
     
     try:
         conn = get_db_connection()
         
         # Query base
-        base_query = '''SELECT o.*, 
-                               u_creato.username as creato_da_username, u_creato.nome as creato_da_nome,
-                               u_modificato.username as modificato_da_username, u_modificato.nome as modificato_da_nome
-                        FROM operazioni o
-                        LEFT JOIN utenti u_creato ON o.creato_da = u_creato.id
-                        LEFT JOIN utenti u_modificato ON o.modificato_da = u_modificato.id'''
-        count_query = 'SELECT COUNT(*) as total FROM operazioni o'
-        where_clauses = []
-        params = []
-        
-        # Applica filtri
-        if search:
-            where_clauses.append('(o.nome_missione LIKE ? OR o.nome_breve LIKE ? OR o.teatro_operativo LIKE ? OR o.nazione LIKE ? OR o.descrizione LIKE ?)')
-            search_param = f'%{search.upper()}%'
-            params.extend([search_param] * 5)
-        
-        if stato == 'attiva':
-            where_clauses.append('(o.data_inizio <= date("now") AND (o.data_fine IS NULL OR o.data_fine >= date("now")))')
-        elif stato == 'conclusa':
-            where_clauses.append('o.data_fine < date("now")')
-        elif stato == 'pianificata':
-            where_clauses.append('o.data_inizio > date("now")')
-        
-        if teatro:
-            where_clauses.append('o.teatro_operativo = ?')
-            params.append(teatro.upper())
-        
-        if nazione:
-            where_clauses.append('o.nazione = ?')
-            params.append(nazione.upper())
-        
-        if anno:
-            where_clauses.append('strftime("%Y", o.data_inizio) = ?')
-            params.append(anno)
-        
-        # Costruisci query finale
-        if where_clauses:
-            where_clause = ' WHERE ' + ' AND '.join(where_clauses)
-            base_query += where_clause
-            count_query += where_clause.replace('o.', '')
-        
-        # Conta totali
-        total_operazioni = conn.execute(count_query, params).fetchone()['total']
-        
-        # Query con paginazione
-        base_query += ' ORDER BY o.data_inizio DESC NULLS LAST, o.nome_missione LIMIT ? OFFSET ?'
-        params.extend([per_page, (page - 1) * per_page])
-        
-        operazioni = conn.execute(base_query, params).fetchall()
-        
-        # Opzioni per filtri
-        teatri = conn.execute(
-            '''SELECT DISTINCT teatro_operativo 
-               FROM operazioni 
-               WHERE teatro_operativo IS NOT NULL AND teatro_operativo != "" 
-               ORDER BY teatro_operativo'''
-        ).fetchall()
-        
-        nazioni = conn.execute(
-            '''SELECT DISTINCT nazione 
-               FROM operazioni 
-               WHERE nazione IS NOT NULL AND nazione != ""
-               ORDER BY nazione'''
-        ).fetchall()
-        
-        anni = conn.execute(
-            '''SELECT DISTINCT strftime("%Y", data_inizio) as anno
-               FROM operazioni 
-               WHERE data_inizio IS NOT NULL
-               ORDER BY anno DESC'''
+        operazioni = conn.execute(
+            '''SELECT o.*, 
+                      u_creato.username as creato_da_username, 
+                      u_creato.nome as creato_da_nome
+               FROM operazioni o
+               LEFT JOIN utenti u_creato ON o.creato_da = u_creato.id
+               ORDER BY o.data_inizio DESC NULLS LAST, o.nome_missione'''
         ).fetchall()
         
         # Statistiche (solo per operatore+)
@@ -275,9 +143,6 @@ def lista_operazioni():
             stats = get_operazioni_stats(conn)
         
         conn.close()
-        
-        # Calcola paginazione
-        total_pages = (total_operazioni + per_page - 1) // per_page
         
         # Calcola stati per ogni operazione
         operazioni_con_stato = []
@@ -289,29 +154,13 @@ def lista_operazioni():
         log_user_action(
             user_id,
             'VIEW_OPERAZIONI_LIST',
-            f'Visualizzate {len(operazioni)} operazioni (pagina {page}/{total_pages}) - Filtri: stato={stato}, teatro={teatro}',
+            f'Visualizzate {len(operazioni)} operazioni',
             'operazioni'
         )
         
         return render_template('lista_operazioni.html',
                              operazioni=operazioni_con_stato,
-                             teatri=teatri,
-                             nazioni=nazioni,
-                             anni=anni,
                              stats=stats,
-                             filtri={
-                                 'search': search,
-                                 'stato': stato,
-                                 'teatro': teatro,
-                                 'nazione': nazione,
-                                 'anno': anno
-                             },
-                             paginazione={
-                                 'page': page,
-                                 'per_page': per_page,
-                                 'total': total_operazioni,
-                                 'total_pages': total_pages
-                             },
                              user_role=user_role)
         
     except Exception as e:
@@ -337,7 +186,7 @@ def inserisci_operazione_form():
 @operatore_or_admin_required
 @permission_required('CREATE_OPERAZIONI')
 def salva_operazione():
-    """Salva nuova operazione con validazione completa"""
+    """Salva nuova operazione"""
     user_id = request.current_user['user_id']
     
     # Validazione input
@@ -355,8 +204,6 @@ def salva_operazione():
         data_inizio = request.form.get('data_inizio') or None
         data_fine = request.form.get('data_fine') or None
         descrizione = request.form.get('descrizione', '').upper().strip()
-        obiettivi = request.form.get('obiettivi', '').upper().strip()
-        note = request.form.get('note', '').upper().strip()
         
         conn = get_db_connection()
         
@@ -366,14 +213,14 @@ def salva_operazione():
             flash('Esiste già un\'operazione con questo nome missione o nome breve.', 'warning')
             return redirect(url_for('operazioni.inserisci_operazione_form'))
         
-        # Inserimento con tracking
+        # Inserimento
         cursor = conn.execute(
             '''INSERT INTO operazioni 
                (nome_missione, nome_breve, teatro_operativo, nazione, data_inizio, data_fine, 
-                descrizione, obiettivi, note, creato_da, data_creazione) 
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))''',
+                descrizione, creato_da, data_creazione) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))''',
             (nome_missione, nome_breve, teatro, nazione, data_inizio, data_fine, 
-             descrizione, obiettivi, note, user_id)
+             descrizione, user_id)
         )
         
         new_id = cursor.lastrowid
@@ -393,30 +240,24 @@ def salva_operazione():
         
     except Exception as e:
         flash(f'Errore durante il salvataggio: {str(e)}', 'error')
-        log_user_action(
-            user_id,
-            'CREATE_OPERAZIONE_ERROR',
-            f'Errore creazione operazione: {str(e)}',
-            'operazione',
-            result='FAILED'
-        )
         return redirect(url_for('operazioni.inserisci_operazione_form'))
 
 @operazioni_bp.route('/operazione/<int:id>')
 @permission_required('VIEW_OPERAZIONI')
 def visualizza_operazione(id):
-    """Visualizza dettagli operazione con statistiche correlate"""
+    """Visualizza dettagli operazione"""
     user_id = request.current_user['user_id']
     user_role = get_user_role()
     
     try:
         conn = get_db_connection()
         
-        # Query principale con info utenti
         operazione = conn.execute(
             '''SELECT o.*, 
-                      u_creato.username as creato_da_username, u_creato.nome as creato_da_nome,
-                      u_modificato.username as modificato_da_username, u_modificato.nome as modificato_da_nome
+                      u_creato.username as creato_da_username, 
+                      u_creato.nome as creato_da_nome,
+                      u_modificato.username as modificato_da_username, 
+                      u_modificato.nome as modificato_da_nome
                FROM operazioni o
                LEFT JOIN utenti u_creato ON o.creato_da = u_creato.id
                LEFT JOIN utenti u_modificato ON o.modificato_da = u_modificato.id
@@ -428,62 +269,6 @@ def visualizza_operazione(id):
             conn.close()
             flash('Operazione non trovata.', 'error')
             return redirect(url_for('operazioni.lista_operazioni'))
-        
-        # Statistiche correlate (solo per operatore+)
-        stats = {}
-        if is_operatore_or_above():
-            try:
-                # Attività collegate
-                attivita_stats = conn.execute(
-                    '''SELECT COUNT(*) as totale,
-                              COUNT(CASE WHEN data_fine IS NULL OR data_fine >= date('now') THEN 1 END) as attive,
-                              COUNT(CASE WHEN data_fine < date('now') THEN 1 END) as concluse
-                       FROM attivita WHERE operazione_id = ?''',
-                    (id,)
-                ).fetchone()
-                stats['attivita'] = dict(attivita_stats) if attivita_stats else {'totale': 0, 'attive': 0, 'concluse': 0}
-                
-                # Enti coinvolti
-                enti_coinvolti = conn.execute(
-                    '''SELECT DISTINCT em.nome, em.codice, COUNT(a.id) as num_attivita
-                       FROM attivita a
-                       JOIN enti_militari em ON a.ente_svolgimento_id = em.id
-                       WHERE a.operazione_id = ?
-                       GROUP BY em.id, em.nome, em.codice
-                       ORDER BY num_attivita DESC''',
-                    (id,)
-                ).fetchall()
-                stats['enti_coinvolti'] = enti_coinvolti
-                
-                # Personale totale impiegato
-                personale_stats = conn.execute(
-                    '''SELECT 
-                        SUM(personale_ufficiali) as tot_ufficiali,
-                        SUM(personale_sottufficiali) as tot_sottufficiali,
-                        SUM(personale_graduati) as tot_graduati,
-                        SUM(personale_civili) as tot_civili
-                       FROM attivita WHERE operazione_id = ?''',
-                    (id,)
-                ).fetchone()
-                stats['personale'] = dict(personale_stats) if personale_stats else {}
-                
-                # Timeline attività
-                timeline = conn.execute(
-                    '''SELECT a.id, a.descrizione, a.data_inizio, a.data_fine, 
-                              em.nome as ente_nome, ta.nome as tipologia
-                       FROM attivita a
-                       JOIN enti_militari em ON a.ente_svolgimento_id = em.id
-                       JOIN tipologie_attivita ta ON a.tipologia_id = ta.id
-                       WHERE a.operazione_id = ?
-                       ORDER BY a.data_inizio DESC
-                       LIMIT 10''',
-                    (id,)
-                ).fetchall()
-                stats['timeline'] = timeline
-                
-            except sqlite3.OperationalError:
-                stats = {'attivita': {'totale': 0, 'attive': 0, 'concluse': 0}, 
-                        'enti_coinvolti': [], 'personale': {}, 'timeline': []}
         
         conn.close()
         
@@ -501,7 +286,6 @@ def visualizza_operazione(id):
         return render_template('descrizione_operazione.html', 
                              operazione=operazione, 
                              stato=stato,
-                             stats=stats,
                              user_role=user_role)
         
     except Exception as e:
@@ -542,7 +326,7 @@ def modifica_operazione_form(id):
 @operatore_or_admin_required
 @permission_required('EDIT_OPERAZIONI')
 def aggiorna_operazione(id):
-    """Aggiorna operazione esistente con validazione completa"""
+    """Aggiorna operazione esistente"""
     user_id = request.current_user['user_id']
     
     # Validazione input
@@ -560,20 +344,15 @@ def aggiorna_operazione(id):
         data_inizio = request.form.get('data_inizio') or None
         data_fine = request.form.get('data_fine') or None
         descrizione = request.form.get('descrizione', '').upper().strip()
-        obiettivi = request.form.get('obiettivi', '').upper().strip()
-        note = request.form.get('note', '').upper().strip()
         
         conn = get_db_connection()
         
         # Verifica che l'operazione esista
-        existing = conn.execute('SELECT nome_missione, nome_breve FROM operazioni WHERE id = ?', (id,)).fetchone()
+        existing = conn.execute('SELECT nome_missione FROM operazioni WHERE id = ?', (id,)).fetchone()
         if not existing:
             conn.close()
             flash('Operazione non trovata.', 'error')
             return redirect(url_for('operazioni.lista_operazioni'))
-        
-        old_name = existing['nome_missione']
-        old_code = existing['nome_breve']
         
         # Verifica duplicati (escludendo se stesso)
         if check_duplicate_operazione(conn, nome_missione, nome_breve, id):
@@ -581,15 +360,15 @@ def aggiorna_operazione(id):
             flash('Esiste già un\'operazione con questo nome missione o nome breve.', 'warning')
             return redirect(url_for('operazioni.modifica_operazione_form', id=id))
         
-        # Aggiornamento con tracking
+        # Aggiornamento
         conn.execute(
             '''UPDATE operazioni 
                SET nome_missione=?, nome_breve=?, teatro_operativo=?, nazione=?, 
-                   data_inizio=?, data_fine=?, descrizione=?, obiettivi=?, note=?,
+                   data_inizio=?, data_fine=?, descrizione=?,
                    modificato_da=?, data_modifica=datetime('now')
                WHERE id = ?''',
             (nome_missione, nome_breve, teatro, nazione, data_inizio, data_fine, 
-             descrizione, obiettivi, note, user_id, id)
+             descrizione, user_id, id)
         )
         conn.commit()
         conn.close()
@@ -597,7 +376,7 @@ def aggiorna_operazione(id):
         log_user_action(
             user_id,
             'UPDATE_OPERAZIONE',
-            f'Aggiornata operazione da "{old_name} ({old_code})" a "{nome_missione} ({nome_breve})"',
+            f'Aggiornata operazione: {nome_missione}',
             'operazione',
             id
         )
@@ -607,14 +386,6 @@ def aggiorna_operazione(id):
         
     except Exception as e:
         flash(f'Errore durante l\'aggiornamento: {str(e)}', 'error')
-        log_user_action(
-            user_id,
-            'UPDATE_OPERAZIONE_ERROR',
-            f'Errore aggiornamento operazione {id}: {str(e)}',
-            'operazione',
-            id,
-            result='FAILED'
-        )
         return redirect(url_for('operazioni.modifica_operazione_form', id=id))
 
 @operazioni_bp.route('/elimina_operazione/<int:id>', methods=['POST'])
@@ -627,20 +398,23 @@ def elimina_operazione(id):
         conn = get_db_connection()
         
         # Recupera info prima di eliminare
-        operazione = conn.execute('SELECT nome_missione, nome_breve FROM operazioni WHERE id = ?', (id,)).fetchone()
+        operazione = conn.execute('SELECT nome_missione FROM operazioni WHERE id = ?', (id,)).fetchone()
         if not operazione:
             conn.close()
             flash('Operazione non trovata.', 'error')
             return redirect(url_for('operazioni.lista_operazioni'))
         
         nome_operazione = operazione['nome_missione']
-        nome_breve = operazione['nome_breve']
         
-        # Verifica dipendenze
-        dependencies = check_operazione_dependencies(conn, id)
-        if dependencies:
+        # Verifica dipendenze (attività collegate)
+        attivita = conn.execute(
+            'SELECT COUNT(*) as count FROM attivita WHERE operazione_id = ?',
+            (id,)
+        ).fetchone()
+        
+        if attivita and attivita['count'] > 0:
             conn.close()
-            flash(f'Impossibile eliminare l\'operazione "{nome_operazione}": {", ".join(dependencies)} collegate.', 'error')
+            flash(f'Impossibile eliminare l\'operazione: {attivita["count"]} attività collegate.', 'error')
             return redirect(url_for('operazioni.lista_operazioni'))
         
         # Eliminazione
@@ -651,7 +425,7 @@ def elimina_operazione(id):
         log_user_action(
             user_id,
             'DELETE_OPERAZIONE',
-            f'Eliminata operazione: {nome_operazione} ({nome_breve})',
+            f'Eliminata operazione: {nome_operazione}',
             'operazione',
             id
         )
@@ -660,215 +434,12 @@ def elimina_operazione(id):
         
     except Exception as e:
         flash(f'Errore durante l\'eliminazione: {str(e)}', 'error')
-        log_user_action(
-            user_id,
-            'DELETE_OPERAZIONE_ERROR',
-            f'Errore eliminazione operazione {id}: {str(e)}',
-            'operazione',
-            id,
-            result='FAILED'
-        )
     
     return redirect(url_for('operazioni.lista_operazioni'))
 
 # ===========================================
-# ROUTE AGGIUNTIVE E UTILITÀ
+# API ENDPOINTS
 # ===========================================
-
-@operazioni_bp.route('/operazioni/stato/<stato>')
-@permission_required('VIEW_OPERAZIONI')
-def operazioni_per_stato(stato):
-    """Filtra operazioni per stato"""
-    if stato not in ['attiva', 'conclusa', 'pianificata']:
-        flash('Stato operazione non valido.', 'error')
-        return redirect(url_for('operazioni.lista_operazioni'))
-    
-    return redirect(url_for('operazioni.lista_operazioni', stato=stato))
-
-@operazioni_bp.route('/operazioni/ricerca')
-@permission_required('VIEW_OPERAZIONI')
-def ricerca_operazioni():
-    """Ricerca operazioni"""
-    search = request.args.get('q', '').strip()
-    if not search:
-        flash('Inserire un termine di ricerca.', 'warning')
-        return redirect(url_for('operazioni.lista_operazioni'))
-    
-    return redirect(url_for('operazioni.lista_operazioni', search=search))
-
-@operazioni_bp.route('/operazioni/export')
-@permission_required('VIEW_OPERAZIONI')
-def export_operazioni():
-    """Esporta operazioni in formato CSV"""
-    user_id = request.current_user['user_id']
-    
-    try:
-        conn = get_db_connection()
-        
-        # Query con filtri se presenti
-        search = request.args.get('search', '').strip()
-        stato = request.args.get('stato', '')
-        teatro = request.args.get('teatro', '')
-        
-        base_query = '''SELECT nome_missione, nome_breve, teatro_operativo, nazione, 
-                               data_inizio, data_fine, descrizione, obiettivi, note, data_creazione 
-                        FROM operazioni'''
-        params = []
-        where_clauses = []
-        
-        if search:
-            where_clauses.append('(nome_missione LIKE ? OR nome_breve LIKE ? OR teatro_operativo LIKE ?)')
-            search_param = f'%{search.upper()}%'
-            params.extend([search_param, search_param, search_param])
-        
-        if stato == 'attiva':
-            where_clauses.append('(data_inizio <= date("now") AND (data_fine IS NULL OR data_fine >= date("now")))')
-        elif stato == 'conclusa':
-            where_clauses.append('data_fine < date("now")')
-        elif stato == 'pianificata':
-            where_clauses.append('data_inizio > date("now")')
-        
-        if teatro:
-            where_clauses.append('teatro_operativo = ?')
-            params.append(teatro.upper())
-        
-        if where_clauses:
-            base_query += ' WHERE ' + ' AND '.join(where_clauses)
-        
-        base_query += ' ORDER BY data_inizio DESC, nome_missione'
-        
-        operazioni_export = conn.execute(base_query, params).fetchall()
-        conn.close()
-        
-        # Genera CSV
-        import csv
-        from flask import Response
-        import io
-        
-        output = io.StringIO()
-        writer = csv.writer(output)
-        
-        # Header
-        writer.writerow([
-            'Nome Missione', 'Nome Breve', 'Teatro Operativo', 'Nazione', 
-            'Data Inizio', 'Data Fine', 'Descrizione', 'Obiettivi', 'Note', 'Data Creazione'
-        ])
-        
-        # Dati
-        for op in operazioni_export:
-            writer.writerow([
-                op['nome_missione'], op['nome_breve'], op['teatro_operativo'], op['nazione'],
-                op['data_inizio'], op['data_fine'], op['descrizione'], 
-                op['obiettivi'], op['note'], op['data_creazione']
-            ])
-        
-        log_user_action(
-            user_id,
-            'EXPORT_OPERAZIONI',
-            f'Esportate {len(operazioni_export)} operazioni in CSV',
-            'operazioni'
-        )
-        
-        output.seek(0)
-        return Response(
-            output.getvalue(),
-            mimetype='text/csv',
-            headers={'Content-Disposition': f'attachment; filename=operazioni_export_{datetime.now().strftime("%Y%m%d_%H%M")}.csv'}
-        )
-        
-    except Exception as e:
-        flash(f'Errore nell\'export: {str(e)}', 'error')
-        return redirect(url_for('operazioni.lista_operazioni'))
-
-@operazioni_bp.route('/operazioni/statistiche')
-@operatore_or_admin_required
-@permission_required('VIEW_OPERAZIONI')
-def statistiche_operazioni():
-    """Statistiche dettagliate operazioni"""
-    user_id = request.current_user['user_id']
-    
-    try:
-        conn = get_db_connection()
-        stats = get_operazioni_stats(conn)
-        
-        # Durata media operazioni
-        durata_stats = conn.execute(
-            '''SELECT 
-                AVG(julianday(data_fine) - julianday(data_inizio)) as durata_media_giorni,
-                MIN(julianday(data_fine) - julianday(data_inizio)) as durata_min_giorni,
-                MAX(julianday(data_fine) - julianday(data_inizio)) as durata_max_giorni
-               FROM operazioni 
-               WHERE data_inizio IS NOT NULL AND data_fine IS NOT NULL'''
-        ).fetchone()
-        stats['durata'] = dict(durata_stats) if durata_stats else {}
-        
-        # Operazioni per anno
-        per_anno = conn.execute(
-            '''SELECT 
-                strftime('%Y', data_inizio) as anno,
-                COUNT(*) as numero_operazioni,
-                COUNT(CASE WHEN data_fine IS NOT NULL THEN 1 END) as concluse
-               FROM operazioni
-               WHERE data_inizio IS NOT NULL
-               GROUP BY strftime('%Y', data_inizio)
-               ORDER BY anno DESC'''
-        ).fetchall()
-        stats['per_anno'] = per_anno
-        
-        # Top 5 teatri operativi
-        top_teatri = conn.execute(
-            '''SELECT teatro_operativo, COUNT(*) as num_operazioni
-               FROM operazioni
-               GROUP BY teatro_operativo
-               ORDER BY num_operazioni DESC
-               LIMIT 5'''
-        ).fetchall()
-        stats['top_teatri'] = top_teatri
-        
-        conn.close()
-        
-        log_user_action(
-            user_id,
-            'VIEW_OPERAZIONI_STATS',
-            'Visualizzate statistiche operazioni'
-        )
-        
-        return render_template('statistiche_operazioni.html', stats=stats)
-        
-    except Exception as e:
-        flash(f'Errore nel caricamento delle statistiche: {str(e)}', 'error')
-        return redirect(url_for('operazioni.lista_operazioni'))
-
-@operazioni_bp.route('/api/operazioni/cerca')
-@login_required
-def api_cerca_operazioni():
-    """API per ricerca operazioni (per autocomplete)"""
-    query = request.args.get('q', '').strip()
-    if len(query) < 2:
-        return jsonify([])
-    
-    try:
-        conn = get_db_connection()
-        operazioni = conn.execute(
-            '''SELECT id, nome_missione, nome_breve, teatro_operativo 
-               FROM operazioni 
-               WHERE nome_missione LIKE ? OR nome_breve LIKE ?
-               ORDER BY nome_missione 
-               LIMIT 15''',
-            (f'%{query.upper()}%', f'%{query.upper()}%')
-        ).fetchall()
-        conn.close()
-        
-        return jsonify([{
-            'id': op['id'],
-            'nome_missione': op['nome_missione'],
-            'nome_breve': op['nome_breve'],
-            'teatro_operativo': op['teatro_operativo'],
-            'label': f"{op['nome_missione']} ({op['nome_breve'] or 'N/A'})"
-        } for op in operazioni])
-        
-    except Exception:
-        return jsonify([])
 
 @operazioni_bp.route('/api/operazioni/attive')
 @login_required
@@ -895,19 +466,3 @@ def api_operazioni_attive():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-# ===========================================
-# GESTIONE ERRORI
-# ===========================================
-
-@operazioni_bp.errorhandler(sqlite3.OperationalError)
-def handle_db_error(error):
-    """Gestione errori database specifici per operazioni"""
-    flash('Errore nel database delle operazioni. Contattare l\'amministratore.', 'error')
-    return redirect(url_for('operazioni.lista_operazioni'))
-
-@operazioni_bp.errorhandler(ValueError)
-def handle_value_error(error):
-    """Gestione errori di validazione"""
-    flash('Dati non validi forniti.', 'error')
-    return redirect(url_for('operazioni.lista_operazioni'))

@@ -250,20 +250,6 @@ body[data-user-role="ADMIN"] .admin-section .section-header::before {
     overflow: hidden;
 }
 
-/* Indicatore di stato online */
-.user-info::before {
-    content: '';
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 6px;
-    height: 6px;
-    background: #4caf50;
-    border-radius: 50%;
-    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3);
-    animation: pulse 2s infinite;
-}
-
 @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
     70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
@@ -478,4 +464,46 @@ body.debug-mode #role-debug-panel {
 
 #role-debug-panel .value {
     color: #03a9f4;
+}
+
+/* ===========================================
+   OVERRIDE DEFINITIVO: DISABILITA TUTTI I BADGE
+   =========================================== */
+
+/* Disabilita completamente tutti i badge ruolo */
+.user-role-badge {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 0 !important;
+}
+
+/* Disabilita tutti gli effetti e animazioni sui badge */
+.user-role-badge::before,
+.user-role-badge::after {
+    display: none !important;
+    content: none !important;
+}
+
+/* Override per tutti i selettori specifici di ruolo */
+body[data-user-role="ADMIN"] .user-role-badge,
+body[data-user-role="OPERATORE"] .user-role-badge,
+body[data-user-role="VISUALIZZATORE"] .user-role-badge,
+.sidebar:not(.expanded):not(.pinned) .user-role-badge,
+.sidebar.expanded .user-role-badge,
+.sidebar.pinned .user-role-badge {
+    display: none !important;
+}
+
+/* Disabilita animazioni badge */
+@keyframes fadeInBadge {
+    from, to { display: none !important; }
+}
+
+@keyframes shimmer {
+    from, to { display: none !important; }
 }

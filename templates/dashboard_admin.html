@@ -1,267 +1,126 @@
 {% extends "_base.html" %}
 
-{% block title %}Dashboard Admin - TALON{% endblock %}
+{% block title %}Dashboard Sistema - TALON{% endblock %}
 
 {% block content %}
-<div class="dashboard-container admin-dashboard">
-    <h1 class="dashboard-title">
-        <i class="icon-dashboard"></i> Dashboard Amministratore
+<div class="container-fluid">
+    <h1 class="page-title mb-4">
+        <i class="fas fa-tachometer-alt"></i> Dashboard Sistema
     </h1>
     
-    <!-- Stats Cards con stile TALON -->
-    <div class="stats-grid">
-        <div class="stat-card" data-color="primary">
-            <div class="stat-content">
-                <div class="stat-info">
-                    <h6 class="stat-label">UTENTI TOTALI</h6>
-                    <h2 class="stat-value">{{ stats.utenti_totali|default(0) }}</h2>
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card text-white bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title">UTENTI ATTIVI</h5>
+                    <h2 class="card-text">{{ stats.users_by_role.values()|sum|default(0) }}</h2>
+                    <small>
+                        Admin: {{ stats.users_by_role.ADMIN|default(0) }} | 
+                        Operatore: {{ stats.users_by_role.OPERATORE|default(0) }} | 
+                        Visualizzatore: {{ stats.users_by_role.VISUALIZZATORE|default(0) }}
+                    </small>
                 </div>
-                <div class="stat-icon">
-                    <i class="icon-users"></i>
-                </div>
-            </div>
-            <div class="stat-footer">
-                {# Commentato finché non esiste la rotta utenti.lista_utenti
-                <a href="{{ url_for('utenti.lista_utenti') }}" class="stat-link">
-                    Visualizza <i class="icon-arrow-right"></i>
-                </a>
-                #}
-                <span class="stat-link disabled">
-                    Visualizza <i class="icon-arrow-right"></i>
-                </span>
             </div>
         </div>
         
-        <div class="stat-card" data-color="success">
-            <div class="stat-content">
-                <div class="stat-info">
-                    <h6 class="stat-label">ENTI CIVILI</h6>
-                    <h2 class="stat-value">{{ stats.enti_civili|default(0) }}</h2>
+        <div class="col-md-3">
+            <div class="card stat-card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title">ENTI CIVILI</h5>
+                    <h2 class="card-text">{{ stats.enti_civili|default(0) }}</h2>
                 </div>
-                <div class="stat-icon">
-                    <i class="icon-building"></i>
-                </div>
-            </div>
-            <div class="stat-footer">
-                {# Commentato finché non esiste la rotta
-                <a href="{{ url_for('enti_civili.lista_enti_civili') }}" class="stat-link">
-                    Visualizza <i class="icon-arrow-right"></i>
-                </a>
-                #}
-                <span class="stat-link disabled">
-                    Visualizza <i class="icon-arrow-right"></i>
-                </span>
             </div>
         </div>
         
-        <div class="stat-card" data-color="info">
-            <div class="stat-content">
-                <div class="stat-info">
-                    <h6 class="stat-label">ENTI MILITARI</h6>
-                    <h2 class="stat-value">{{ stats.enti_militari|default(0) }}</h2>
+        <div class="col-md-3">
+            <div class="card stat-card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title">ENTI MILITARI</h5>
+                    <h2 class="card-text">{{ stats.enti_militari|default(0) }}</h2>
                 </div>
-                <div class="stat-icon">
-                    <i class="icon-shield"></i>
-                </div>
-            </div>
-            <div class="stat-footer">
-                {# Commentato finché non esiste la rotta
-                <a href="{{ url_for('enti_militari.lista_enti_militari') }}" class="stat-link">
-                    Visualizza <i class="icon-arrow-right"></i>
-                </a>
-                #}
-                <span class="stat-link disabled">
-                    Visualizza <i class="icon-arrow-right"></i>
-                </span>
             </div>
         </div>
         
-        <div class="stat-card" data-color="warning">
-            <div class="stat-content">
-                <div class="stat-info">
-                    <h6 class="stat-label">OPERAZIONI</h6>
-                    <h2 class="stat-value">{{ stats.operazioni|default(0) }}</h2>
+        <div class="col-md-3">
+            <div class="card stat-card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title">OPERAZIONI ATTIVE</h5>
+                    <h2 class="card-text">{{ stats.operazioni_attive|default(0) }}</h2>
                 </div>
-                <div class="stat-icon">
-                    <i class="icon-tasks"></i>
-                </div>
-            </div>
-            <div class="stat-footer">
-                {# Commentato finché non esiste la rotta
-                <a href="{{ url_for('operazioni.lista_operazioni') }}" class="stat-link">
-                    Visualizza <i class="icon-arrow-right"></i>
-                </a>
-                #}
-                <span class="stat-link disabled">
-                    Visualizza <i class="icon-arrow-right"></i>
-                </span>
             </div>
         </div>
     </div>
     
-    <!-- Pannelli informativi -->
-    <div class="dashboard-panels">
-        <!-- Attività Recenti -->
-        <div class="panel">
-            <div class="panel-header">
-                <h3 class="panel-title"><i class="icon-clock"></i> Attività Recenti</h3>
+    <!-- Info Sistema -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle"></i> Informazioni Sistema</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td>Versione Sistema:</td>
+                            <td><strong>2.0.0</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Database:</td>
+                            <td><strong>SQLite</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Ultimo Accesso:</td>
+                            <td><strong>{{ session.get('login_time')|datetime_format('%d/%m/%Y %H:%M') if session.get('login_time') else 'N/A' }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Ruolo Utente:</td>
+                            <td><strong class="text-danger">{{ session.get('ruolo_nome', 'N/A') }}</strong></td>
+                        </tr>
+                    </table>
+                </div>
             </div>
-            <div class="panel-body">
-                <div class="activity-list">
-                    {% if recent_activities %}
-                        {% for activity in recent_activities %}
-                        <div class="activity-item">
-                            <div class="activity-time">{{ activity.data_ora.strftime('%d/%m %H:%M') if activity.data_ora else 'N/A' }}</div>
-                            <div class="activity-user">{{ activity.username|default('N/A') }}</div>
-                            <div class="activity-action">{{ activity.azione|default('N/A') }}</div>
-                            <div class="activity-details">{{ activity.dettagli|default('') }}</div>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                    <div class="empty-state">
-                        <p>Nessuna attività recente</p>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-bolt"></i> Azioni Rapide</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('main.gestione_utenti') }}" class="btn btn-primary">
+                            <i class="fas fa-users"></i> Gestione Utenti
+                        </a>
+                        <a href="{{ url_for('main.info_sistema') }}" class="btn btn-info">
+                            <i class="fas fa-server"></i> Informazioni Sistema
+                        </a>
+                        <button class="btn btn-secondary" disabled>
+                            <i class="fas fa-database"></i> Backup Database (In sviluppo)
+                        </button>
+                        <button class="btn btn-dark" disabled>
+                            <i class="fas fa-file-alt"></i> Visualizza Log (In sviluppo)
+                        </button>
                     </div>
-                    {% endif %}
                 </div>
             </div>
-        </div>
-        
-        <!-- Utenti Online -->
-        <div class="panel">
-            <div class="panel-header">
-                <h3 class="panel-title"><i class="icon-users"></i> Utenti Online</h3>
-            </div>
-            <div class="panel-body">
-                <div class="users-list">
-                    {% if online_users %}
-                        {% for user in online_users %}
-                        <div class="user-item">
-                            <div class="user-info">
-                                <span class="user-name">{{ user.username|default('N/A') }}</span>
-                                <span class="user-role badge badge-{{ 'danger' if user.ruolo == 'ADMIN' else 'primary' }}">
-                                    {{ user.ruolo|default('N/A') }}
-                                </span>
-                            </div>
-                            <div class="user-status">
-                                <span class="status-indicator online"></span>
-                                <span class="last-seen">{{ user.ultimo_accesso.strftime('%H:%M') if user.ultimo_accesso else 'N/A' }}</span>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    {% else %}
-                    <div class="empty-state">
-                        <p>Nessun utente online</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Azioni Rapide Admin -->
-    <div class="panel actions-panel">
-        <div class="panel-header">
-            <h3 class="panel-title"><i class="icon-bolt"></i> Azioni Rapide Amministratore</h3>
-        </div>
-        <div class="panel-body">
-            <div class="quick-actions">
-                {# Tutti i link sono disabilitati finché non vengono create le rotte
-                <a href="{{ url_for('utenti.crea_utente') }}" class="action-button primary">
-                    <i class="icon-user-plus"></i> Nuovo Utente
-                </a>
-                <a href="{{ url_for('enti_civili.crea_ente_civile') }}" class="action-button success">
-                    <i class="icon-building"></i> Nuovo Ente Civile
-                </a>
-                <a href="{{ url_for('enti_militari.crea_ente_militare') }}" class="action-button info">
-                    <i class="icon-shield"></i> Nuovo Ente Militare
-                </a>
-                <a href="{{ url_for('operazioni.crea_operazione') }}" class="action-button warning">
-                    <i class="icon-plus"></i> Nuova Operazione
-                </a>
-                <a href="{{ url_for('system.backup') }}" class="action-button secondary">
-                    <i class="icon-database"></i> Backup Database
-                </a>
-                <a href="{{ url_for('system.logs') }}" class="action-button dark">
-                    <i class="icon-file"></i> Visualizza Log
-                </a>
-                #}
-                
-                <button class="action-button primary disabled" disabled>
-                    <i class="icon-user-plus"></i> Nuovo Utente
-                </button>
-                
-                <button class="action-button success disabled" disabled>
-                    <i class="icon-building"></i> Nuovo Ente Civile
-                </button>
-                
-                <button class="action-button info disabled" disabled>
-                    <i class="icon-shield"></i> Nuovo Ente Militare
-                </button>
-                
-                <button class="action-button warning disabled" disabled>
-                    <i class="icon-plus"></i> Nuova Operazione
-                </button>
-                
-                <button class="action-button secondary disabled" disabled>
-                    <i class="icon-database"></i> Backup Database
-                </button>
-                
-                <button class="action-button dark disabled" disabled>
-                    <i class="icon-file"></i> Visualizza Log
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Messaggio informativo -->
-    <div class="panel info-panel">
-        <div class="panel-body">
-            <p class="info-message">
-                <i class="icon-info-circle"></i> 
-                Alcune funzionalità sono temporaneamente disabilitate mentre il sistema viene configurato.
-            </p>
         </div>
     </div>
 </div>
 
 <style>
-/* Stili temporanei per elementi disabilitati */
-.stat-link.disabled,
-.action-button.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    text-decoration: none;
+.stat-card {
+    transition: transform 0.2s;
 }
-
-.info-panel {
-    margin-top: 20px;
-    background-color: #f0f8ff;
-    border: 1px solid #d0e0f0;
+.stat-card:hover {
+    transform: translateY(-5px);
 }
-
-.info-message {
-    margin: 0;
-    padding: 10px;
-    color: #336699;
+.stat-card .card-body {
+    padding: 1.5rem;
+}
+.stat-card h2 {
+    font-size: 2.5rem;
+    margin: 0.5rem 0;
 }
 </style>
-{% endblock %}
-
-{% block scripts %}
-<script>
-// Auto-refresh dashboard ogni 60 secondi
-setTimeout(function(){
-    location.reload();
-}, 60000);
-
-// Animazioni per le stat cards
-document.querySelectorAll('.stat-card').forEach(card => {
-    card.addEventListener('mouseenter', function() {
-        this.style.transform = 'translateY(-5px)';
-    });
-    card.addEventListener('mouseleave', function() {
-        this.style.transform = 'translateY(0)';
-    });
-});
-</script>
 {% endblock %}

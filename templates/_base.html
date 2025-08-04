@@ -1,4 +1,4 @@
-<!-- _base.html - VERSIONE ORIGINALE PULITA -->
+<!-- _base.html - VERSIONE CON CACHE BUSTING OPZIONALE -->
 <!DOCTYPE html>
 <html lang="it" class="h-100">
 <head>
@@ -12,10 +12,10 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    <!-- CSS personalizzati -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-roles.css') }}">
+    <!-- CSS personalizzati CON CACHE BUSTING -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-roles.css') }}?v={{ cache_buster }}">
     
     <!-- Block per CSS aggiuntivi -->
     {% block extra_css %}{% endblock %}
@@ -61,32 +61,6 @@
                             {% block breadcrumb %}{% endblock %}
                         </ol>
                     </nav>
-                    
-                    <!-- Informazioni utente pulite -->
-                    <div class="d-flex align-items-center">
-                        <!-- Nome utente completo con ruolo -->
-                        <span class="user-info me-3">
-                            <span class="username">
-                                {% if session.get('nome') and session.get('cognome') %}
-                                    {{ session.get('nome') }} {{ session.get('cognome') }}
-                                {% else %}
-                                    {{ session.get('username', 'Utente') }}
-                                {% endif %}
-                            </span>
-                            <small class="text-muted">
-                                ({{ session.get('ruolo_nome', 'GUEST') }})
-                            </small>
-                        </span>
-                        
-                        <!-- Badge ruolo colorato -->
-                        <span class="badge role-badge me-2 
-                                   {% if session.get('ruolo_nome') == 'ADMIN' %}badge-danger
-                                   {% elif session.get('ruolo_nome') == 'OPERATORE' %}badge-warning
-                                   {% elif session.get('ruolo_nome') == 'VISUALIZZATORE' %}badge-info
-                                   {% else %}badge-secondary{% endif %}">
-                            {{ session.get('ruolo_nome', 'GUEST') }}
-                        </span>
-                    </div>
                 </div>
             </header>
             {% endif %}
@@ -122,15 +96,15 @@
             <footer class="bg-light border-top py-2 px-3 mt-auto">
                 <div class="d-flex justify-content-between align-items-center">
                     <small class="text-muted">
-                        TALON System v2.0 - Sistema a 3 Ruoli
+                        TALON System v2.0
                         {% if config.DEBUG %}
-                        <span class="badge bg-warning text-dark ms-2">DEBUG</span>
+                        <span class="badge bg-warning text-dark ms-2">DEBUG - Cache Disabled</span>
                         {% endif %}
                     </small>
                     
                     {% if session.get('logged_in') %}
                     <small class="text-muted">
-                        Ultimo accesso: {{ session.get('login_time', 'N/A')[:16] if session.get('login_time') else 'N/A' }}
+                        Ultimo accesso: {{ session.get('login_time')|datetime_format('%d/%m/%Y %H:%M') if session.get('login_time') else 'N/A' }}
                     </small>
                     {% endif %}
                 </div>
@@ -147,11 +121,11 @@
     <!-- FontAwesome -->
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     
-    <!-- Sistema ruoli JavaScript - Solo se loggato -->
+    <!-- Sistema ruoli JavaScript CON CACHE BUSTING - Solo se loggato -->
     {% if session.get('logged_in') %}
-    <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/sidebar-role-manager.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sidebar.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/sidebar-role-manager.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_buster }}"></script>
     {% endif %}
     
     <!-- Script globale pulito -->
@@ -210,6 +184,13 @@
                 }
             }
         });
+        {% endif %}
+
+        // Debug info se abilitato
+        {% if config.DEBUG %}
+        console.log('🔧 TALON System - Debug Mode');
+        console.log('💾 Cache Buster:', '{{ cache_buster }}');
+        console.log('👤 User:', window.FLASK_USER_FULL_NAME, '(' + window.FLASK_USER_ROLE + ')');
         {% endif %}
     </script>
     

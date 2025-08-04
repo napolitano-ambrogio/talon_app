@@ -17,7 +17,6 @@ class TalonSidebar {
         this.tooltip = document.getElementById('tooltip');
         this.menuList = document.getElementById('menu-list');
         this.logoutBtn = document.getElementById('logout-btn');
-        this.userInfo = document.getElementById('user-info');
         this.userName = document.getElementById('user-name');
         
         // Stati
@@ -54,6 +53,7 @@ class TalonSidebar {
         this.propagateUserRole();
         
         // Inizializzazione componenti
+        this.removeExistingRoleBadges();
         this.applyInitialState();
         this.bindEvents();
         this.initializeDragAndDrop();
@@ -807,33 +807,33 @@ class TalonSidebar {
     }
 
     updateUserInfoWithRole() {
-        if (!this.userInfo) return;
+    
+        // Aggiorna body con info ruolo
+        document.body.setAttribute('data-user-role', this.userRole);
         
-        // Aggiorna attributi
-        this.userInfo.setAttribute('data-user-role', this.userRole);
-        this.userInfo.setAttribute('data-username', this.userName?.textContent || 'Utente');
-        
-        // Aggiorna o crea badge ruolo
-        let roleBadge = this.userInfo.querySelector('.user-role-badge');
-        if (!roleBadge) {
-            roleBadge = document.createElement('span');
-            roleBadge.className = 'user-role-badge';
-            this.userInfo.appendChild(roleBadge);
+        // Se esiste userName, aggiornalo (per retrocompatibilità)
+        if (this.userName) {
+            const username = this.userName.textContent || 'Utente';
+            document.body.setAttribute('data-username', username);
         }
         
-        roleBadge.textContent = this.userRole;
-        roleBadge.setAttribute('data-role', this.userRole);
-        roleBadge.title = `Ruolo attuale: ${this.userRole}`;
-        
-        console.log(`[TALON Sidebar] Info utente aggiornate per ruolo: ${this.userRole}`);
+        console.log(`[TALON Sidebar] Ruolo aggiornato globalmente: ${this.userRole}`);
+    }
+
+    removeExistingRoleBadges() {
+        // Rimuovi eventuali badge esistenti
+        const existingBadges = document.querySelectorAll('.user-role-badge, [data-role]');
+        existingBadges.forEach(badge => badge.remove());
     }
 
     initializeUserInfo() {
-        if (this.userName && this.userInfo) {
-            console.log('[TALON Sidebar] Info utente caricate dal template');
-            
-            // Aggiungi tooltip con info complete
-            this.userInfo.title = `${this.userName.textContent} - Ruolo: ${this.userRole}`;
+        // REFACTORED: Non dipende più da user-info
+        console.log('[TALON Sidebar] Skip inizializzazione user-info (elemento rimosso)');
+        
+        // Se vogliamo mantenere info username per altri usi
+        if (this.userName) {
+            const username = this.userName.textContent || 'Utente';
+            document.body.setAttribute('data-username', username);
         }
     }
 

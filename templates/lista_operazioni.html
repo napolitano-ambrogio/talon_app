@@ -1,61 +1,210 @@
 {% extends "_base.html" %}
+
 {% block title %}Elenco Operazioni - TALON{% endblock %}
+
 {% block content %}
+<div class="container-fluid">
     <div class="detail-header">
         <h3>Elenco Operazioni Estere</h3>
-        <a href="{{ url_for('operazioni.inserisci_operazione_form') }}" class="btn-modifica" style="background-color: #28a745;">Nuova Operazione</a>
+        {% if user_role in ['ADMIN', 'OPERATORE'] %}
+        <a href="{{ url_for('operazioni.inserisci_operazione_form') }}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Nuova Operazione
+        </a>
+        {% endif %}
     </div>
+    
     <div class="list-container">
         <div class="search-bar">
-            <input type="search" id="searchInput" placeholder="CERCA PER NOME, TEATRO, NAZIONE...">
+            <input type="search" id="searchInput" class="form-control" placeholder="CERCA PER NOME, TEATRO, NAZIONE...">
         </div>
-        <table class="styled-table">
-            <thead>
-                <tr>
-                    <th>Nome Breve</th>
-                    <th>Nome Missione</th>
-                    <th>Teatro Operativo</th>
-                    <th>Nazione</th>
-                    <th>Data Inizio</th>
-                </tr>
-            </thead>
-            <tbody id="operazioniTableBody">
-                {% for op in operazioni %}
-                <tr class="clickable-row" data-href="{{ url_for('operazioni.visualizza_operazione', id=op.id) }}">
-                    <td><strong>{{ op.nome_breve or 'N/D' }}</strong></td>
-                    <td>{{ op.nome_missione }}</td>
-                    <td>{{ op.teatro_operativo or 'N/D' }}</td>
-                    <td>{{ op.nazione or 'N/D' }}</td>
-                    <td>{{ op.data_inizio.split('-') | reverse | join('/') if op.data_inizio else 'N/D' }}</td>
-                </tr>
-                {% else %}
-                <tr><td colspan="4" style="text-align: center;">Nessuna operazione inserita.</td></tr>
-                {% endfor %}
-                <tr id="no-results-row" style="display: none;"><td colspan="4" style="text-align: center;">Nessun risultato trovato.</td></tr>
-            </tbody>
-        </table>
+        
+        <div class="table-responsive">
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-column="0">
+                            <span class="th-label">Nome Breve</span>
+                            <span class="th-arrow" data-arrow="">▲▼</span>
+                        </th>
+                        <th class="sortable" data-column="1">
+                            <span class="th-label">Nome Missione</span>
+                            <span class="th-arrow" data-arrow="">▲▼</span>
+                        </th>
+                        <th class="sortable" data-column="2">
+                            <span class="th-label">Teatro Operativo</span>
+                            <span class="th-arrow" data-arrow="">▲▼</span>
+                        </th>
+                        <th class="sortable" data-column="3">
+                            <span class="th-label">Nazione</span>
+                            <span class="th-arrow" data-arrow="">▲▼</span>
+                        </th>
+                        <th class="sortable" data-column="4">
+                            <span class="th-label">Data Inizio</span>
+                            <span class="th-arrow" data-arrow="">▲▼</span>
+                        </th>
+                        <th class="sortable" data-column="5">
+                            <span class="th-label">Stato</span>
+                            <span class="th-arrow" data-arrow="">▲▼</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="operazioniTableBody">
+                    {% for op in operazioni %}
+                    <tr class="clickable-row" data-href="{{ url_for('operazioni.visualizza_operazione', id=op.id) }}">
+                        <td><strong>{{ op.nome_breve or 'N/D' }}</strong></td>
+                        <td>{{ op.nome_missione }}</td>
+                        <td>{{ op.teatro_operativo or 'N/D' }}</td>
+                        <td>{{ op.nazione or 'N/D' }}</td>
+                        <td data-sort="{{ op.data_inizio or '9999-12-31' }}">{{ op.data_inizio|datetime_format('%d/%m/%Y') if op.data_inizio else 'N/D' }}</td>
+                        <td>
+                            {% if op.stato == 'attiva' %}
+                                <span class="stato-attiva">Attiva</span>
+                            {% elif op.stato == 'conclusa' %}
+                                <span class="stato-conclusa">Conclusa</span>
+                            {% elif op.stato == 'pianificata' %}
+                                <span class="stato-pianificata">Pianificata</span>
+                            {% else %}
+                                <span class="stato-nd">N/D</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center">Nessuna operazione inserita.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div id="no-results" class="alert alert-info text-center" style="display: none;">
+            Nessun risultato trovato.
+        </div>
     </div>
-    <script>
-        document.querySelectorAll('.clickable-row').forEach(row => {
-            row.addEventListener('click', () => { window.location.href = row.dataset.href; });
+</div>
+
+<style>
+/* Stili per gli stati delle operazioni */
+.stato-attiva {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.stato-conclusa {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.stato-pianificata {
+    color: #ffc107;
+    font-weight: 600;
+}
+
+.stato-nd {
+    color: #6c757d;
+    font-weight: 600;
+}
+
+/* Stili per ordinamento colonne */
+.sortable {
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+}
+
+.sortable:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.th-label {
+    margin-right: 15px;
+}
+
+.th-arrow {
+    position: absolute;
+    right: 10px;
+    color: #999;
+    font-size: 12px;
+}
+
+.sorted-asc .th-arrow,
+.sorted-desc .th-arrow {
+    color: #333;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Click su righe
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', function() {
+            window.location.href = this.dataset.href;
         });
-        const searchInput = document.getElementById('searchInput');
-        const tableBody = document.getElementById('operazioniTableBody');
-        const allRows = tableBody.querySelectorAll('tr.clickable-row');
-        const noResultsRow = document.getElementById('no-results-row');
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toUpperCase();
-            let visibleRows = 0;
-            allRows.forEach(row => {
-                const rowText = row.textContent.toUpperCase();
-                if (rowText.includes(searchTerm)) {
-                    row.style.display = '';
-                    visibleRows++;
-                } else {
-                    row.style.display = 'none';
-                }
+    });
+    
+    // Ricerca
+    const searchInput = document.getElementById('searchInput');
+    const tableBody = document.getElementById('operazioniTableBody');
+    const allRows = tableBody.querySelectorAll('tr.clickable-row');
+    const noResults = document.getElementById('no-results');
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toUpperCase();
+        let visibleRows = 0;
+        
+        allRows.forEach(row => {
+            const rowText = row.textContent.toUpperCase();
+            if (rowText.includes(searchTerm)) {
+                row.style.display = '';
+                visibleRows++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        noResults.style.display = (visibleRows === 0 && allRows.length > 0) ? 'block' : 'none';
+    });
+    
+    // Ordinamento colonne
+    document.querySelectorAll('.styled-table th.sortable').forEach(header => {
+        header.addEventListener('click', () => {
+            const column = parseInt(header.dataset.column);
+            const isAsc = header.classList.contains('sorted-asc');
+            const order = isAsc ? 'desc' : 'asc';
+            const rows = Array.from(tableBody.querySelectorAll('tr.clickable-row'));
+
+            // Reset altri header
+            document.querySelectorAll('.styled-table th.sortable').forEach(h => {
+                h.classList.remove('sorted-asc', 'sorted-desc');
+                const arrow = h.querySelector('[data-arrow]');
+                if (arrow) arrow.textContent = '▲▼';
             });
-            noResultsRow.style.display = (visibleRows === 0 && allRows.length > 0) ? 'table-row' : 'none';
+
+            // Aggiorna header corrente
+            header.classList.add(order === 'asc' ? 'sorted-asc' : 'sorted-desc');
+            const arrow = header.querySelector('[data-arrow]');
+            if (arrow) arrow.textContent = order === 'asc' ? '▲' : '▼';
+
+            // Ordina righe
+            rows.sort((a, b) => {
+                let textA, textB;
+                
+                // Gestione speciale per colonna data
+                if (column === 4) {
+                    textA = a.children[column].dataset.sort || a.children[column].textContent.trim();
+                    textB = b.children[column].dataset.sort || b.children[column].textContent.trim();
+                } else {
+                    textA = a.children[column].textContent.trim().toUpperCase();
+                    textB = b.children[column].textContent.trim().toUpperCase();
+                }
+                
+                return order === 'asc' ? textA.localeCompare(textB) : textB.localeCompare(textA);
+            });
+
+            // Riordina righe nel DOM
+            rows.forEach(row => tableBody.appendChild(row));
         });
-    </script>
+    });
+});
+</script>
 {% endblock %}
