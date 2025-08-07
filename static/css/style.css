@@ -1479,16 +1479,6 @@ input:checked + .talon-slider:before {
     user-select: none;
 }
 
-/* Status refresh in alto a destra */
-#refresh-status-top {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    font-size: 12px;
-    color: #6c757d;
-    z-index: 1000;
-}
-
 /* Controlli dashboard allineati a destra */
 .dashboard-controls {
     display: flex;

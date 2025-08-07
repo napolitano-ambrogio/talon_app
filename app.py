@@ -1,4 +1,4 @@
-# app.py - Versione ottimizzata con sistema auth a 3 ruoli + Anti-Cache + DEBUG FORZATO
+# app.py - Versione ottimizzata con sistema auth a 3 ruoli + SSO Superset
 import sys
 import os
 
@@ -14,7 +14,20 @@ import hashlib
 import datetime
 from waitress import serve
 
-# Importa il modulo di autenticazione AGGIORNATO
+# Importa il modulo SSO
+try:
+    from sso_superset import (
+        generate_superset_token, 
+        get_superset_sso_url,
+        inject_sso_token_in_response,
+        verify_superset_token
+    )
+    SSO_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Modulo SSO non disponibile: {e}")
+    SSO_AVAILABLE = False
+
+# Importa il modulo di autenticazione
 from auth import (
     login_required, permission_required, entity_access_required,
     get_user_by_username, get_user_permissions, get_user_accessible_entities,
@@ -51,62 +64,52 @@ def create_app():
     
     app.config['SECRET_KEY'] = 'talon-secret-key-super-secure-2025-auth-v2'
     app.config['user_sessions'] = {}  # Sessioni in memoria per token API
+    app.config['USE_SSO'] = SSO_AVAILABLE  # Flag per SSO
     
-    # Configurazione sessioni Flask ottimizzata
+    # Configurazione sessioni Flask
     app.config['SESSION_PERMANENT'] = True
     app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(days=7)
     app.config['SESSION_COOKIE_SECURE'] = False  # HTTP OK per sviluppo
-    app.config['SESSION_COOKIE_HTTPONLY'] = True  # Maggiore sicurezza
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Protezione CSRF
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['SESSION_COOKIE_PATH'] = '/'
+    app.config['SESSION_COOKIE_NAME'] = 'talon_session'  # Nome diverso da Superset
     
     # Database configuration
     app.config['DATABASE'] = DATABASE
     
-    # ==========================================
+    # ===========================================
     # CONFIGURAZIONE ANTI-CACHE PER DEBUG
-    # ==========================================
+    # ===========================================
     
-    # Configura anti-cache per modalità debug
     if app.debug:
-        # Disabilita cache per file statici
         app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
         
-        # Headers anti-cache per tutte le risposte in debug
         @app.after_request
         def disable_caching_in_debug(response):
-            # Disabilita cache per file statici (CSS, JS, immagini)
             if request.endpoint == 'static':
                 response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
                 response.headers['Pragma'] = 'no-cache'
                 response.headers['Expires'] = '0'
-                response.headers['Last-Modified'] = ''
-            
-            # Disabilita cache anche per le pagine HTML in debug
             elif request.endpoint and not request.endpoint.startswith('api'):
                 response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
                 response.headers['Pragma'] = 'no-cache'
                 response.headers['Expires'] = '0'
-            
             return response
-        
-        print("🔧 Cache disabilitata per modalità debug")
     
-    # ==========================================
-    # CACHE BUSTER PER TEMPLATE
-    # ==========================================
+    # ===========================================
+    # CONTEXT PROCESSORS
+    # ===========================================
     
     @app.context_processor
     def inject_cache_buster():
-        """Inietta cache buster nei template per forzare reload"""
+        """Inietta cache buster nei template"""
         import time
         import random
         
         if app.debug:
-            # In debug, usa timestamp corrente per forzare reload
             cache_buster = f"{int(time.time())}_{random.randint(1000, 9999)}"
         else:
-            # In produzione, usa versione statica
             cache_buster = "2.0.0"
         
         return {
@@ -114,30 +117,69 @@ def create_app():
             'is_debug': app.debug
         }
     
-    # 🎯 CONFIGURA IL CONTEXT PROCESSOR PER I TEMPLATE
+    @app.context_processor
+    def inject_app_info():
+        """Inietta informazioni app nei template"""
+        return {
+            'app_name': 'TALON System',
+            'app_version': '2.0.0',
+            'current_year': datetime.datetime.now().year,
+            'debug_mode': app.debug,
+            'sso_enabled': SSO_AVAILABLE
+        }
+    
+    @app.context_processor
+    def inject_csrf_token():
+        """Inietta csrf_token dummy nei template"""
+        def csrf_token():
+            return ''
+        return dict(csrf_token=csrf_token)
+    
+    @app.context_processor
+    def inject_sso_helpers():
+        """Inietta helper SSO nei template"""
+        def get_sso_token():
+            if SSO_AVAILABLE and session.get('logged_in'):
+                try:
+                    return generate_superset_token()
+                except:
+                    return None
+            return None
+        
+        def get_sso_dashboard_url(dashboard_id):
+            if SSO_AVAILABLE and session.get('logged_in'):
+                try:
+                    return get_superset_sso_url(dashboard_id)
+                except:
+                    return '#'
+            return '#'
+        
+        return {
+            'get_sso_token': get_sso_token,
+            'get_sso_dashboard_url': get_sso_dashboard_url,
+            'SUPERSET_BASE_URL': 'http://127.0.0.1:8088'
+        }
+    
+    # Configura il context processor per autenticazione
     setup_auth_context_processor(app)
     
     # ===========================================
-    # FUNZIONI DATABASE SEMPLIFICATE
+    # FUNZIONI DATABASE
     # ===========================================
-
+    
     def get_db_connection():
         conn = sqlite3.connect(DATABASE)
         conn.row_factory = sqlite3.Row
         return conn
-
+    
     def verify_password(stored_hash: str, password: str, username: str = None) -> bool:
         """Verifica password con fallback per admin di test"""
-        # Fallback per admin di test
         if username == 'admin' and password == 'admin123':
             return True
-        
-        # Verifica hash MD5 semplice
         if stored_hash:
             return stored_hash == hashlib.md5(password.encode()).hexdigest()
-        
         return False
-
+    
     def create_api_session_token(user_data: dict) -> str:
         """Crea token di sessione per API"""
         import time
@@ -151,41 +193,42 @@ def create_app():
             'expires': datetime.datetime.now() + datetime.timedelta(hours=24)
         }
         return token
-
+    
     # ===========================================
-    # ROUTE PER FAVICON
+    # ROUTE STATICHE
     # ===========================================
     
     @app.route('/favicon.ico')
     def favicon():
         """Gestisce la richiesta del favicon"""
-        # Prova a servire il favicon dalla cartella static
         favicon_path = os.path.join(app.static_folder, 'favicon.ico')
         if os.path.exists(favicon_path):
             return app.send_static_file('favicon.ico')
-        else:
-            # Se non esiste, ritorna 204 No Content
-            return Response(status=204)
-
+        return Response(status=204)
+    
+    @app.route('/')
+    def root():
+        """Root redirect intelligente"""
+        if session.get('logged_in'):
+            return redirect(url_for('main.dashboard'))
+        return redirect(url_for('show_login'))
+    
     # ===========================================
     # ROUTE DI AUTENTICAZIONE
     # ===========================================
-
+    
     @app.route('/login', methods=['GET'])
     @app.route('/auth/login', methods=['GET'])
     def show_login():
         """Mostra pagina di login"""
-        # Se già loggato, redirect alla dashboard
         if session.get('logged_in') and session.get('user_id'):
             return redirect(url_for('main.dashboard'))
-        
         return render_template('login.html')
-
+    
     @app.route('/login', methods=['POST'])
     @app.route('/auth/login', methods=['POST'])
     def process_login():
         """Processa il login sia web che API"""
-        # Determina se è una richiesta API o web
         is_api_request = (request.is_json or 
                          request.headers.get('Content-Type', '').startswith('application/json'))
         
@@ -232,6 +275,9 @@ def create_app():
         session['logged_in'] = True
         session['login_time'] = datetime.datetime.now().isoformat()
         session['session_valid'] = True
+        session['nome'] = user.get('nome', '')
+        session['cognome'] = user.get('cognome', '')
+        session['email'] = user.get('email', f"{username}@talon.local")
         
         # Aggiorna sessione con informazioni ruolo
         update_session_with_role_info(user['id'])
@@ -245,7 +291,7 @@ def create_app():
             )
             conn.commit()
             conn.close()
-        except sqlite3.OperationalError:
+        except:
             pass
         
         # Log del login
@@ -270,39 +316,28 @@ def create_app():
                     'username': user['username'],
                     'nome': user['nome'],
                     'cognome': user['cognome'],
-                    'grado': user.get('grado'),
                     'ruolo': user.get('ruolo_nome'),
-                    'ente_appartenenza': user.get('ente_nome'),
                     'livello_accesso': user.get('livello_accesso', 0)
                 },
                 'permissions': permissions,
-                'accessible_entities': accessible_entities,
-                'session_info': {
-                    'login_time': session['login_time'],
-                    'expires': (datetime.datetime.now() + app.config['PERMANENT_SESSION_LIFETIME']).isoformat()
-                }
+                'accessible_entities': accessible_entities
             })
         else:
             # Risposta web
             flash(f'Benvenuto, {user["nome"]} {user["cognome"]}!', 'success')
             
-            # Redirect intelligente
             next_page = request.args.get('next')
             if next_page and next_page.startswith('/'):
                 return redirect(next_page)
             
-            # Redirect basato sul ruolo
-            user_role = session.get('ruolo_nome', '').upper()
             return redirect(url_for('main.dashboard'))
-
+    
     @app.route('/logout', methods=['GET', 'POST'])
     @app.route('/auth/logout', methods=['GET', 'POST'])
     def logout():
         """Logout dell'utente"""
         user_id = session.get('user_id')
-        username = session.get('username')
         
-        # Log del logout
         if user_id:
             log_user_action(
                 user_id=user_id,
@@ -327,7 +362,73 @@ def create_app():
         else:
             flash('Logout effettuato correttamente.', 'info')
             return redirect(url_for('show_login'))
-
+    
+    # ===========================================
+    # ROUTE SSO PER SUPERSET
+    # ===========================================
+    
+    if SSO_AVAILABLE:
+        @app.route('/api/sso/superset/token', methods=['GET', 'POST'])
+        @login_required
+        def get_superset_sso_token():
+            """API endpoint per ottenere un token SSO per Superset"""
+            try:
+                token = generate_superset_token()
+                return jsonify({
+                    'success': True,
+                    'token': token,
+                    'expires_in': 28800,
+                    'superset_url': 'http://127.0.0.1:8088'
+                })
+            except Exception as e:
+                app.logger.error(f"Errore generazione token SSO: {e}")
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+        
+        @app.route('/api/sso/superset/url', methods=['GET'])
+        @login_required
+        def get_superset_sso_url_endpoint():
+            """Genera URL di Superset con token SSO"""
+            dashboard_id = request.args.get('dashboard_id')
+            return_url = request.args.get('return_url')
+            
+            try:
+                url = get_superset_sso_url(dashboard_id, return_url)
+                return jsonify({
+                    'success': True,
+                    'url': url
+                })
+            except Exception as e:
+                return jsonify({
+                    'success': False,
+                    'error': str(e)
+                }), 500
+        
+        @app.route('/superset/dashboard/<int:dashboard_id>')
+        @login_required
+        def superset_dashboard_proxy(dashboard_id):
+            """Proxy per dashboard Superset con SSO automatico"""
+            token = generate_superset_token()
+            superset_url = f"http://127.0.0.1:8088/superset/dashboard/{dashboard_id}/?token={token}"
+            superset_url += "&standalone=1&show_top_bar=0&hide_nav=1&embedded=1"
+            return redirect(superset_url)
+        
+        @app.after_request
+        def add_sso_token_cookie(response):
+            """Aggiunge token SSO ai cookie se necessario"""
+            if SSO_AVAILABLE and (request.path.startswith('/dashboard') or request.path.startswith('/superset')):
+                try:
+                    response = inject_sso_token_in_response(response)
+                except:
+                    pass
+            return response
+    
+    # ===========================================
+    # ROUTE API
+    # ===========================================
+    
     @app.route('/api/auth/me', methods=['GET'])
     @login_required
     def get_current_user_api():
@@ -345,36 +446,15 @@ def create_app():
                 'username': user['username'],
                 'nome': user['nome'],
                 'cognome': user['cognome'],
-                'grado': user.get('grado'),
                 'ruolo': user.get('ruolo_nome'),
-                'ente_appartenenza': user.get('ente_nome'),
-                'livello_accesso': user.get('livello_accesso', 0),
-                'accesso_globale': user.get('accesso_globale', False)
+                'livello_accesso': user.get('livello_accesso', 0)
             },
             'permissions': permissions,
-            'accessible_entities': accessible_entities,
-            'session_info': {
-                'login_time': session.get('login_time'),
-                'is_admin': is_admin(),
-                'is_operatore_or_above': is_operatore_or_above(),
-                'role': get_user_role()
-            }
+            'accessible_entities': accessible_entities
         })
-
-    # ===========================================
-    # ROUTE PRINCIPALI
-    # ===========================================
     
-    @app.route('/')
-    def root():
-        """Root redirect intelligente"""
-        if session.get('logged_in'):
-            return redirect(url_for('main.dashboard'))
-        else:
-            return redirect(url_for('show_login'))
-
     # ===========================================
-    # ROUTE DI AMMINISTRAZIONE (IMPOSTAZIONI)
+    # ROUTE DI AMMINISTRAZIONE
     # ===========================================
     
     @app.route('/impostazioni')
@@ -398,137 +478,89 @@ def create_app():
                    ORDER BY u.cognome, u.nome'''
             ).fetchall()
             conn.close()
-            
             return render_template('admin/users.html', users=users)
         except Exception as e:
             flash(f'Errore nel caricamento utenti: {str(e)}', 'error')
             return redirect(url_for('main.dashboard'))
-
-    @app.route('/impostazioni/sistema')
-    @app.route('/admin/system-info')
-    @admin_required
-    def admin_system_info():
-        """Informazioni sistema (solo admin)"""
-        try:
-            stats = get_system_auth_stats()
-            role_consistency = validate_user_role_consistency()
-            
-            return render_template('admin/system_info.html', 
-                                 stats=stats, 
-                                 role_consistency=role_consistency)
-        except Exception as e:
-            flash(f'Errore nel caricamento statistiche: {str(e)}', 'error')
-            return redirect(url_for('main.dashboard'))
-
+    
     # ===========================================
     # ROUTE DI DEBUG (SOLO SVILUPPO)
     # ===========================================
     
-    @app.route('/debug/session')
-    def debug_session():
-        """Debug informazioni sessione"""
-        if not app.debug:
-            return jsonify({'error': 'Debug non disponibile in produzione'}), 403
+    if app.debug:
+        @app.route('/debug/session')
+        def debug_session():
+            """Debug informazioni sessione"""
+            user_info = get_current_user_info()
+            
+            return jsonify({
+                'flask_session': dict(session),
+                'user_logged_in': session.get('logged_in', False),
+                'user_id': session.get('user_id'),
+                'username': session.get('username'),
+                'user_role': session.get('ruolo_nome'),
+                'sso_enabled': SSO_AVAILABLE,
+                'user_info': user_info
+            })
         
-        user_info = get_current_user_info()
-        
-        debug_info = {
-            'flask_session': dict(session),
-            'session_valid': session.get('session_valid', False),
-            'user_logged_in': session.get('logged_in', False),
-            'user_id': session.get('user_id'),
-            'username': session.get('username'),
-            'user_role': session.get('ruolo_nome'),
-            'is_admin': session.get('is_admin', False),
-            'user_info': user_info,
-            'accessible_entities_count': len(get_user_accessible_entities(session.get('user_id'))) if session.get('user_id') else 0
-        }
-        
-        return jsonify(debug_info)
-
-    @app.route('/debug/user/<int:user_id>')
-    @admin_required
-    def debug_user_info(user_id):
-        """Debug informazioni specifiche utente (solo admin)"""
-        try:
-            debug_info = debug_user_permissions(user_id)
-            return jsonify(debug_info)
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-
-    @app.route('/quick-login/<username>')
-    def quick_login(username):
-        """Login rapido per sviluppo - DA RIMUOVERE IN PRODUZIONE"""
-        if not app.debug:
-            return jsonify({'error': 'Non disponibile in produzione'}), 403
-        
-        user = get_user_by_username(username)
-        if not user:
-            return jsonify({'error': f'Utente {username} non trovato'}), 404
-        
-        # Forza login
-        session.permanent = True
-        session.clear()
-        session['user_id'] = user['id']
-        session['username'] = user['username']
-        session['logged_in'] = True
-        session['login_time'] = datetime.datetime.now().isoformat()
-        session['session_valid'] = True
-        
-        update_session_with_role_info(user['id'])
-        
-        log_user_action(
-            user_id=user['id'],
-            action='QUICK_LOGIN_DEBUG',
-            details=f"Quick login debug per {username}",
-            ip_address=request.remote_addr
-        )
-        
-        flash(f'Quick login effettuato per {username}', 'info')
-        return redirect(url_for('main.dashboard'))
-
+        @app.route('/quick-login/<username>')
+        def quick_login(username):
+            """Login rapido per sviluppo"""
+            user = get_user_by_username(username)
+            if not user:
+                return jsonify({'error': f'Utente {username} non trovato'}), 404
+            
+            session.permanent = True
+            session.clear()
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            session['logged_in'] = True
+            session['login_time'] = datetime.datetime.now().isoformat()
+            session['session_valid'] = True
+            session['nome'] = user.get('nome', '')
+            session['cognome'] = user.get('cognome', '')
+            
+            update_session_with_role_info(user['id'])
+            
+            flash(f'Quick login effettuato per {username}', 'info')
+            return redirect(url_for('main.dashboard'))
+    
     # ===========================================
     # GESTIONE ERRORI
     # ===========================================
-
+    
     @app.errorhandler(401)
     def unauthorized(error):
         """Gestione errore 401 - Non autorizzato"""
         if request.path.startswith('/api/'):
             return jsonify({
                 'error': 'Autenticazione richiesta',
-                'code': 'AUTHENTICATION_REQUIRED',
-                'login_url': url_for('show_login', _external=True)
+                'code': 'AUTHENTICATION_REQUIRED'
             }), 401
-        
         flash('Devi effettuare il login per accedere a questa pagina.', 'warning')
         return redirect(url_for('show_login', next=request.url))
-
+    
     @app.errorhandler(403)
     def forbidden(error):
         """Gestione errore 403 - Accesso negato"""
         if request.path.startswith('/api/'):
             return jsonify({
                 'error': 'Accesso negato',
-                'code': 'ACCESS_DENIED',
-                'required_permission': getattr(error, 'required_permission', None)
+                'code': 'ACCESS_DENIED'
             }), 403
-        
         flash('Non hai i privilegi necessari per accedere a questa risorsa.', 'error')
         return render_template('errors/403.html'), 403
-
+    
     @app.errorhandler(404)
     def page_not_found(error):
         """Gestione errore 404 - Pagina non trovata"""
         if request.path.startswith('/api/'):
             return jsonify({
                 'error': 'Endpoint non trovato',
-                'code': 'NOT_FOUND',
-                'path': request.path
+                'code': 'NOT_FOUND'
             }), 404
-        
         return render_template('errors/404.html'), 404
-
+    
     @app.errorhandler(500)
     def internal_server_error(error):
         """Gestione errore 500 - Errore interno server"""
@@ -537,34 +569,9 @@ def create_app():
                 'error': 'Errore interno del server',
                 'code': 'INTERNAL_ERROR'
             }), 500
-        
         flash('Si è verificato un errore interno. Riprova più tardi.', 'error')
         return render_template('errors/500.html'), 500
-
-    # ===========================================
-    # CONTEXT PROCESSORS AGGIUNTIVI
-    # ===========================================
     
-    @app.context_processor
-    def inject_app_info():
-        """Inietta informazioni app nei template"""
-        return {
-            'app_name': 'TALON System',
-            'app_version': '2.0.0',
-            'current_year': datetime.datetime.now().year,
-            'debug_mode': app.debug
-        }
-    
-    # ✅ CONTEXT PROCESSOR PER CSRF TOKEN DUMMY
-    @app.context_processor
-    def inject_csrf_token():
-        """Inietta csrf_token dummy nei template per evitare errori"""
-        def csrf_token():
-            # Ritorna una stringa vuota o un token dummy
-            # Questo previene errori nei template senza bisogno di Flask-WTF
-            return ''
-        return dict(csrf_token=csrf_token)
-
     # ===========================================
     # TEMPLATE FILTERS
     # ===========================================
@@ -580,7 +587,7 @@ def create_app():
         if isinstance(value, datetime.datetime):
             return value.strftime(format)
         return value
-
+    
     @app.template_filter('role_badge_class')
     def role_badge_class(role):
         """Restituisce classe CSS per badge ruolo"""
@@ -592,49 +599,47 @@ def create_app():
         elif role_upper == ROLE_VISUALIZZATORE:
             return 'badge-info'
         return 'badge-secondary'
-
+    
     # ===========================================
     # REGISTRAZIONE BLUEPRINT
     # ===========================================
-
+    
     app.register_blueprint(main_bp)
     app.register_blueprint(enti_militari_bp)
     app.register_blueprint(enti_civili_bp)
     app.register_blueprint(operazioni_bp)
     app.register_blueprint(attivita_bp)
-
+    
     # ===========================================
-    # INIZIALIZZAZIONE APPLICAZIONE - FLASK 2.2+ COMPATIBLE
+    # INIZIALIZZAZIONE APPLICAZIONE
     # ===========================================
     
-    # ✅ SOSTITUISCE @app.before_first_request (rimosso in Flask 2.2+)
     with app.app_context():
         try:
-            # Valida consistenza ruoli
             if not validate_user_role_consistency():
                 app.logger.warning("Inconsistenze rilevate nel sistema dei ruoli")
-            
             app.logger.info("TALON System inizializzato correttamente")
-            print("🔧 Database e sistema ruoli verificati")
+            print("✅ Database e sistema ruoli verificati")
+            if SSO_AVAILABLE:
+                print("✅ Modulo SSO caricato correttamente")
+            else:
+                print("⚠️ Modulo SSO non disponibile")
         except Exception as e:
             app.logger.error(f"Errore nell'inizializzazione: {e}")
             print(f"❌ Errore inizializzazione: {e}")
-
+    
     return app
 
 def main():
     """Funzione principale"""
     app = create_app()
     
-    # FORZA SEMPRE DEBUG PER SVILUPPO
-    FORCE_DEBUG = True  # Cambia a False per produzione vera
+    FORCE_DEBUG = True  # Cambia a False per produzione
     
-    # Configurazione logging
     if not FORCE_DEBUG and not app.debug:
         import logging
         from logging.handlers import RotatingFileHandler
         
-        # Crea directory logs se non esiste
         os.makedirs('logs', exist_ok=True)
         
         file_handler = RotatingFileHandler('logs/talon.log', maxBytes=10240000, backupCount=10)
@@ -646,36 +651,38 @@ def main():
         app.logger.setLevel(logging.INFO)
         app.logger.info('TALON System startup')
     
-    print("=" * 50)
-    print("🎯 TALON SYSTEM v2.0 - SISTEMA AUTENTICAZIONE A 3 RUOLI")
-    print("=" * 50)
+    print("=" * 60)
+    print("🎯 TALON SYSTEM v2.0 - SISTEMA AUTENTICAZIONE + SSO")
+    print("=" * 60)
+    print("📊 SERVIZI:")
+    print("   • TALON:    http://127.0.0.1:5000")
+    print("   • SUPERSET: http://127.0.0.1:8088")
+    print("=" * 60)
     print("👤 CREDENZIALI DI TEST:")
     print("   Username: admin")
     print("   Password: admin123")
-    print("=" * 50)
+    print("=" * 60)
     print("🔐 RUOLI DISPONIBILI:")
-    print(f"   • {ROLE_ADMIN} - Accesso completo al sistema")
-    print(f"   • {ROLE_OPERATORE} - Modifica dati nel cono d'ombra")
+    print(f"   • {ROLE_ADMIN} - Accesso completo")
+    print(f"   • {ROLE_OPERATORE} - Modifica dati")
     print(f"   • {ROLE_VISUALIZZATORE} - Solo visualizzazione")
-    print("=" * 50)
-    print("🌐 ENDPOINTS PRINCIPALI:")
-    print("   • /login - Login web")
-    print("   • /logout - Logout")
-    print("   • /impostazioni - Gestione sistema (admin)")
-    print("   • /debug/session - Debug sessione (dev)")
-    print("=" * 50)
+    print("=" * 60)
+    
+    if SSO_AVAILABLE:
+        print("🔑 SSO ATTIVO - Login unico TALON → Superset")
+    else:
+        print("⚠️ SSO NON ATTIVO - Crea sso_superset.py")
+    
+    print("=" * 60)
     
     if FORCE_DEBUG or app.debug:
-        print("🚨 MODALITÀ DEBUG ATTIVA (FORZATA)")
-        print("🔧 Cache disabilitata per modalità debug")
-        print("💾 Cache disabilitata - modifiche immediate")
-        print("🔄 Per vedere le modifiche: Ctrl+Shift+R o F12 > Disable cache")
-        print("=" * 50)
+        print("🚨 MODALITÀ DEBUG ATTIVA")
+        print("💾 Cache disabilitata")
+        print("=" * 60)
         app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
     else:
         print("🚀 MODALITÀ PRODUZIONE")
-        print("💾 Cache abilitata per performance")
-        print("=" * 50)
+        print("=" * 60)
         serve(app, host='0.0.0.0', port=5000, threads=16)
 
 if __name__ == '__main__':

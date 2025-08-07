@@ -3,8 +3,6 @@
 {% block title %}Dashboard - TALON{% endblock %}
 
 {% block content %}
-<!-- Status refresh in alto a destra -->
-<div id="refresh-status-top"></div>
 
 <!-- Controlli dashboard -->
 <div class="dashboard-controls">
@@ -15,6 +13,13 @@
     <button onclick="document.getElementById('importFile').click()" class="btn btn-secondary">Importa</button>
     <button onclick="refreshAllCharts()" class="btn btn-success">Aggiorna Tutti</button>
     <button onclick="cycleAutoRefresh()" class="btn btn-info" id="autoRefreshBtn">AUTO-REFRESH OFF</button>
+</div>
+
+<!-- Status Superset (nascosto di default) -->
+<div id="supersetStatus" style="position: fixed; top: 70px; right: 20px; padding: 8px 12px; 
+                           background: #dc3545; color: white; border-radius: 4px; 
+                           font-size: 12px; z-index: 1000; display: none;">
+    Non Connesso
 </div>
 
 <div id="dashboard-grid" class="dashboard-grid">
@@ -32,20 +37,6 @@ body {
 .page-wrapper {
     max-width: 100%;
     overflow-x: hidden;
-}
-
-/* Status refresh */
-#refresh-status-top {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    font-size: 12px;
-    color: #6c757d;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 5px 10px;
-    border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 /* Controlli dashboard */
@@ -168,7 +159,7 @@ body {
     width: 100%;
     height: 100%;
     background: rgba(255,255,255,0.9);
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     z-index: 10;
@@ -205,6 +196,28 @@ body {
 }
 
 /* Button styles */
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.btn-primary { background: #007bff; color: white; }
+.btn-primary:hover { background: #0056b3; }
+.btn-danger { background: #dc3545; color: white; }
+.btn-danger:hover { background: #c82333; }
+.btn-secondary { background: #6c757d; color: white; }
+.btn-secondary:hover { background: #545b62; }
+.btn-success { background: #28a745; color: white; }
+.btn-success:hover { background: #218838; }
+.btn-info { background: #17a2b8; color: white; }
+.btn-info:hover { background: #138496; }
+.btn-warning { background: #ffc107; color: #212529; }
+.btn-warning:hover { background: #e0a800; }
+
 .btn-sm {
     padding: 4px 8px;
     font-size: 12px;
@@ -231,12 +244,6 @@ body {
         max-width: calc(100vw - 40px);
         width: 100% !important;
     }
-    
-    #refresh-status-top {
-        font-size: 10px;
-        top: 10px;
-        right: 10px;
-    }
 }
 </style>
 
@@ -261,15 +268,28 @@ let charts = [];
 let autoRefreshInterval = null;
 let autoRefreshState = 0;
 let lastRefreshTime = null;
+let supersetAuthenticated = false;
+let supersetLoginWindow = null;
+let pendingChartAdd = false;
 
 // ==========================================
 // INIZIALIZZAZIONE
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     checkProtocol();
-    loadLayout();
+    
+    // Carica il layout salvato
+    const hasCharts = loadLayout();
+    
+    // Se ci sono grafici salvati, apri automaticamente il login di Superset
+    if (hasCharts) {
+        showNotification('Autenticazione Superset richiesta per i grafici', 'info');
+        setTimeout(() => {
+            openSupersetLogin(false);
+        }, 1000);
+    }
+    
     initializeResizable();
-    updateRefreshStatusTop();
     loadAutoRefreshSettings();
     setupWindowResize();
 });
@@ -283,10 +303,66 @@ function checkProtocol() {
     }
 }
 
+// Apre Superset in una nuova finestra per login
+function openSupersetLogin(forNewChart = false) {
+    // Se abbiamo già una finestra aperta, portala in primo piano
+    if (supersetLoginWindow && !supersetLoginWindow.closed) {
+        supersetLoginWindow.focus();
+        return;
+    }
+    
+    pendingChartAdd = forNewChart;
+    
+    const width = 800;
+    const height = 600;
+    const left = (screen.width - width) / 2;
+    const top = (screen.height - height) / 2;
+    
+    supersetLoginWindow = window.open(
+        `${CONFIG.SUPERSET_BASE_URL}/login/`,
+        'SupersetLogin',
+        `width=${width},height=${height},left=${left},top=${top}`
+    );
+    
+    if (!forNewChart) {
+        showNotification('Autenticati in Superset per visualizzare i grafici', 'info');
+    }
+    
+    // Controlla quando la finestra viene chiusa
+    const checkInterval = setInterval(() => {
+        if (supersetLoginWindow.closed) {
+            clearInterval(checkInterval);
+            supersetAuthenticated = true;
+            supersetLoginWindow = null;
+            
+            if (pendingChartAdd) {
+                // Se stavamo aggiungendo un grafico, mostra il prompt
+                showNotification('Autenticato! Ora puoi aggiungere il grafico.', 'success');
+                setTimeout(() => {
+                    promptForChartData();
+                }, 500);
+                pendingChartAdd = false;
+            } else {
+                showNotification('Sessione Superset attiva!', 'success');
+                // Refresh tutti i grafici esistenti
+                setTimeout(() => {
+                    refreshAllCharts();
+                }, 1000);
+            }
+        }
+    }, 1000);
+}
+
 // ==========================================
 // GESTIONE GRAFICI
 // ==========================================
 function addNewChart(chartData = null) {
+    // Se non abbiamo dati e non siamo autenticati, prima autentica
+    if (!chartData && !supersetAuthenticated) {
+        openSupersetLogin(true);
+        return;
+    }
+    
     if (!chartData) {
         chartData = promptForChartData();
         if (!chartData) return;
@@ -315,35 +391,300 @@ function addNewChart(chartData = null) {
 }
 
 function promptForChartData() {
-    const contentType = prompt(
-        "Che tipo di contenuto vuoi aggiungere?\n\n" +
-        "1. Dashboard completa\n" +
-        "2. Singolo grafico\n\n" +
-        "Digita 1 o 2:"
+    // Prima mostra un dialog per scegliere il metodo
+    const choice = prompt(
+        "Come vuoi aggiungere il contenuto?\n\n" +
+        "1. Mostra elenco contenuti disponibili\n" +
+        "2. Inserisci URL manualmente\n" +
+        "3. Inserisci ID direttamente\n\n" +
+        "Digita 1, 2 o 3:"
     );
     
-    if (!contentType || (contentType !== '1' && contentType !== '2')) {
-        if (contentType) alert("Scelta non valida.");
-        return null;
+    if (!choice) return null;
+    
+    if (choice === '1') {
+        // Mostra elenco contenuti
+        showContentSelector();
+        return null; // Interrompi qui, la selezione avverrà dal modal
+    } else if (choice === '2') {
+        // Inserimento URL manuale (codice esistente)
+        const contentType = prompt(
+            "Che tipo di contenuto vuoi aggiungere?\n\n" +
+            "1. Dashboard completa\n" +
+            "2. Singolo grafico\n\n" +
+            "Digita 1 o 2:"
+        );
+        
+        if (!contentType || (contentType !== '1' && contentType !== '2')) {
+            if (contentType) alert("Scelta non valida.");
+            return null;
+        }
+        
+        const isDashboard = contentType === '1';
+        const urlExample = isDashboard 
+            ? "http://127.0.0.1:8088/superset/dashboard/2/"
+            : "http://127.0.0.1:8088/explore/?form_data_key=xxx&slice_id=1";
+        
+        const userUrl = prompt(
+            `Incolla l'URL ${isDashboard ? 'della dashboard' : 'del grafico'} Superset:\n\n` +
+            `Esempio: ${urlExample}`
+        );
+        
+        if (!userUrl) return null;
+        
+        try {
+            return parseSupsersetUrl(userUrl, isDashboard);
+        } catch (e) {
+            alert("URL non valido: " + e.message);
+            return null;
+        }
+    } else if (choice === '3') {
+        // Inserimento ID diretto
+        const contentType = prompt(
+            "Che tipo di contenuto?\n\n" +
+            "1. Dashboard\n" +
+            "2. Grafico\n\n" +
+            "Digita 1 o 2:"
+        );
+        
+        if (!contentType || (contentType !== '1' && contentType !== '2')) {
+            if (contentType) alert("Scelta non valida.");
+            return null;
+        }
+        
+        const isDashboard = contentType === '1';
+        const id = prompt(`Inserisci l'ID della ${isDashboard ? 'dashboard' : 'grafico'}:`);
+        
+        if (!id) return null;
+        
+        return {
+            type: isDashboard ? 'dashboard' : 'chart',
+            dashboardId: isDashboard ? id : undefined,
+            sliceId: isDashboard ? undefined : id,
+            title: `${isDashboard ? 'Dashboard' : 'Grafico'} ${id}`
+        };
     }
     
-    const isDashboard = contentType === '1';
-    const urlExample = isDashboard 
-        ? "http://127.0.0.1:8088/superset/dashboard/2/"
-        : "http://127.0.0.1:8088/explore/?form_data_key=xxx&slice_id=1";
-    
-    const userUrl = prompt(
-        `Incolla l'URL ${isDashboard ? 'della dashboard' : 'del grafico'} Superset:\n\n` +
-        `Esempio: ${urlExample}`
-    );
-    
-    if (!userUrl) return null;
+    return null;
+}
+
+// Funzione per mostrare il selettore di contenuti
+function showContentSelector() {
+    // Crea o mostra il modal
+    let modal = document.getElementById('contentModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'contentModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        `;
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = `
+            background: white;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            border-radius: 12px;
+            padding: 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        `;
+        
+        modalContent.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">Seleziona Contenuto Superset</h2>
+                <button onclick="closeContentModal()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button onclick="loadSupersetContent('dashboards')" class="btn btn-primary">Carica Dashboard</button>
+                <button onclick="loadSupersetContent('charts')" class="btn btn-primary">Carica Grafici</button>
+                <button onclick="showManualEntry()" class="btn btn-secondary">Inserimento Manuale</button>
+            </div>
+            
+            <div id="contentList" style="flex: 1; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px;">
+                <p style="text-align: center; color: #666;">Clicca su "Carica Dashboard" o "Carica Grafici" per vedere i contenuti disponibili</p>
+            </div>
+        `;
+        
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+    } else {
+        modal.style.display = 'flex';
+    }
+}
+
+// Funzione per caricare contenuti da Superset
+async function loadSupersetContent(type) {
+    const contentList = document.getElementById('contentList');
+    contentList.innerHTML = '<p style="text-align: center;">Caricamento in corso...</p>';
     
     try {
-        return parseSupsersetUrl(userUrl, isDashboard);
-    } catch (e) {
-        alert("URL non valido: " + e.message);
-        return null;
+        // Usa l'endpoint che già abbiamo
+        const endpoint = type === 'dashboards' 
+            ? '/api/superset/simple/dashboards' 
+            : '/api/superset/simple/charts';
+            
+        const response = await fetch(endpoint, {
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Errore nel caricamento');
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const items = type === 'dashboards' ? data.dashboards : data.charts;
+            
+            if (items && items.length > 0) {
+                let html = `<h3>${type === 'dashboards' ? 'Dashboard' : 'Grafici'} Disponibili</h3>`;
+                html += '<div style="display: grid; gap: 10px; margin-top: 10px;">';
+                
+                items.forEach(item => {
+                    html += `
+                        <div onclick="selectContent('${item.type}', ${item.id}, '${item.title}')" 
+                             style="padding: 12px; border: 1px solid #ddd; border-radius: 6px; 
+                                    cursor: pointer; transition: all 0.3s;"
+                             onmouseover="this.style.background='#f0f0f0'" 
+                             onmouseout="this.style.background='white'">
+                            <strong>${item.title}</strong>
+                            <span style="color: #666; font-size: 12px; margin-left: 10px;">ID: ${item.id}</span>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                html += `
+                    <p style="margin-top: 20px; padding: 10px; background: #fff3cd; border-radius: 6px; font-size: 12px;">
+                        <strong>Nota:</strong> Questi sono ID di esempio (1-${items.length}). 
+                        Per vedere i tuoi contenuti reali, crea prima dashboard e grafici in Superset.
+                        Puoi anche usare "Inserimento Manuale" per aggiungere contenuti specifici.
+                    </p>
+                `;
+                
+                contentList.innerHTML = html;
+            } else {
+                contentList.innerHTML = '<p style="text-align: center; color: #666;">Nessun contenuto trovato</p>';
+            }
+        } else {
+            throw new Error(data.error || 'Errore sconosciuto');
+        }
+    } catch (error) {
+        console.error('Errore caricamento contenuti:', error);
+        
+        // Fallback: mostra contenuti di esempio
+        const exampleItems = type === 'dashboards' 
+            ? [1, 2, 3, 4, 5].map(i => ({id: i, title: `Dashboard ${i}`, type: 'dashboard'}))
+            : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => ({id: i, title: `Grafico ${i}`, type: 'chart'}));
+            
+        let html = `<h3>${type === 'dashboards' ? 'Dashboard' : 'Grafici'} di Esempio</h3>`;
+        html += '<div style="display: grid; gap: 10px; margin-top: 10px;">';
+        
+        exampleItems.forEach(item => {
+            html += `
+                <div onclick="selectContent('${item.type}', ${item.id}, '${item.title}')" 
+                     style="padding: 12px; border: 1px solid #ddd; border-radius: 6px; 
+                            cursor: pointer; transition: all 0.3s;"
+                     onmouseover="this.style.background='#f0f0f0'" 
+                     onmouseout="this.style.background='white'">
+                    <strong>${item.title}</strong>
+                    <span style="color: #666; font-size: 12px; margin-left: 10px;">ID: ${item.id}</span>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        contentList.innerHTML = html;
+    }
+}
+
+// Funzione per mostrare form inserimento manuale
+function showManualEntry() {
+    const contentList = document.getElementById('contentList');
+    contentList.innerHTML = `
+        <h3>Inserimento Manuale</h3>
+        <div style="padding: 20px;">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">Tipo:</label>
+                <select id="manualType" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="dashboard">Dashboard</option>
+                    <option value="chart">Grafico</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">ID:</label>
+                <input type="number" id="manualId" placeholder="Es: 1, 2, 42..." 
+                       style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">Titolo (opzionale):</label>
+                <input type="text" id="manualTitle" placeholder="Es: Dashboard Vendite" 
+                       style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            
+            <button onclick="addManualContent()" class="btn btn-primary" style="width: 100%;">Aggiungi</button>
+            
+            <div style="margin-top: 20px; padding: 10px; background: #e7f3ff; border-radius: 6px; font-size: 12px;">
+                <strong>Come trovare l'ID:</strong><br>
+                • Dashboard: Apri la dashboard in Superset, l'URL sarà tipo /superset/dashboard/<strong>5</strong>/<br>
+                • Grafico: Apri il grafico in Superset, l'URL conterrà slice_id=<strong>42</strong>
+            </div>
+        </div>
+    `;
+}
+
+// Funzione per aggiungere contenuto manuale dal modal
+function addManualContent() {
+    const type = document.getElementById('manualType').value;
+    const id = document.getElementById('manualId').value;
+    const title = document.getElementById('manualTitle').value || 
+                  `${type === 'dashboard' ? 'Dashboard' : 'Grafico'} ${id}`;
+    
+    if (!id) {
+        alert('Inserisci un ID valido');
+        return;
+    }
+    
+    selectContent(type, id, title);
+}
+
+// Funzione per selezionare un contenuto
+function selectContent(type, id, title) {
+    const chartData = {
+        type: type,
+        title: title
+    };
+    
+    if (type === 'dashboard') {
+        chartData.dashboardId = id;
+    } else {
+        chartData.sliceId = id;
+    }
+    
+    closeContentModal();
+    addNewChart(chartData);
+}
+
+// Funzione per chiudere il modal
+function closeContentModal() {
+    const modal = document.getElementById('contentModal');
+    if (modal) {
+        modal.style.display = 'none';
     }
 }
 
@@ -364,8 +705,8 @@ function parseSupsersetUrl(userUrl, isDashboard) {
         const formDataKey = url.searchParams.get('form_data_key');
         const sliceId = url.searchParams.get('slice_id');
         
-        if (!formDataKey || !sliceId) {
-            throw new Error("URL grafico non valido");
+        if (!sliceId) {
+            throw new Error("URL grafico non valido - slice_id mancante");
         }
         
         return {
@@ -389,6 +730,7 @@ function createChartCard(chartId, chartData, width, height) {
     const titleDiv = document.createElement("div");
     titleDiv.className = "chart-title";
     titleDiv.style.background = chartData.type === 'dashboard' ? '#e3f2fd' : '#f8f9fa';
+    titleDiv.textContent = chartData.title || 'Dashboard';
 
     // Close button
     const closeBtn = document.createElement("button");
@@ -422,10 +764,45 @@ function createIframe(chartData, chartId) {
     iframe.loading = "lazy";
     iframe.setAttribute('data-original-url', iframeUrl);
     iframe.setAttribute('data-chart-id', chartId);
+    iframe.setAttribute('data-chart-type', chartData.type);
+    iframe.setAttribute('data-dashboard-id', chartData.dashboardId || '');
     
     iframe.onload = function() {
         const overlay = this.parentElement.querySelector('.loading-overlay');
-        if (overlay) overlay.style.display = 'none';
+        
+        // Controlla se siamo sulla pagina di login
+        try {
+            const iframeDoc = this.contentDocument || this.contentWindow.document;
+            if (iframeDoc && iframeDoc.body.innerHTML.includes('login')) {
+                console.log('Rilevata pagina login in iframe');
+                
+                // Se non siamo autenticati, apri la finestra di login
+                if (!supersetAuthenticated) {
+                    if (overlay) {
+                        overlay.innerHTML = `
+                            <div style="text-align: center; padding: 20px;">
+                                <div style="font-size: 24px; margin-bottom: 8px;">🔐</div>
+                                <div>Autenticazione richiesta</div>
+                                <button onclick="openSupersetLogin(false)" class="btn btn-primary" style="margin-top: 10px;">
+                                    Apri Login Superset
+                                </button>
+                            </div>
+                        `;
+                    }
+                } else {
+                    // Se siamo autenticati ma vediamo ancora il login, probabilmente la sessione è scaduta
+                    supersetAuthenticated = false;
+                    openSupersetLogin(false);
+                }
+            } else {
+                if (overlay) overlay.style.display = 'none';
+                console.log(`Iframe ${chartId} caricato`);
+            }
+        } catch(e) {
+            // Cross-origin, non possiamo accedere al contenuto
+            if (overlay) overlay.style.display = 'none';
+            console.log(`Iframe ${chartId} caricato`);
+        }
     };
     
     iframe.onerror = function() {
@@ -436,22 +813,27 @@ function createIframe(chartData, chartId) {
 }
 
 function buildIframeUrl(chartData) {
+    let url = '';
+    
     if (chartData.type === 'dashboard') {
-        let url = `${CONFIG.SUPERSET_BASE_URL}/superset/dashboard/${chartData.dashboardId}/?`;
+        url = `${CONFIG.SUPERSET_BASE_URL}/superset/dashboard/${chartData.dashboardId}/?`;
         url += 'standalone=1&show_top_bar=0&hide_nav=1&embedded=1';
         if (chartData.nativeFiltersKey) {
             url += `&native_filters_key=${chartData.nativeFiltersKey}`;
         }
-        return url;
     } else {
-        let url = `${CONFIG.SUPERSET_BASE_URL}/explore/?`;
-        url += `form_data_key=${chartData.formDataKey}&slice_id=${chartData.sliceId}`;
+        url = `${CONFIG.SUPERSET_BASE_URL}/explore/?`;
+        if (chartData.formDataKey) {
+            url += `form_data_key=${chartData.formDataKey}&`;
+        }
+        url += `slice_id=${chartData.sliceId}`;
         url += '&standalone=1&show_tabs=false&embedded=1';
         if (chartData.dashboardPageId) {
             url += `&dashboard_page_id=${chartData.dashboardPageId}`;
         }
-        return url;
     }
+    
+    return url;
 }
 
 function createLoadingOverlay() {
@@ -476,8 +858,11 @@ function handleIframeError(iframe, chartData, chartId) {
                     color: #dc3545; flex-direction: column; padding: 20px; text-align: center;">
             <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
             <div>Errore nel caricamento</div>
+            <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                Assicurati di essere autenticato in Superset
+            </p>
             <button onclick="refreshSingleChart('${chartId}')" 
-                    class="btn btn-sm btn-primary" style="margin-top: 12px;">
+                    class="btn btn-sm btn-primary" style="margin-top: 10px;">
                 Riprova
             </button>
         </div>
@@ -555,10 +940,6 @@ function initializeResizableElement(element) {
         listeners: {
             move(event) {
                 const target = event.target;
-                let x = parseFloat(target.getAttribute('data-x')) || 0;
-                let y = parseFloat(target.getAttribute('data-y')) || 0;
-
-                // Calcola nuove dimensioni
                 const newWidth = Math.max(CONFIG.MIN_WIDTH, 
                     Math.min(maxWidth, event.rect.width));
                 const newHeight = Math.max(CONFIG.MIN_HEIGHT, 
@@ -567,7 +948,6 @@ function initializeResizableElement(element) {
                 target.style.width = `${newWidth}px`;
                 target.style.height = `${newHeight}px`;
 
-                // Aggiorna dati
                 const chart = charts.find(c => c.id === target.id);
                 if (chart) {
                     chart.width = newWidth;
@@ -607,7 +987,6 @@ function loadLayout() {
             const loadedCharts = JSON.parse(saved);
             charts = [];
             
-            // Carica con dimensioni responsive
             loadedCharts.forEach(chart => {
                 const dimensions = getResponsiveDimensions(chart.width, chart.height);
                 chart.width = dimensions.width;
@@ -617,11 +996,14 @@ function loadLayout() {
             
             if (loadedCharts.length > 0) {
                 showNotification(`Caricati ${loadedCharts.length} elementi`, 'success');
+                return true; // Ritorna true se ci sono grafici
             }
         }
+        return false; // Ritorna false se non ci sono grafici
     } catch (e) {
         console.error('Errore caricamento:', e);
         showNotification('Errore nel caricamento', 'error');
+        return false;
     }
 }
 
@@ -697,7 +1079,6 @@ function refreshAllCharts() {
     });
     
     lastRefreshTime = new Date();
-    updateRefreshStatusTop();
 }
 
 function refreshSingleChart(chartId) {
@@ -769,8 +1150,8 @@ function loadAutoRefreshSettings() {
             const settings = JSON.parse(saved);
             autoRefreshState = settings.state || 0;
             
-            // Applica stato salvato
             if (autoRefreshState > 0) {
+                autoRefreshState--;
                 cycleAutoRefresh();
             }
         }
@@ -811,13 +1192,6 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-function updateRefreshStatusTop() {
-    const statusElement = document.getElementById('refresh-status-top');
-    if (statusElement && lastRefreshTime) {
-        statusElement.textContent = `Ultimo aggiornamento: ${lastRefreshTime.toLocaleTimeString()}`;
-    }
-}
-
 // ==========================================
 // ERROR HANDLING
 // ==========================================
@@ -828,8 +1202,10 @@ window.addEventListener('error', function(e) {
     }
 });
 
-console.log('TALON Dashboard inizializzato');
+console.log('TALON Dashboard v1.0 inizializzato');
 </script>
 
-<script src="{{ url_for('static', filename='js/libs/interact.min.js') }}"></script>
+<!-- Carica interact.js per resize -->
+<script src="{{ url_for('static', filename='js/libs/interact.min.js') }}" defer></script>
+
 {% endblock %}
