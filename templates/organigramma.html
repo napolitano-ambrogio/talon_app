@@ -4,7 +4,7 @@
             <li class="{{ 'expanded' if node.parent_id is none and not view_all }}">
                 <div class="node-content">
                     {% if node.children %}
-                        <span class="toggle-btn"></span>
+                        <span class="toggle-btn" onclick="toggleNode(this); event.stopPropagation();"></span>
                     {% else %}
                         <span style="width: 25px; display: inline-block;"></span>
                     {% endif %}
@@ -26,6 +26,171 @@
 
 {% block title %}Enti Militari - TALON{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Stili per l'organigramma */
+    .tree {
+        list-style: none;
+        padding-left: 0;
+        margin: 0;
+    }
+
+    .tree ul {
+        list-style: none;
+        padding-left: 30px;
+        margin: 0;
+        position: relative;
+    }
+
+    .tree li {
+        position: relative;
+        padding: 5px 0;
+        display: block;
+    }
+
+    .node-content {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .node-content:hover {
+        background-color: #e9ecef;
+        border-color: #adb5bd;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .toggle-btn {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        margin-right: 8px;
+        cursor: pointer;
+        position: relative;
+        flex-shrink: 0;
+        user-select: none;
+    }
+
+    .toggle-btn::before {
+        content: '▶';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 12px;
+        color: #6c757d;
+        transition: transform 0.2s ease;
+    }
+
+    .expanded > .node-content .toggle-btn::before {
+        content: '▼';
+        transform: translate(-50%, -50%);
+    }
+
+    /* Nascondi figli quando collassato */
+    .tree li:not(.expanded) > ul {
+        display: none;
+    }
+
+    /* Mostra figli quando espanso */
+    .tree li.expanded > ul {
+        display: block;
+    }
+
+    .ente-name {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .ente-name a {
+        color: #333;
+        text-decoration: none;
+        display: block;
+    }
+
+    .ente-name a:hover {
+        color: #007bff;
+        text-decoration: underline;
+    }
+
+    .search-bar {
+        margin: 20px 0;
+    }
+
+    #organigrammaSearchInput {
+        width: 100%;
+        padding: 10px 15px;
+        font-size: 14px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        text-transform: uppercase;
+    }
+
+    #organigrammaSearchInput:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+    }
+
+    .search-highlighted > .node-content {
+        background-color: #fff3cd;
+        border-color: #ffc107;
+    }
+
+    /* Toggle switch personalizzato */
+    .talon-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+    }
+
+    .talon-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .talon-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 24px;
+    }
+
+    .talon-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    .talon-switch input:checked + .talon-slider {
+        background-color: #007bff;
+    }
+
+    .talon-switch input:checked + .talon-slider:before {
+        transform: translateX(26px);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
     <div class="detail-header">
         <h3>Struttura Ordinativa</h3>
@@ -40,9 +205,9 @@
                     <td style="text-align: right; vertical-align: middle; padding: 0;">
                         <div style="display: inline-flex; align-items: center;">
                             <label class="talon-switch">
-                                <input type="checkbox" id="view-toggle-checkbox"
-                                       data-url-base="{{ url_for('enti_militari.organigramma') }}"
-                                       data-url-full="{{ url_for('enti_militari.organigramma', view='all') }}"
+                                <input type="checkbox" 
+                                       id="view-toggle-checkbox"
+                                       onchange="toggleViewMode(this)"
                                        {% if view_all %}checked{% endif %}>
                                 <span class="talon-slider"></span>
                             </label>
@@ -56,7 +221,15 @@
         </table>
 
         <div class="search-bar">
-            <input type="search" id="organigrammaSearchInput" placeholder="CERCA ENTE MILITARE...">
+            <input type="text" 
+                   id="organigrammaSearchInput" 
+                   placeholder="CERCA ENTE MILITARE..."
+                   onkeyup="searchTree(this.value)">
+        </div>
+
+        <div style="margin-bottom: 10px;">
+            <button type="button" onclick="expandAll()" class="btn btn-sm btn-outline-primary">Espandi Tutto</button>
+            <button type="button" onclick="collapseAll()" class="btn btn-sm btn-outline-secondary">Comprimi Tutto</button>
         </div>
 
         <p id="no-results-message" style="display: none; text-align: center;">Nessun risultato trovato.</p>
@@ -67,48 +240,176 @@
             <p style="text-align: center;">Nessuna struttura disponibile.</p>
         {% endif %}
     </div>
-    
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
-    // Script specifico per la pagina organigramma
-    document.addEventListener('DOMContentLoaded', function() {
-        // View toggle già gestito in script.js, non serve duplicarlo
-        
-        // Funzionalità di ricerca specifica per organigramma
-        const searchInput = document.getElementById('organigrammaSearchInput');
-        const treeItems = document.querySelectorAll('.tree li');
-        const noResultsMessage = document.getElementById('no-results-message');
+// ========================================
+// FUNZIONI ORGANIGRAMMA
+// ========================================
 
-        if (searchInput) {
-            searchInput.addEventListener('input', function () {
-                const searchTerm = this.value.toUpperCase();
-                let hasResults = false;
+// Toggle espansione/compressione nodo
+function toggleNode(button) {
+    console.log('[Toggle] Button clicked');
+    const listItem = button.closest('li');
+    if (listItem) {
+        if (listItem.classList.contains('expanded')) {
+            listItem.classList.remove('expanded');
+            console.log('[Toggle] Node collapsed');
+        } else {
+            listItem.classList.add('expanded');
+            console.log('[Toggle] Node expanded');
+        }
+    } else {
+        console.log('[Toggle] List item not found');
+    }
+}
 
-                treeItems.forEach(item => {
-                    const enteName = item.querySelector('.ente-name');
-                    const text = enteName?.textContent.toUpperCase() || '';
+// Toggle modalità visualizzazione (albero vs tutti)
+function toggleViewMode(checkbox) {
+    const currentUrl = new URL(window.location.href);
+    
+    if (checkbox.checked) {
+        // Visualizza tutti gli enti
+        currentUrl.searchParams.set('view', 'all');
+    } else {
+        // Visualizza solo albero gerarchico
+        currentUrl.searchParams.delete('view');
+    }
+    
+    window.location.href = currentUrl.href;
+}
 
-                    if (text.includes(searchTerm)) {
-                        item.style.display = 'block';
-                        hasResults = true;
-
-                        // Espande il nodo
-                        let parent = item.parentElement.closest('li');
-                        while (parent) {
-                            parent.style.display = 'block';
-                            parent.classList.add('expanded');
-                            parent = parent.parentElement.closest('li');
-                        }
-                    } else {
-                        item.style.display = 'none';
-                    }
+// Ricerca nell'albero
+function searchTree(searchTerm) {
+    const normalizedSearch = searchTerm.toUpperCase().trim();
+    const treeItems = document.querySelectorAll('.tree li');
+    const noResultsMessage = document.getElementById('no-results-message');
+    let hasResults = false;
+    
+    if (!normalizedSearch) {
+        // Reset visualizzazione
+        treeItems.forEach(item => {
+            item.style.display = '';
+            item.classList.remove('search-highlighted');
+        });
+        if (noResultsMessage) {
+            noResultsMessage.style.display = 'none';
+        }
+        return;
+    }
+    
+    // Nascondi tutti inizialmente
+    treeItems.forEach(item => {
+        item.style.display = 'none';
+        item.classList.remove('search-highlighted');
+    });
+    
+    // Mostra solo quelli che corrispondono
+    treeItems.forEach(item => {
+        const enteName = item.querySelector('.ente-name');
+        if (enteName) {
+            const text = enteName.textContent.toUpperCase();
+            
+            if (text.includes(normalizedSearch)) {
+                // Mostra elemento
+                item.style.display = '';
+                item.classList.add('search-highlighted');
+                hasResults = true;
+                
+                // Mostra tutti i parent
+                let parent = item.parentElement.closest('li');
+                while (parent) {
+                    parent.style.display = '';
+                    parent.classList.add('expanded');
+                    parent = parent.parentElement.closest('li');
+                }
+                
+                // Mostra tutti i figli
+                const children = item.querySelectorAll('li');
+                children.forEach(child => {
+                    child.style.display = '';
                 });
-
-                noResultsMessage.style.display = hasResults ? 'none' : 'block';
-            });
+            }
         }
     });
+    
+    // Gestione messaggio nessun risultato
+    if (noResultsMessage) {
+        noResultsMessage.style.display = hasResults ? 'none' : 'block';
+    }
+}
+
+// Espandi tutto
+function expandAll() {
+    const allItems = document.querySelectorAll('.tree li');
+    allItems.forEach(item => {
+        if (item.querySelector('.toggle-btn')) {
+            item.classList.add('expanded');
+        }
+    });
+}
+
+// Comprimi tutto
+function collapseAll() {
+    const allItems = document.querySelectorAll('.tree li');
+    allItems.forEach(item => {
+        item.classList.remove('expanded');
+    });
+}
+
+// ========================================
+// INIZIALIZZAZIONE AL CARICAMENTO
+// ========================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[Organigramma] Script inizializzato');
+    
+    // Test che le funzioni siano disponibili
+    if (typeof toggleNode === 'function') {
+        console.log('[Organigramma] toggleNode function is available');
+    } else {
+        console.error('[Organigramma] toggleNode function is NOT available');
+    }
+    
+    // Conta i toggle buttons
+    const toggleButtons = document.querySelectorAll('.toggle-btn');
+    console.log('[Organigramma] Found ' + toggleButtons.length + ' toggle buttons');
+    
+    // Espandi primo livello all'avvio (solo se non in view_all)
+    const isViewAll = window.location.search.includes('view=all');
+    if (!isViewAll) {
+        const rootItems = document.querySelectorAll('.tree > li');
+        console.log('[Organigramma] Found ' + rootItems.length + ' root items');
+        rootItems.forEach(item => {
+            if (item.querySelector('.toggle-btn')) {
+                item.classList.add('expanded');
+            }
+        });
+    }
+    
+    // Aggiungi gestione click su node-content per espandere/comprimere
+    const nodeContents = document.querySelectorAll('.tree .node-content');
+    nodeContents.forEach(function(node) {
+        node.addEventListener('click', function(e) {
+            // Se il click è sul link, lascia che venga gestito normalmente
+            if (e.target.closest('a')) {
+                return;
+            }
+            
+            // Se il click è sul toggle button, è già gestito dall'onclick
+            if (e.target.classList.contains('toggle-btn')) {
+                return;
+            }
+            
+            // Altrimenti, se c'è un toggle button, attivalo
+            const toggleBtn = this.querySelector('.toggle-btn');
+            if (toggleBtn) {
+                e.preventDefault();
+                toggleNode(toggleBtn);
+            }
+        });
+    });
+});
 </script>
 {% endblock %}

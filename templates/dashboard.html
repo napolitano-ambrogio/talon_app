@@ -6,11 +6,6 @@
 
 <!-- Controlli dashboard -->
 <div class="dashboard-controls">
-    <button onclick="saveLayout()" class="btn btn-primary">Salva Layout</button>
-    <button onclick="clearLayout()" class="btn btn-danger">Cancella Layout</button>
-    <button onclick="exportLayout()" class="btn btn-secondary">Esporta</button>
-    <input type="file" id="importFile" style="display:none" onchange="importLayout(event)" accept=".json">
-    <button onclick="document.getElementById('importFile').click()" class="btn btn-secondary">Importa</button>
     <button onclick="refreshAllCharts()" class="btn btn-success">Aggiorna Tutti</button>
     <button onclick="cycleAutoRefresh()" class="btn btn-info" id="autoRefreshBtn">AUTO-REFRESH OFF</button>
 </div>
@@ -28,228 +23,178 @@
     </div>
 </div>
 
+<!-- Modal Selezione Contenuti -->
+<div id="contentModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Seleziona Contenuto</h2>
+            <button onclick="closeContentModal()" class="modal-close">&times;</button>
+        </div>
+        
+        <div class="modal-tabs">
+            <button class="tab-button active" onclick="showTab('dashboards')">Dashboard</button>
+            <button class="tab-button" onclick="showTab('charts')">Grafici</button>
+        </div>
+        
+        <div id="dashboardsTab" class="tab-content active">
+            <div class="content-grid" id="dashboardsList">
+                <!-- Dashboard verranno inserite qui -->
+            </div>
+        </div>
+        
+        <div id="chartsTab" class="tab-content" style="display: none;">
+            <div class="content-grid" id="chartsList">
+                <!-- Grafici verranno inseriti qui -->
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 /* Reset e layout base */
 body {
     overflow-x: hidden;
 }
-
-.page-wrapper {
-    max-width: 100%;
-    overflow-x: hidden;
-}
+.page-wrapper { max-width: 100%; overflow-x: hidden; }
 
 /* Controlli dashboard */
 .dashboard-controls {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 10px;
-    margin: 20px;
-    flex-wrap: wrap;
+    display: flex; justify-content: flex-end; align-items: center;
+    gap: 10px; margin: 20px; flex-wrap: wrap;
 }
 
 /* Grid container */
 #dashboard-grid {
-    padding: 0 20px 20px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    max-width: 100%;
+    padding: 0 20px 20px; display: flex; flex-wrap: wrap; gap: 20px; max-width: 100%;
 }
 
-/* Dashboard cards */
+/* Cards */
 .dashboard-card {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    position: relative;
-    display: inline-block;
-    vertical-align: top;
-    min-width: 300px;
-    min-height: 200px;
+    background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    position: relative; display: inline-block; vertical-align: top;
+    min-width: 300px; min-height: 200px;
 }
-
-.dashboard-card.resizable {
-    max-width: calc(100vw - 100px);
-    overflow: hidden;
-}
+.dashboard-card.resizable { max-width: calc(100vw - 100px); overflow: hidden; }
 
 /* Add card */
 .dashboard-card.add-card {
-    width: 200px;
-    height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    border: 2px dashed #ddd;
-    background: #f8f9fa;
-    transition: all 0.3s ease;
+    width: 200px; height: 200px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; border: 2px dashed #ddd; background: #f8f9fa; transition: all 0.3s ease;
 }
+.dashboard-card.add-card:hover { border-color: #007bff; background: #e7f3ff; }
+.plus-icon { font-size: 48px; color: #6c757d; }
 
-.dashboard-card.add-card:hover {
-    border-color: #007bff;
-    background: #e7f3ff;
-}
-
-.plus-icon {
-    font-size: 48px;
-    color: #6c757d;
-}
-
-/* Chart title bar */
+/* Title bar */
 .chart-title {
-    padding: 8px 12px;
-    border-bottom: 1px solid #dee2e6;
-    font-weight: 600;
-    font-size: 14px;
-    color: #495057;
-    position: relative;
-    display: flex;
-    align-items: center;
-    height: 40px;
+    padding: 8px 12px; border-bottom: 1px solid #dee2e6; font-weight: 600; font-size: 14px;
+    color: #495057; position: relative; display: flex; align-items: center; height: 40px;
 }
 
 /* Close button */
 .close-button {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: none;
-    border: none;
-    font-size: 18px;
-    cursor: pointer;
-    color: #6c757d;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: all 0.2s;
+    position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 18px;
+    cursor: pointer; color: #6c757d; width: 24px; height: 24px; display: flex; align-items: center;
+    justify-content: center; border-radius: 50%; transition: all 0.2s;
 }
+.close-button:hover { background: #dc3545; color: white; }
 
-.close-button:hover {
-    background: #dc3545;
-    color: white;
-}
-
-/* Iframe container */
-.iframe-container {
-    position: relative;
-    width: 100%;
-    height: calc(100% - 40px);
-    overflow: hidden;
-}
-
-/* Dashboard iframe */
-.dashboard-iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    display: block;
-}
+/* Iframe */
+.iframe-container { position: relative; width: 100%; height: calc(100% - 40px); overflow: hidden; }
+.dashboard-iframe { width: 100%; height: 100%; border: none; display: block; }
 
 /* Loading overlay */
 .loading-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255,255,255,0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
+    position: absolute; inset: 0; background: rgba(255,255,255,0.9);
+    display: flex; align-items: center; justify-content: center; z-index: 10;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Modal */
+.modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center; z-index: 10000;
+}
+.modal-content {
+    background: white; width: 90%; max-width: 900px; max-height: 80vh; border-radius: 12px;
+    display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px; border-bottom: 1px solid #e0e0e0;
+}
+.modal-header h2 { margin: 0; font-size: 24px; color: #333; }
+.modal-close {
+    background: none; border: none; font-size: 28px; cursor: pointer; color: #999; padding: 0;
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; transition: all 0.2s;
+}
+.modal-close:hover { background: #f0f0f0; color: #333; }
+
+/* Tabs */
+.modal-tabs { display: flex; padding: 0 20px; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; }
+.tab-button {
+    padding: 12px 24px; background: none; border: none; cursor: pointer; font-size: 14px; font-weight: 500;
+    color: #666; position: relative; transition: all 0.3s;
+}
+.tab-button:hover { color: #007bff; }
+.tab-button.active { color: #007bff; }
+.tab-button.active::after {
+    content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: #007bff;
+}
+.tab-content { flex: 1; overflow-y: auto; padding: 20px; }
+
+/* Content Grid */
+.content-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
+.content-item {
+    padding: 15px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.3s;
+    background: white;
+}
+.content-item:hover {
+    border-color: #007bff; background: #f8f9ff; transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,123,255,0.15);
+}
+.content-item-icon { font-size: 24px; margin-bottom: 8px; }
+.content-item-title { font-weight: 600; font-size: 14px; color: #333; margin-bottom: 4px; }
+.content-item-id { font-size: 11px; color: #999; }
+.content-item-type {
+    display: inline-block; padding: 2px 8px; background: #e7f3ff; color: #007bff;
+    font-size: 10px; border-radius: 4px; margin-top: 8px; text-transform: uppercase; font-weight: 600;
 }
 
 /* Notification */
 .notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 12px 20px;
-    border-radius: 6px;
-    color: white;
-    font-weight: 500;
-    z-index: 10000;
-    max-width: 400px;
-    word-wrap: break-word;
-    transition: all 0.3s ease;
+    position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 6px; color: white;
+    font-weight: 500; z-index: 10000; max-width: 400px; word-wrap: break-word; transition: all 0.3s ease;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 /* Resize handle */
 .dashboard-card.resizable::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 20px;
-    height: 20px;
-    cursor: se-resize;
-    background: linear-gradient(135deg, transparent 50%, #ccc 50%);
-    border-bottom-right-radius: 8px;
+    content: ''; position: absolute; bottom: 0; right: 0; width: 20px; height: 20px; cursor: se-resize;
+    background: linear-gradient(135deg, transparent 50%, #ccc 50%); border-bottom-right-radius: 8px;
 }
 
-/* Button styles */
-.btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: all 0.3s;
-}
+/* Buttons */
+.btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.3s; }
+.btn-success { background: #28a745; color: white; } .btn-success:hover { background: #218838; }
+.btn-info { background: #17a2b8; color: white; } .btn-info:hover { background: #138496; }
+.btn-warning { background: #ffc107; color: #212529; } .btn-warning:hover { background: #e0a800; }
+.btn-sm { padding: 4px 8px; font-size: 12px; }
 
-.btn-primary { background: #007bff; color: white; }
-.btn-primary:hover { background: #0056b3; }
-.btn-danger { background: #dc3545; color: white; }
-.btn-danger:hover { background: #c82333; }
-.btn-secondary { background: #6c757d; color: white; }
-.btn-secondary:hover { background: #545b62; }
-.btn-success { background: #28a745; color: white; }
-.btn-success:hover { background: #218838; }
-.btn-info { background: #17a2b8; color: white; }
-.btn-info:hover { background: #138496; }
-.btn-warning { background: #ffc107; color: #212529; }
-.btn-warning:hover { background: #e0a800; }
-
-.btn-sm {
-    padding: 4px 8px;
-    font-size: 12px;
-}
-
-/* Media queries */
+/* Media */
 @media (max-width: 768px) {
-    .dashboard-controls {
-        justify-content: center;
-        margin: 10px;
-    }
-    
-    .dashboard-controls button {
-        font-size: 12px;
-        padding: 5px 10px;
-    }
-    
-    #dashboard-grid {
-        padding: 0 10px;
-        gap: 10px;
-    }
-    
-    .dashboard-card.resizable {
-        max-width: calc(100vw - 40px);
-        width: 100% !important;
-    }
+    .dashboard-controls { justify-content: center; margin: 10px; }
+    .dashboard-controls button { font-size: 12px; padding: 5px 10px; }
+    #dashboard-grid { padding: 0 10px; gap: 10px; }
+    .dashboard-card.resizable { max-width: calc(100vw - 40px); width: 100% !important; }
+    .content-grid { grid-template-columns: 1fr; }
+    .modal-content { width: 95%; max-height: 90vh; }
 }
 </style>
 
 <script>
 // ==========================================
-// CONFIGURAZIONE
+// CONFIGURAZIONE (dal backend)
 // ==========================================
 const CONFIG = {
     STORAGE_KEY: 'talon_dashboard_layout',
@@ -257,7 +202,38 @@ const CONFIG = {
     DEFAULT_HEIGHT: 400,
     MIN_WIDTH: 300,
     MIN_HEIGHT: 200,
-    SUPERSET_BASE_URL: 'http://127.0.0.1:8088'
+    // Preso dal context processor di app.py
+    SUPERSET_BASE_URL: '{{ SUPERSET_BASE_URL }}'
+};
+// Flag SSO esposto dal backend (potrebbe servire in futuro per SSO completo)
+const SSO_ENABLED = {{ 'true' if sso_enabled else 'false' }};
+
+// ==========================================
+// CONTENUTI DISPONIBILI
+// ==========================================
+const AVAILABLE_CONTENT = {
+    dashboards: [
+        { id: 1, title: "Dashboard Operazioni", icon: "📊" },
+        { id: 2, title: "Dashboard Statistiche", icon: "📈" },
+        { id: 3, title: "Dashboard Risorse", icon: "💰" },
+        { id: 4, title: "Dashboard Personale", icon: "👥" },
+        { id: 5, title: "Dashboard Logistica", icon: "🚚" },
+        { id: 6, title: "Dashboard Sicurezza", icon: "🔒" }
+    ],
+    charts: [
+        { id: 1, title: "Operazioni per Mese", icon: "📅" },
+        { id: 2, title: "Distribuzione Risorse", icon: "🎯" },
+        { id: 3, title: "Trend Attività", icon: "📈" },
+        { id: 4, title: "Personale per Reparto", icon: "👨‍💼" },
+        { id: 5, title: "Costi Operativi", icon: "💵" },
+        { id: 6, title: "KPI Principali", icon: "🎯" },
+        { id: 7, title: "Mappa Operazioni", icon: "🗺️" },
+        { id: 8, title: "Timeline Eventi", icon: "⏰" },
+        { id: 9, title: "Analisi Prestazioni", icon: "⚡" },
+        { id: 10, title: "Report Incidenti", icon: "⚠️" },
+        { id: 11, title: "Stato Mezzi", icon: "🚗" },
+        { id: 12, title: "Consumo Carburante", icon: "⛽" }
+    ]
 };
 
 // ==========================================
@@ -267,517 +243,205 @@ let chartCounter = 0;
 let charts = [];
 let autoRefreshInterval = null;
 let autoRefreshState = 0;
-let lastRefreshTime = null;
 let supersetAuthenticated = false;
 let supersetLoginWindow = null;
-let pendingChartAdd = false;
 
 // ==========================================
 // INIZIALIZZAZIONE
 // ==========================================
 document.addEventListener('DOMContentLoaded', async () => {
-    checkProtocol();
+    // Non forziamo più HTTPS->HTTP: solo messaggio in caso di mismatch protocollo/porta
+    checkEnvironmentHint();
+
+    // Recupera stato autenticazione dalla sessione del browser
+    supersetAuthenticated = sessionStorage.getItem('superset_authenticated') === 'true';
     
-    // Carica il layout salvato
+    // Carica layout salvato
     const hasCharts = loadLayout();
     
-    // Se ci sono grafici salvati, apri automaticamente il login di Superset
-    if (hasCharts) {
+    // Se ci sono grafici e non siamo autenticati → chiedi login
+    if (hasCharts && !supersetAuthenticated) {
         showNotification('Autenticazione Superset richiesta per i grafici', 'info');
-        setTimeout(() => {
-            openSupersetLogin(false);
-        }, 1000);
+        setTimeout(() => { openSupersetLogin(false); }, 1000);
+    } else if (hasCharts && supersetAuthenticated) {
+        showNotification('Sessione Superset attiva, caricamento grafici...', 'success');
+        setTimeout(() => { refreshAllCharts(); }, 1500);
     }
     
     initializeResizable();
     loadAutoRefreshSettings();
     setupWindowResize();
+    populateContentModal(); // riempi il modal
 });
 
-// Check HTTPS e redirect
-function checkProtocol() {
-    if (window.location.protocol === "https:") {
-        const httpURL = `http://${window.location.hostname}${window.location.pathname}`;
-        alert(`⚠ Superset supporta solo HTTP.\nVerrai reindirizzato a: ${httpURL}`);
-        window.location.href = httpURL;
+// Solo suggerimento se in HTTPS ma Superset è HTTP
+function checkEnvironmentHint() {
+    try {
+        const supersetUrl = new URL(CONFIG.SUPERSET_BASE_URL);
+        if (location.protocol === 'https:' && supersetUrl.protocol === 'http:') {
+            console.warn('Stai usando TALON in HTTPS mentre Superset è in HTTP. L\'iframe potrebbe essere bloccato (mixed content).');
+            showNotification('Attenzione: TALON in HTTPS e Superset in HTTP potrebbero causare blocchi iframe.', 'warning');
+        }
+    } catch (e) {
+        // ignore
     }
 }
 
-// Apre Superset in una nuova finestra per login
-function openSupersetLogin(forNewChart = false) {
-    // Se abbiamo già una finestra aperta, portala in primo piano
-    if (supersetLoginWindow && !supersetLoginWindow.closed) {
-        supersetLoginWindow.focus();
-        return;
+// ==========================================
+// GESTIONE MODAL SELEZIONE
+// ==========================================
+function populateContentModal() {
+    // Dashboard
+    const dashboardsList = document.getElementById('dashboardsList');
+    dashboardsList.innerHTML = AVAILABLE_CONTENT.dashboards.map(d => `
+        <div class="content-item" onclick="selectContent('dashboard', ${d.id}, '${d.title}')">
+            <div class="content-item-icon">${d.icon}</div>
+            <div class="content-item-title">${d.title}</div>
+            <div class="content-item-id">ID: ${d.id}</div>
+            <span class="content-item-type">Dashboard</span>
+        </div>
+    `).join('');
+    
+    // Grafici
+    const chartsList = document.getElementById('chartsList');
+    chartsList.innerHTML = AVAILABLE_CONTENT.charts.map(c => `
+        <div class="content-item" onclick="selectContent('chart', ${c.id}, '${c.title}')">
+            <div class="content-item-icon">${c.icon}</div>
+            <div class="content-item-title">${c.title}</div>
+            <div class="content-item-id">ID: ${c.id}</div>
+            <span class="content-item-type">Grafico</span>
+        </div>
+    `).join('');
+}
+function showTab(tabName) {
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+    if (tabName === 'dashboards') {
+        document.querySelector('.tab-button:first-child').classList.add('active');
+        document.getElementById('dashboardsTab').style.display = 'block';
+    } else {
+        document.querySelector('.tab-button:last-child').classList.add('active');
+        document.getElementById('chartsTab').style.display = 'block';
     }
-    
-    pendingChartAdd = forNewChart;
-    
-    const width = 800;
-    const height = 600;
-    const left = (screen.width - width) / 2;
-    const top = (screen.height - height) / 2;
-    
-    supersetLoginWindow = window.open(
-        `${CONFIG.SUPERSET_BASE_URL}/login/`,
-        'SupersetLogin',
-        `width=${width},height=${height},left=${left},top=${top}`
-    );
-    
-    if (!forNewChart) {
-        showNotification('Autenticati in Superset per visualizzare i grafici', 'info');
-    }
-    
-    // Controlla quando la finestra viene chiusa
-    const checkInterval = setInterval(() => {
-        if (supersetLoginWindow.closed) {
-            clearInterval(checkInterval);
-            supersetAuthenticated = true;
-            supersetLoginWindow = null;
-            
-            if (pendingChartAdd) {
-                // Se stavamo aggiungendo un grafico, mostra il prompt
-                showNotification('Autenticato! Ora puoi aggiungere il grafico.', 'success');
-                setTimeout(() => {
-                    promptForChartData();
-                }, 500);
-                pendingChartAdd = false;
-            } else {
-                showNotification('Sessione Superset attiva!', 'success');
-                // Refresh tutti i grafici esistenti
-                setTimeout(() => {
-                    refreshAllCharts();
-                }, 1000);
-            }
-        }
-    }, 1000);
+}
+function openContentModal() { document.getElementById('contentModal').style.display = 'flex'; }
+function closeContentModal() { document.getElementById('contentModal').style.display = 'none'; }
+function selectContent(type, id, title) {
+    const chartData = { type, title };
+    if (type === 'dashboard') chartData.dashboardId = id; else chartData.sliceId = id;
+    closeContentModal();
+    addNewChartWithData(chartData);
 }
 
 // ==========================================
 // GESTIONE GRAFICI
 // ==========================================
-function addNewChart(chartData = null) {
-    // Se non abbiamo dati e non siamo autenticati, prima autentica
-    if (!chartData && !supersetAuthenticated) {
-        openSupersetLogin(true);
+function addNewChart() {
+    if (!supersetAuthenticated) {
+        if (sessionStorage.getItem('superset_authenticated') === 'true') {
+            supersetAuthenticated = true;
+            openContentModal();
+        } else {
+            openSupersetLogin(true);
+        }
         return;
     }
-    
-    if (!chartData) {
-        chartData = promptForChartData();
-        if (!chartData) return;
-    }
-
+    openContentModal();
+}
+// debug auth
+function resetSupersetAuth() {
+    sessionStorage.removeItem('superset_authenticated');
+    supersetAuthenticated = false;
+    showNotification('Stato autenticazione Superset resettato', 'info');
+}
+function addNewChartWithData(chartData) {
     const uniqueId = chartData.id || `chart_${Date.now()}_${chartCounter++}`;
     const dimensions = getResponsiveDimensions(chartData.width, chartData.height);
-    
     const grid = document.getElementById("dashboard-grid");
     const chartCard = createChartCard(uniqueId, chartData, dimensions.width, dimensions.height);
-    
     grid.insertBefore(chartCard, grid.lastElementChild);
-    
     if (!chartData.id) {
-        const newChartData = {
-            id: uniqueId,
-            ...chartData,
-            width: dimensions.width,
-            height: dimensions.height
-        };
+        const newChartData = { id: uniqueId, ...chartData, width: dimensions.width, height: dimensions.height };
         charts.push(newChartData);
         saveLayout();
     }
-    
     initializeResizableElement(chartCard);
+    showNotification(`${chartData.title} aggiunto!`, 'success');
 }
-
-function promptForChartData() {
-    // Prima mostra un dialog per scegliere il metodo
-    const choice = prompt(
-        "Come vuoi aggiungere il contenuto?\n\n" +
-        "1. Mostra elenco contenuti disponibili\n" +
-        "2. Inserisci URL manualmente\n" +
-        "3. Inserisci ID direttamente\n\n" +
-        "Digita 1, 2 o 3:"
+function openSupersetLogin(forNewChart = false) {
+    if (supersetLoginWindow && !supersetLoginWindow.closed) {
+        supersetLoginWindow.focus(); return;
+    }
+    const width = 800, height = 600;
+    const left = (screen.width - width) / 2, top = (screen.height - height) / 2;
+    supersetLoginWindow = window.open(
+        `${CONFIG.SUPERSET_BASE_URL}/login/`,
+        'SupersetLogin',
+        `width=${width},height=${height},left=${left},top=${top}`
     );
-    
-    if (!choice) return null;
-    
-    if (choice === '1') {
-        // Mostra elenco contenuti
-        showContentSelector();
-        return null; // Interrompi qui, la selezione avverrà dal modal
-    } else if (choice === '2') {
-        // Inserimento URL manuale (codice esistente)
-        const contentType = prompt(
-            "Che tipo di contenuto vuoi aggiungere?\n\n" +
-            "1. Dashboard completa\n" +
-            "2. Singolo grafico\n\n" +
-            "Digita 1 o 2:"
-        );
-        
-        if (!contentType || (contentType !== '1' && contentType !== '2')) {
-            if (contentType) alert("Scelta non valida.");
-            return null;
-        }
-        
-        const isDashboard = contentType === '1';
-        const urlExample = isDashboard 
-            ? "http://127.0.0.1:8088/superset/dashboard/2/"
-            : "http://127.0.0.1:8088/explore/?form_data_key=xxx&slice_id=1";
-        
-        const userUrl = prompt(
-            `Incolla l'URL ${isDashboard ? 'della dashboard' : 'del grafico'} Superset:\n\n` +
-            `Esempio: ${urlExample}`
-        );
-        
-        if (!userUrl) return null;
-        
-        try {
-            return parseSupsersetUrl(userUrl, isDashboard);
-        } catch (e) {
-            alert("URL non valido: " + e.message);
-            return null;
-        }
-    } else if (choice === '3') {
-        // Inserimento ID diretto
-        const contentType = prompt(
-            "Che tipo di contenuto?\n\n" +
-            "1. Dashboard\n" +
-            "2. Grafico\n\n" +
-            "Digita 1 o 2:"
-        );
-        
-        if (!contentType || (contentType !== '1' && contentType !== '2')) {
-            if (contentType) alert("Scelta non valida.");
-            return null;
-        }
-        
-        const isDashboard = contentType === '1';
-        const id = prompt(`Inserisci l'ID della ${isDashboard ? 'dashboard' : 'grafico'}:`);
-        
-        if (!id) return null;
-        
-        return {
-            type: isDashboard ? 'dashboard' : 'chart',
-            dashboardId: isDashboard ? id : undefined,
-            sliceId: isDashboard ? undefined : id,
-            title: `${isDashboard ? 'Dashboard' : 'Grafico'} ${id}`
-        };
-    }
-    
-    return null;
-}
-
-// Funzione per mostrare il selettore di contenuti
-function showContentSelector() {
-    // Crea o mostra il modal
-    let modal = document.getElementById('contentModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'contentModal';
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10000;
-        `;
-        
-        const modalContent = document.createElement('div');
-        modalContent.style.cssText = `
-            background: white;
-            width: 80%;
-            max-width: 800px;
-            max-height: 80vh;
-            border-radius: 12px;
-            padding: 20px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        `;
-        
-        modalContent.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="margin: 0;">Seleziona Contenuto Superset</h2>
-                <button onclick="closeContentModal()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
-            </div>
-            
-            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <button onclick="loadSupersetContent('dashboards')" class="btn btn-primary">Carica Dashboard</button>
-                <button onclick="loadSupersetContent('charts')" class="btn btn-primary">Carica Grafici</button>
-                <button onclick="showManualEntry()" class="btn btn-secondary">Inserimento Manuale</button>
-            </div>
-            
-            <div id="contentList" style="flex: 1; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px;">
-                <p style="text-align: center; color: #666;">Clicca su "Carica Dashboard" o "Carica Grafici" per vedere i contenuti disponibili</p>
-            </div>
-        `;
-        
-        modal.appendChild(modalContent);
-        document.body.appendChild(modal);
-    } else {
-        modal.style.display = 'flex';
-    }
-}
-
-// Funzione per caricare contenuti da Superset
-async function loadSupersetContent(type) {
-    const contentList = document.getElementById('contentList');
-    contentList.innerHTML = '<p style="text-align: center;">Caricamento in corso...</p>';
-    
-    try {
-        // Usa l'endpoint che già abbiamo
-        const endpoint = type === 'dashboards' 
-            ? '/api/superset/simple/dashboards' 
-            : '/api/superset/simple/charts';
-            
-        const response = await fetch(endpoint, {
-            credentials: 'include'
-        });
-        
-        if (!response.ok) {
-            throw new Error('Errore nel caricamento');
-        }
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            const items = type === 'dashboards' ? data.dashboards : data.charts;
-            
-            if (items && items.length > 0) {
-                let html = `<h3>${type === 'dashboards' ? 'Dashboard' : 'Grafici'} Disponibili</h3>`;
-                html += '<div style="display: grid; gap: 10px; margin-top: 10px;">';
-                
-                items.forEach(item => {
-                    html += `
-                        <div onclick="selectContent('${item.type}', ${item.id}, '${item.title}')" 
-                             style="padding: 12px; border: 1px solid #ddd; border-radius: 6px; 
-                                    cursor: pointer; transition: all 0.3s;"
-                             onmouseover="this.style.background='#f0f0f0'" 
-                             onmouseout="this.style.background='white'">
-                            <strong>${item.title}</strong>
-                            <span style="color: #666; font-size: 12px; margin-left: 10px;">ID: ${item.id}</span>
-                        </div>
-                    `;
-                });
-                
-                html += '</div>';
-                html += `
-                    <p style="margin-top: 20px; padding: 10px; background: #fff3cd; border-radius: 6px; font-size: 12px;">
-                        <strong>Nota:</strong> Questi sono ID di esempio (1-${items.length}). 
-                        Per vedere i tuoi contenuti reali, crea prima dashboard e grafici in Superset.
-                        Puoi anche usare "Inserimento Manuale" per aggiungere contenuti specifici.
-                    </p>
-                `;
-                
-                contentList.innerHTML = html;
+    if (!forNewChart) showNotification('Autenticati in Superset per visualizzare i grafici', 'info');
+    const checkInterval = setInterval(() => {
+        if (supersetLoginWindow.closed) {
+            clearInterval(checkInterval);
+            supersetAuthenticated = true;
+            sessionStorage.setItem('superset_authenticated', 'true');
+            supersetLoginWindow = null;
+            if (forNewChart) {
+                showNotification('Autenticato! Ora puoi aggiungere grafici.', 'success');
+                setTimeout(openContentModal, 500);
             } else {
-                contentList.innerHTML = '<p style="text-align: center; color: #666;">Nessun contenuto trovato</p>';
+                showNotification('Sessione Superset attiva!', 'success');
+                setTimeout(refreshAllCharts, 1000);
             }
-        } else {
-            throw new Error(data.error || 'Errore sconosciuto');
         }
-    } catch (error) {
-        console.error('Errore caricamento contenuti:', error);
-        
-        // Fallback: mostra contenuti di esempio
-        const exampleItems = type === 'dashboards' 
-            ? [1, 2, 3, 4, 5].map(i => ({id: i, title: `Dashboard ${i}`, type: 'dashboard'}))
-            : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => ({id: i, title: `Grafico ${i}`, type: 'chart'}));
-            
-        let html = `<h3>${type === 'dashboards' ? 'Dashboard' : 'Grafici'} di Esempio</h3>`;
-        html += '<div style="display: grid; gap: 10px; margin-top: 10px;">';
-        
-        exampleItems.forEach(item => {
-            html += `
-                <div onclick="selectContent('${item.type}', ${item.id}, '${item.title}')" 
-                     style="padding: 12px; border: 1px solid #ddd; border-radius: 6px; 
-                            cursor: pointer; transition: all 0.3s;"
-                     onmouseover="this.style.background='#f0f0f0'" 
-                     onmouseout="this.style.background='white'">
-                    <strong>${item.title}</strong>
-                    <span style="color: #666; font-size: 12px; margin-left: 10px;">ID: ${item.id}</span>
-                </div>
-            `;
-        });
-        
-        html += '</div>';
-        contentList.innerHTML = html;
-    }
+    }, 1000);
 }
-
-// Funzione per mostrare form inserimento manuale
-function showManualEntry() {
-    const contentList = document.getElementById('contentList');
-    contentList.innerHTML = `
-        <h3>Inserimento Manuale</h3>
-        <div style="padding: 20px;">
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px;">Tipo:</label>
-                <select id="manualType" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                    <option value="dashboard">Dashboard</option>
-                    <option value="chart">Grafico</option>
-                </select>
-            </div>
-            
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px;">ID:</label>
-                <input type="number" id="manualId" placeholder="Es: 1, 2, 42..." 
-                       style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-            </div>
-            
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px;">Titolo (opzionale):</label>
-                <input type="text" id="manualTitle" placeholder="Es: Dashboard Vendite" 
-                       style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-            </div>
-            
-            <button onclick="addManualContent()" class="btn btn-primary" style="width: 100%;">Aggiungi</button>
-            
-            <div style="margin-top: 20px; padding: 10px; background: #e7f3ff; border-radius: 6px; font-size: 12px;">
-                <strong>Come trovare l'ID:</strong><br>
-                • Dashboard: Apri la dashboard in Superset, l'URL sarà tipo /superset/dashboard/<strong>5</strong>/<br>
-                • Grafico: Apri il grafico in Superset, l'URL conterrà slice_id=<strong>42</strong>
-            </div>
-        </div>
-    `;
-}
-
-// Funzione per aggiungere contenuto manuale dal modal
-function addManualContent() {
-    const type = document.getElementById('manualType').value;
-    const id = document.getElementById('manualId').value;
-    const title = document.getElementById('manualTitle').value || 
-                  `${type === 'dashboard' ? 'Dashboard' : 'Grafico'} ${id}`;
-    
-    if (!id) {
-        alert('Inserisci un ID valido');
-        return;
-    }
-    
-    selectContent(type, id, title);
-}
-
-// Funzione per selezionare un contenuto
-function selectContent(type, id, title) {
-    const chartData = {
-        type: type,
-        title: title
-    };
-    
-    if (type === 'dashboard') {
-        chartData.dashboardId = id;
-    } else {
-        chartData.sliceId = id;
-    }
-    
-    closeContentModal();
-    addNewChart(chartData);
-}
-
-// Funzione per chiudere il modal
-function closeContentModal() {
-    const modal = document.getElementById('contentModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
-
-function parseSupsersetUrl(userUrl, isDashboard) {
-    const url = new URL(userUrl);
-    
-    if (isDashboard) {
-        const pathMatch = url.pathname.match(/\/superset\/dashboard\/(\d+)/);
-        if (!pathMatch) throw new Error("URL dashboard non valido");
-        
-        return {
-            type: 'dashboard',
-            dashboardId: pathMatch[1],
-            nativeFiltersKey: url.searchParams.get('native_filters_key'),
-            title: `Dashboard ${pathMatch[1]}`
-        };
-    } else {
-        const formDataKey = url.searchParams.get('form_data_key');
-        const sliceId = url.searchParams.get('slice_id');
-        
-        if (!sliceId) {
-            throw new Error("URL grafico non valido - slice_id mancante");
-        }
-        
-        return {
-            type: 'chart',
-            formDataKey: formDataKey,
-            sliceId: sliceId,
-            dashboardPageId: url.searchParams.get('dashboard_page_id'),
-            title: `Chart ${sliceId}`
-        };
-    }
-}
-
 function createChartCard(chartId, chartData, width, height) {
-    const chartCard = document.createElement("div");
-    chartCard.classList.add("dashboard-card", "resizable");
-    chartCard.id = chartId;
-    chartCard.style.width = `${width}px`;
-    chartCard.style.height = `${height}px`;
-
-    // Title bar
+    const card = document.createElement("div");
+    card.classList.add("dashboard-card", "resizable");
+    card.id = chartId; card.style.width = `${width}px`; card.style.height = `${height}px`;
     const titleDiv = document.createElement("div");
     titleDiv.className = "chart-title";
     titleDiv.style.background = chartData.type === 'dashboard' ? '#e3f2fd' : '#f8f9fa';
-    titleDiv.textContent = chartData.title || 'Dashboard';
-
-    // Close button
+    let icon = '';
+    if (chartData.type === 'dashboard') {
+        const d = AVAILABLE_CONTENT.dashboards.find(x => x.id == chartData.dashboardId);
+        icon = d ? d.icon : '📊';
+    } else {
+        const c = AVAILABLE_CONTENT.charts.find(x => x.id == chartData.sliceId);
+        icon = c ? c.icon : '📈';
+    }
+    titleDiv.innerHTML = `${icon} ${chartData.title || 'Dashboard'}`;
     const closeBtn = document.createElement("button");
-    closeBtn.innerHTML = "&times;";
-    closeBtn.className = "close-button";
+    closeBtn.innerHTML = "&times;"; closeBtn.className = "close-button";
     closeBtn.onclick = () => removeChart(chartId);
-
-    // Iframe container
     const iframeContainer = document.createElement("div");
     iframeContainer.className = "iframe-container";
-
-    // Build iframe
     const iframe = createIframe(chartData, chartId);
     const loadingOverlay = createLoadingOverlay();
-
     titleDiv.appendChild(closeBtn);
     iframeContainer.appendChild(iframe);
     iframeContainer.appendChild(loadingOverlay);
-    chartCard.appendChild(titleDiv);
-    chartCard.appendChild(iframeContainer);
-    
-    return chartCard;
+    card.appendChild(titleDiv);
+    card.appendChild(iframeContainer);
+    return card;
 }
-
 function createIframe(chartData, chartId) {
     const iframe = document.createElement("iframe");
     const iframeUrl = buildIframeUrl(chartData);
-    
-    iframe.src = iframeUrl;
-    iframe.className = "dashboard-iframe";
-    iframe.loading = "lazy";
+    iframe.src = iframeUrl; iframe.className = "dashboard-iframe"; iframe.loading = "lazy";
     iframe.setAttribute('data-original-url', iframeUrl);
     iframe.setAttribute('data-chart-id', chartId);
     iframe.setAttribute('data-chart-type', chartData.type);
     iframe.setAttribute('data-dashboard-id', chartData.dashboardId || '');
-    
     iframe.onload = function() {
         const overlay = this.parentElement.querySelector('.loading-overlay');
-        
-        // Controlla se siamo sulla pagina di login
         try {
             const iframeDoc = this.contentDocument || this.contentWindow.document;
-            if (iframeDoc && iframeDoc.body.innerHTML.includes('login')) {
-                console.log('Rilevata pagina login in iframe');
-                
-                // Se non siamo autenticati, apri la finestra di login
+            if (iframeDoc && /login/i.test(iframeDoc.body.innerHTML)) {
                 if (!supersetAuthenticated) {
+                    sessionStorage.removeItem('superset_authenticated');
+                    supersetAuthenticated = false;
                     if (overlay) {
                         overlay.innerHTML = `
                             <div style="text-align: center; padding: 20px;">
@@ -790,52 +454,37 @@ function createIframe(chartData, chartId) {
                         `;
                     }
                 } else {
-                    // Se siamo autenticati ma vediamo ancora il login, probabilmente la sessione è scaduta
+                    sessionStorage.removeItem('superset_authenticated');
                     supersetAuthenticated = false;
+                    showNotification('Sessione Superset scaduta, riautenticazione necessaria', 'warning');
                     openSupersetLogin(false);
                 }
             } else {
                 if (overlay) overlay.style.display = 'none';
-                console.log(`Iframe ${chartId} caricato`);
+                // ok
             }
         } catch(e) {
-            // Cross-origin, non possiamo accedere al contenuto
             if (overlay) overlay.style.display = 'none';
-            console.log(`Iframe ${chartId} caricato`);
         }
     };
-    
-    iframe.onerror = function() {
-        handleIframeError(this, chartData, chartId);
-    };
-    
+    iframe.onerror = function() { handleIframeError(this, chartData, chartId); };
     return iframe;
 }
-
 function buildIframeUrl(chartData) {
     let url = '';
-    
     if (chartData.type === 'dashboard') {
         url = `${CONFIG.SUPERSET_BASE_URL}/superset/dashboard/${chartData.dashboardId}/?`;
         url += 'standalone=1&show_top_bar=0&hide_nav=1&embedded=1';
-        if (chartData.nativeFiltersKey) {
-            url += `&native_filters_key=${chartData.nativeFiltersKey}`;
-        }
+        if (chartData.nativeFiltersKey) url += `&native_filters_key=${chartData.nativeFiltersKey}`;
     } else {
         url = `${CONFIG.SUPERSET_BASE_URL}/explore/?`;
-        if (chartData.formDataKey) {
-            url += `form_data_key=${chartData.formDataKey}&`;
-        }
+        if (chartData.formDataKey) url += `form_data_key=${chartData.formDataKey}&`;
         url += `slice_id=${chartData.sliceId}`;
         url += '&standalone=1&show_tabs=false&embedded=1';
-        if (chartData.dashboardPageId) {
-            url += `&dashboard_page_id=${chartData.dashboardPageId}`;
-        }
+        if (chartData.dashboardPageId) url += `&dashboard_page_id=${chartData.dashboardPageId}`;
     }
-    
     return url;
 }
-
 function createLoadingOverlay() {
     const overlay = document.createElement("div");
     overlay.className = "loading-overlay";
@@ -847,12 +496,10 @@ function createLoadingOverlay() {
     `;
     return overlay;
 }
-
 function handleIframeError(iframe, chartData, chartId) {
     const container = iframe.parentElement;
     const overlay = container.querySelector('.loading-overlay');
     if (overlay) overlay.style.display = 'none';
-    
     container.innerHTML = `
         <div style="display: flex; align-items: center; justify-content: center; height: 100%; 
                     color: #dc3545; flex-direction: column; padding: 20px; text-align: center;">
@@ -861,14 +508,12 @@ function handleIframeError(iframe, chartData, chartId) {
             <p style="font-size: 12px; color: #666; margin-top: 10px;">
                 Assicurati di essere autenticato in Superset
             </p>
-            <button onclick="refreshSingleChart('${chartId}')" 
-                    class="btn btn-sm btn-primary" style="margin-top: 10px;">
+            <button onclick="refreshSingleChart('${chartId}')" class="btn btn-sm btn-primary" style="margin-top: 10px;">
                 Riprova
             </button>
         </div>
     `;
 }
-
 function removeChart(chartId) {
     if (confirm('Rimuovere questo elemento?')) {
         document.getElementById(chartId).remove();
@@ -884,38 +529,28 @@ function removeChart(chartId) {
 function getResponsiveDimensions(requestedWidth, requestedHeight) {
     const maxWidth = window.innerWidth - 120;
     const maxHeight = window.innerHeight - 200;
-    
     return {
         width: Math.min(requestedWidth || CONFIG.DEFAULT_WIDTH, maxWidth),
         height: Math.min(requestedHeight || CONFIG.DEFAULT_HEIGHT, maxHeight)
     };
 }
-
 function setupWindowResize() {
     let resizeTimeout;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => {
-            adjustChartsToWindow();
-        }, 250);
+        resizeTimeout = setTimeout(adjustChartsToWindow, 250);
     });
 }
-
 function adjustChartsToWindow() {
     const maxWidth = window.innerWidth - 120;
-    
     document.querySelectorAll('.dashboard-card.resizable').forEach(card => {
         const currentWidth = parseInt(card.style.width);
         if (currentWidth > maxWidth) {
             card.style.width = `${maxWidth}px`;
-            
             const chart = charts.find(c => c.id === card.id);
-            if (chart) {
-                chart.width = maxWidth;
-            }
+            if (chart) chart.width = maxWidth;
         }
     });
-    
     saveLayout();
 }
 
@@ -925,45 +560,31 @@ function adjustChartsToWindow() {
 function initializeResizable() {
     document.querySelectorAll('.dashboard-card.resizable').forEach(initializeResizableElement);
 }
-
 function initializeResizableElement(element) {
     if (typeof interact === 'undefined') {
         console.warn('interact.js non caricato');
         return;
     }
-
     const maxWidth = window.innerWidth - 120;
     const maxHeight = window.innerHeight - 200;
-
     interact(element).resizable({
         edges: { left: false, right: true, bottom: true, top: false },
         listeners: {
             move(event) {
                 const target = event.target;
-                const newWidth = Math.max(CONFIG.MIN_WIDTH, 
-                    Math.min(maxWidth, event.rect.width));
-                const newHeight = Math.max(CONFIG.MIN_HEIGHT, 
-                    Math.min(maxHeight, event.rect.height));
-
+                const newWidth = Math.max(CONFIG.MIN_WIDTH, Math.min(maxWidth, event.rect.width));
+                const newHeight = Math.max(CONFIG.MIN_HEIGHT, Math.min(maxHeight, event.rect.height));
                 target.style.width = `${newWidth}px`;
                 target.style.height = `${newHeight}px`;
-
                 const chart = charts.find(c => c.id === target.id);
-                if (chart) {
-                    chart.width = newWidth;
-                    chart.height = newHeight;
-                }
+                if (chart) { chart.width = newWidth; chart.height = newHeight; }
             },
             end() {
                 saveLayout();
                 showNotification('Dimensioni aggiornate!', 'success');
             }
         },
-        modifiers: [
-            interact.modifiers.restrictSize({
-                min: { width: CONFIG.MIN_WIDTH, height: CONFIG.MIN_HEIGHT }
-            })
-        ],
+        modifiers: [ interact.modifiers.restrictSize({ min: { width: CONFIG.MIN_WIDTH, height: CONFIG.MIN_HEIGHT }}) ],
         inertia: true
     });
 }
@@ -974,32 +595,29 @@ function initializeResizableElement(element) {
 function saveLayout() {
     try {
         localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(charts));
+        console.log('Layout salvato automaticamente');
     } catch (e) {
         console.error('Errore salvataggio:', e);
-        showNotification('Errore nel salvataggio', 'error');
+        showNotification('Errore nel salvataggio automatico', 'error');
     }
 }
-
 function loadLayout() {
     try {
         const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
         if (saved) {
             const loadedCharts = JSON.parse(saved);
             charts = [];
-            
             loadedCharts.forEach(chart => {
                 const dimensions = getResponsiveDimensions(chart.width, chart.height);
-                chart.width = dimensions.width;
-                chart.height = dimensions.height;
-                addNewChart(chart);
+                chart.width = dimensions.width; chart.height = dimensions.height;
+                addNewChartWithData(chart);
             });
-            
             if (loadedCharts.length > 0) {
                 showNotification(`Caricati ${loadedCharts.length} elementi`, 'success');
-                return true; // Ritorna true se ci sono grafici
+                return true;
             }
         }
-        return false; // Ritorna false se non ci sono grafici
+        return false;
     } catch (e) {
         console.error('Errore caricamento:', e);
         showNotification('Errore nel caricamento', 'error');
@@ -1007,100 +625,28 @@ function loadLayout() {
     }
 }
 
-function clearLayout() {
-    if (confirm('Cancellare tutti gli elementi?')) {
-        localStorage.removeItem(CONFIG.STORAGE_KEY);
-        document.querySelectorAll('.dashboard-card.resizable').forEach(el => el.remove());
-        charts = [];
-        showNotification('Layout cancellato!', 'success');
-    }
-}
-
-// ==========================================
-// IMPORT/EXPORT
-// ==========================================
-function exportLayout() {
-    try {
-        const dataStr = JSON.stringify(charts, null, 2);
-        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-        const fileName = `talon_dashboard_${new Date().toISOString().split('T')[0]}.json`;
-        
-        const link = document.createElement('a');
-        link.setAttribute('href', dataUri);
-        link.setAttribute('download', fileName);
-        link.click();
-        
-        showNotification('Layout esportato!', 'success');
-    } catch (e) {
-        console.error('Errore esportazione:', e);
-        showNotification('Errore nell\'esportazione', 'error');
-    }
-}
-
-function importLayout(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const imported = JSON.parse(e.target.result);
-            if (!Array.isArray(imported)) {
-                throw new Error('Formato file non valido');
-            }
-            
-            clearLayout();
-            charts = [];
-            imported.forEach(chart => addNewChart(chart));
-            showNotification(`${imported.length} elementi importati!`, 'success');
-        } catch (error) {
-            console.error('Errore importazione:', error);
-            showNotification('Errore importazione: ' + error.message, 'error');
-        }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-}
-
 // ==========================================
 // REFRESH
 // ==========================================
 function refreshAllCharts() {
     const iframes = document.querySelectorAll('.dashboard-iframe');
-    if (iframes.length === 0) {
-        showNotification('Nessun grafico da aggiornare', 'warning');
-        return;
-    }
-    
+    if (iframes.length === 0) { showNotification('Nessun grafico da aggiornare', 'warning'); return; }
     showNotification(`Aggiornamento ${iframes.length} grafici...`, 'info');
-    
-    iframes.forEach((iframe, index) => {
-        setTimeout(() => refreshIframe(iframe), index * 200);
-    });
-    
-    lastRefreshTime = new Date();
+    iframes.forEach((iframe, index) => { setTimeout(() => refreshIframe(iframe), index * 200); });
 }
-
 function refreshSingleChart(chartId) {
-    const chartCard = document.getElementById(chartId);
-    if (!chartCard) return;
-    
-    const iframe = chartCard.querySelector('.dashboard-iframe');
-    if (iframe) {
-        refreshIframe(iframe);
-        showNotification('Grafico aggiornato!', 'success');
-    }
+    const card = document.getElementById(chartId);
+    if (!card) return;
+    const iframe = card.querySelector('.dashboard-iframe');
+    if (iframe) { refreshIframe(iframe); showNotification('Grafico aggiornato!', 'success'); }
 }
-
 function refreshIframe(iframe) {
     const container = iframe.parentElement;
     const overlay = container.querySelector('.loading-overlay');
     if (overlay) overlay.style.display = 'flex';
-    
     const originalUrl = iframe.getAttribute('data-original-url');
     const cacheBuster = `refresh=${Date.now()}`;
     const separator = originalUrl.includes('?') ? '&' : '?';
-    
     iframe.src = originalUrl + separator + cacheBuster;
 }
 
@@ -1108,56 +654,40 @@ function refreshIframe(iframe) {
 // AUTO-REFRESH
 // ==========================================
 function cycleAutoRefresh() {
-    if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval);
-        autoRefreshInterval = null;
-    }
-    
+    if (autoRefreshInterval) { clearInterval(autoRefreshInterval); autoRefreshInterval = null; }
     const states = [
         { text: 'AUTO-REFRESH OFF', minutes: 0 },
         { text: 'AUTO-REFRESH 15 MIN', minutes: 15 },
         { text: 'AUTO-REFRESH 30 MIN', minutes: 30 },
         { text: 'AUTO-REFRESH 60 MIN', minutes: 60 }
     ];
-    
     autoRefreshState = (autoRefreshState + 1) % states.length;
     const currentState = states[autoRefreshState];
-    
     const btn = document.getElementById('autoRefreshBtn');
     if (btn) {
         btn.textContent = currentState.text;
         btn.className = currentState.minutes > 0 ? 'btn btn-warning' : 'btn btn-info';
     }
-    
     if (currentState.minutes > 0) {
         autoRefreshInterval = setInterval(refreshAllCharts, currentState.minutes * 60 * 1000);
         showNotification(`Auto-refresh: ${currentState.minutes} minuti`, 'success');
     } else {
         showNotification('Auto-refresh disattivato', 'info');
     }
-    
     saveAutoRefreshSettings();
 }
-
 function saveAutoRefreshSettings() {
     localStorage.setItem('talon_autorefresh_settings', JSON.stringify({ state: autoRefreshState }));
 }
-
 function loadAutoRefreshSettings() {
     try {
         const saved = localStorage.getItem('talon_autorefresh_settings');
         if (saved) {
             const settings = JSON.parse(saved);
             autoRefreshState = settings.state || 0;
-            
-            if (autoRefreshState > 0) {
-                autoRefreshState--;
-                cycleAutoRefresh();
-            }
+            if (autoRefreshState > 0) { autoRefreshState--; cycleAutoRefresh(); }
         }
-    } catch (e) {
-        console.error('Errore caricamento auto-refresh:', e);
-    }
+    } catch (e) { console.error('Errore caricamento auto-refresh:', e); }
 }
 
 // ==========================================
@@ -1165,27 +695,13 @@ function loadAutoRefreshSettings() {
 // ==========================================
 function showNotification(message, type = 'info') {
     document.querySelectorAll('.notification').forEach(n => n.remove());
-    
     const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-    
-    const colors = {
-        success: '#28a745',
-        error: '#dc3545',
-        warning: '#ffc107',
-        info: '#17a2b8'
-    };
-    
+    notification.className = `notification ${type}`; notification.textContent = message;
+    const colors = { success: '#28a745', error: '#dc3545', warning: '#ffc107', info: '#17a2b8' };
     notification.style.background = colors[type] || colors.info;
     notification.style.transform = 'translateX(100%)';
-    
     document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.transform = 'translateX(0)';
-    }, 10);
-    
+    setTimeout(() => { notification.style.transform = 'translateX(0)'; }, 10);
     setTimeout(() => {
         notification.style.transform = 'translateX(100%)';
         setTimeout(() => notification.remove(), 300);
@@ -1201,8 +717,7 @@ window.addEventListener('error', function(e) {
         showNotification('Libreria interact.js non caricata', 'warning');
     }
 });
-
-console.log('TALON Dashboard v1.0 inizializzato');
+console.log('TALON Dashboard v2.0 - Salvataggio automatico attivo');
 </script>
 
 <!-- Carica interact.js per resize -->

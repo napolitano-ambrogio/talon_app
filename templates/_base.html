@@ -1,4 +1,4 @@
-<!-- _base.html - VERSIONE CON CACHE BUSTING OPZIONALE -->
+<!-- _base.html - allineato ad app.py (debug_mode/is_debug, CSRF safe) -->
 <!DOCTYPE html>
 <html lang="it" class="h-100">
 <head>
@@ -7,50 +7,56 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="user-role" content="{{ session.get('ruolo_nome', 'GUEST') }}">
     <meta name="user-name" content="{{ session.get('username', 'Utente') }}">
-    <title>{% block title %}TALON System{% endblock %}</title>
-    
-    <!-- Bootstrap CSS -->
+    <title>{% block title %}{{ app_name or 'TALON System' }}{% endblock %}</title>
+
+    <!-- Bootstrap CSS (CDN). Per uso offline valuta una copia locale in /static/vendor/bootstrap/ -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- CSS personalizzati CON CACHE BUSTING -->
+
+    <!-- CSS con cache busting -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ cache_buster }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}?v={{ cache_buster }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-roles.css') }}?v={{ cache_buster }}">
-    
-    <!-- Block per CSS aggiuntivi -->
+
     {% block extra_css %}{% endblock %}
 </head>
-<body class="h-100 {% if session.get('ruolo_nome') %}role-{{ session.get('ruolo_nome').lower() }}{% endif %}" 
+<body class="h-100 {% if session.get('ruolo_nome') %}role-{{ session.get('ruolo_nome').lower() }}{% endif %}"
       data-user-role="{{ session.get('ruolo_nome', 'GUEST') }}"
       data-user-name="{{ session.get('username', 'Utente') }}"
       data-page="{{ request.endpoint }}">
 
-    <!-- Variabili globali JavaScript per il sistema ruoli -->
+    <!-- Variabili globali JS dal backend -->
     <script>
-        // Variabili Flask per JavaScript
+        // Dati utente
         window.FLASK_USER_ROLE = "{{ session.get('ruolo_nome', 'GUEST') }}";
         window.FLASK_USER_NAME = "{{ session.get('username', 'Utente') }}";
-        window.FLASK_USER_FULL_NAME = "{{ session.get('nome', '') }} {{ session.get('cognome', '') }}".trim() || "{{ session.get('username', 'Utente') }}";
+        window.FLASK_USER_FULL_NAME = "{{ (session.get('nome','') ~ ' ' ~ session.get('cognome','')).strip() or session.get('username','Utente') }}";
         window.FLASK_IS_LOGGED_IN = {{ 'true' if session.get('logged_in') else 'false' }};
-        window.FLASK_DEBUG = {{ 'true' if config.DEBUG else 'false' }};
+
+        // Flag debug (dai context processor app.py)
+        window.FLASK_DEBUG = {{ 'true' if debug_mode else 'false' }};
+        window.FLASK_IS_DEBUG = {{ 'true' if is_debug else 'false' }};
+
+        // Info applicazione
+        window.TALON_APP = {
+            name: "{{ app_name or 'TALON System' }}",
+            version: "{{ app_version or '2.0.0' }}",
+            year: {{ current_year or 2025 }},
+            ssoEnabled: {{ 'true' if sso_enabled else 'false' }}
+        };
     </script>
 
-    <!-- Dati ruolo utente (hidden per compatibilità) -->
+    <!-- Hidden per compatibilità -->
     <input type="hidden" id="hidden-user-role" value="{{ session.get('ruolo_nome', 'GUEST') }}">
 
     <div class="d-flex h-100">
-        <!-- Sidebar - Solo se l'utente è loggato -->
         {% if session.get('logged_in') %}
             {% include 'components/sidebar.html' %}
         {% endif %}
-        
-        <!-- Contenuto principale -->
+
         <main class="flex-grow-1 d-flex flex-column {% if not session.get('logged_in') %}mx-auto{% endif %} page-wrapper">
-            <!-- Header pulito - Solo se loggato -->
             {% if session.get('logged_in') %}
             <header class="bg-light border-bottom py-2 px-3 page-header">
                 <div class="d-flex justify-content-between align-items-center">
-                    <!-- Breadcrumb -->
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item">
@@ -64,8 +70,7 @@
                 </div>
             </header>
             {% endif %}
-            
-            <!-- Area messaggi flash -->
+
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                 <div class="flash-messages p-3">
@@ -78,33 +83,34 @@
                 </div>
                 {% endif %}
             {% endwith %}
-            
-            <!-- Container per toast notifications -->
+
             <div id="toast-container"></div>
-            
-            <!-- Contenuto principale -->
+
             <div class="flex-grow-1 p-3 main-content">
                 {% block content %}
-                <!-- Contenuto predefinito per pagine vuote -->
                 <div class="text-center text-muted">
                     <p>Contenuto non disponibile</p>
                 </div>
                 {% endblock %}
             </div>
-            
-            <!-- Footer pulito -->
+
             <footer class="bg-light border-top py-2 px-3 mt-auto">
                 <div class="d-flex justify-content-between align-items-center">
                     <small class="text-muted">
-                        TALON System v2.0
-                        {% if config.DEBUG %}
+                        {{ app_name or 'TALON System' }} v{{ app_version or '2.0.0' }}
+                        {% if debug_mode or is_debug %}
                         <span class="badge bg-warning text-dark ms-2">DEBUG - Cache Disabled</span>
                         {% endif %}
                     </small>
-                    
+
                     {% if session.get('logged_in') %}
                     <small class="text-muted">
-                        Ultimo accesso: {{ session.get('login_time')|datetime_format('%d/%m/%Y %H:%M') if session.get('login_time') else 'N/A' }}
+                        Ultimo accesso:
+                        {% if session.get('login_time') %}
+                            {{ session.get('login_time')|datetime_format('%d/%m/%Y %H:%M') }}
+                        {% else %}
+                            N/A
+                        {% endif %}
                     </small>
                     {% endif %}
                 </div>
@@ -112,89 +118,78 @@
         </main>
     </div>
 
-    <!-- jQuery -->
+    <!-- jQuery (CDN). Per offline, copia locale in /static/vendor/jquery/ -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    
     <!-- Bootstrap Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- FontAwesome -->
+    <!-- FontAwesome (valuta copia locale per uso offline) -->
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-    
-    <!-- Sistema ruoli JavaScript CON CACHE BUSTING - Solo se loggato -->
+
     {% if session.get('logged_in') %}
     <script src="{{ url_for('static', filename='js/sidebar.js') }}?v={{ cache_buster }}"></script>
     <script src="{{ url_for('static', filename='js/sidebar-role-manager.js') }}?v={{ cache_buster }}"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_buster }}"></script>
     {% endif %}
-    
-    <!-- Script globale pulito -->
-    <script>
-        // Configurazione globale
-        window.TalonPermissions = {
-            userRole: '{{ session.get("ruolo_nome", "GUEST") }}',
-            canEdit: {{ 'true' if session.get('ruolo_nome') in ['ADMIN', 'OPERATORE'] else 'false' }},
-            canDelete: {{ 'true' if session.get('ruolo_nome') == 'ADMIN' else 'false' }},
-            canCreate: {{ 'true' if session.get('ruolo_nome') in ['ADMIN', 'OPERATORE'] else 'false' }},
-            isAdmin: {{ 'true' if session.get('ruolo_nome') == 'ADMIN' else 'false' }},
-            isOperatore: {{ 'true' if session.get('ruolo_nome') == 'OPERATORE' else 'false' }},
-            isVisualizzatore: {{ 'true' if session.get('ruolo_nome') == 'VISUALIZZATORE' else 'false' }},
-            isLoggedIn: {{ 'true' if session.get('logged_in') else 'false' }}
-        };
-        
-        // Funzione globale per alert
-        window.showAlert = function(message, type = 'info') {
-            if (window.TALON_API && window.TALON_API.showInfo) {
-                switch(type) {
-                    case 'success':
-                        window.TALON_API.showSuccess(message);
-                        break;
-                    case 'danger':
-                    case 'error':
-                        window.TALON_API.showError(message);
-                        break;
-                    default:
-                        window.TALON_API.showInfo(message);
-                }
-            } else {
-                // Fallback Bootstrap alert
-                const alertDiv = document.createElement('div');
-                alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
-                alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-                alertDiv.innerHTML = `
-                    ${message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                document.body.appendChild(alertDiv);
-                
-                setTimeout(() => {
-                    if (alertDiv.parentNode) {
-                        alertDiv.remove();
-                    }
-                }, 5000);
-            }
-        };
-        
-        // Setup CSRF per AJAX
-        {% if csrf_token %}
-        $.ajaxSetup({
-            beforeSend: function(xhr, settings) {
-                if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
-                    xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token() }}");
-                }
-            }
-        });
-        {% endif %}
 
-        // Debug info se abilitato
-        {% if config.DEBUG %}
-        console.log('🔧 TALON System - Debug Mode');
+    <script>
+        // Permessi lato client dedotti dal ruolo in sessione
+        (function () {
+            const role = '{{ session.get("ruolo_nome", "GUEST") }}'.toUpperCase();
+            const isAdmin = role === 'ADMIN';
+            const isOperatore = role === 'OPERATORE';
+            const isVisualizzatore = role === 'VISUALIZZATORE';
+
+            window.TalonPermissions = {
+                userRole: role || 'GUEST',
+                canEdit: (isAdmin || isOperatore),
+                canDelete: isAdmin,
+                canCreate: (isAdmin || isOperatore),
+                isAdmin: isAdmin,
+                isOperatore: isOperatore,
+                isVisualizzatore: isVisualizzatore,
+                isLoggedIn: {{ 'true' if session.get('logged_in') else 'false' }}
+            };
+        })();
+
+        // Fallback alert se non presente un'API UI nativa
+        window.showAlert = function(message, type = 'info') {
+            if (window.TALON_API && typeof window.TALON_API.showInfo === 'function') {
+                if (type === 'success') return window.TALON_API.showSuccess(message);
+                if (type === 'danger' || type === 'error') return window.TALON_API.showError(message);
+                return window.TALON_API.showInfo(message);
+            }
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+            document.body.appendChild(alertDiv);
+            setTimeout(() => { if (alertDiv.parentNode) alertDiv.remove(); }, 5000);
+        };
+
+        // Setup CSRF per AJAX - attivo solo se il token NON è vuoto
+        (function () {
+            const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = tokenMeta ? (tokenMeta.getAttribute('content') || '').trim() : '';
+            if (csrfToken) {
+                $.ajaxSetup({
+                    beforeSend: function(xhr, settings) {
+                        if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                        }
+                    }
+                });
+            }
+        })();
+
+        // Log di debug (solo in debug)
+        {% if debug_mode or is_debug %}
+        console.log('🔧 TALON System - Debug Mode ON');
         console.log('💾 Cache Buster:', '{{ cache_buster }}');
         console.log('👤 User:', window.FLASK_USER_FULL_NAME, '(' + window.FLASK_USER_ROLE + ')');
+        console.log('🔐 SSO enabled:', window.TALON_APP.ssoEnabled);
         {% endif %}
     </script>
-    
-    <!-- Block per script aggiuntivi specifici per pagina -->
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

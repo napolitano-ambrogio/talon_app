@@ -12,35 +12,17 @@ from flask import Flask, request, jsonify, render_template, redirect, session, f
 import hashlib
 import datetime
 from waitress import serve
-import logging
 
 # === DB: PostgreSQL ===
+# Richiede: F:\talon_app\talon_app\python311_full\python.exe -m pip install --upgrade psycopg2-binary
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from psycopg2 import pool
 
-# Configurazione Database PostgreSQL
 PG_HOST = "127.0.0.1"
 PG_PORT = 5432
 PG_DB   = "talon"
 PG_USER = "talon"
 PG_PASS = "TalonDB!2025"
-
-# Pool di connessioni per migliori performance
-try:
-    connection_pool = psycopg2.pool.SimpleConnectionPool(
-        1, 20,  # min 1, max 20 connessioni
-        host=PG_HOST,
-        port=PG_PORT,
-        database=PG_DB,
-        user=PG_USER,
-        password=PG_PASS,
-        cursor_factory=RealDictCursor
-    )
-    print("[OK] Pool di connessioni PostgreSQL creato con successo")
-except Exception as e:
-    print(f"[ERROR] Errore creazione pool connessioni: {e}")
-    connection_pool = None
 
 # Importa il modulo SSO
 try:
@@ -52,7 +34,7 @@ try:
     )
     SSO_AVAILABLE = True
 except ImportError as e:
-    print(f"[WARNING] Modulo SSO non disponibile: {e}")
+    print(f"⚠️ Modulo SSO non disponibile: {e}")
     SSO_AVAILABLE = False
 
 # Importa il modulo di autenticazione
@@ -83,13 +65,6 @@ def create_app():
     app.config['DEBUG'] = True
     app.debug = True
     
-    # Setup logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
-    )
-    app.logger.setLevel(logging.INFO)
-    
     # ===========================================
     # CONFIGURAZIONE APP E SESSIONI
     # ===========================================
@@ -111,7 +86,7 @@ def create_app():
     app.config['POSTGRES'] = {
         "host": PG_HOST,
         "port": PG_PORT,
-        "database": PG_DB,
+        "dbname": PG_DB,
         "user": PG_USER,
         "password": PG_PASS,
     }
@@ -163,9 +138,7 @@ def create_app():
             'app_version': '2.0.0',
             'current_year': datetime.datetime.now().year,
             'debug_mode': app.debug,
-            'sso_enabled': SSO_AVAILABLE,
-            'db_type': 'PostgreSQL',
-            'db_name': PG_DB
+            'sso_enabled': SSO_AVAILABLE
         }
     
     @app.context_processor
@@ -204,63 +177,29 @@ def create_app():
     setup_auth_context_processor(app)
     
     # ===========================================
-    # FUNZIONI DATABASE (PostgreSQL con Pool)
+    # FUNZIONI DATABASE (PostgreSQL)
     # ===========================================
     
     def get_db_connection():
         """
-        Restituisce una connessione dal pool PostgreSQL.
-        Usa RealDictCursor per ottenere risultati come dizionari.
+        Restituisce una connessione psycopg2 a PostgreSQL.
+        Usa RealDictCursor quando si crea un cursore per ottenere dict-like rows.
         """
-        if connection_pool:
-            try:
-                conn = connection_pool.getconn()
-                if conn:
-                    # Test rapido della connessione
-                    with conn.cursor() as cur:
-                        cur.execute("SELECT 1")
-                    return conn
-            except Exception as e:
-                app.logger.error(f"Errore ottenimento connessione dal pool: {e}")
-                # Prova connessione diretta come fallback
-        
-        # Fallback: connessione diretta se il pool non funziona
-        try:
-            return psycopg2.connect(
-                host=PG_HOST,
-                port=PG_PORT,
-                database=PG_DB,
-                user=PG_USER,
-                password=PG_PASS,
-                cursor_factory=RealDictCursor
-            )
-        except Exception as e:
-            app.logger.error(f"Errore connessione diretta PostgreSQL: {e}")
-            raise
-    
-    def return_db_connection(conn):
-        """Restituisce la connessione al pool"""
-        if connection_pool and conn:
-            try:
-                connection_pool.putconn(conn)
-            except Exception as e:
-                app.logger.error(f"Errore restituzione connessione al pool: {e}")
-                try:
-                    conn.close()
-                except:
-                    pass
+        cfg = app.config['POSTGRES']
+        return psycopg2.connect(
+            host=cfg["host"],
+            port=cfg["port"],
+            dbname=cfg["dbname"],
+            user=cfg["user"],
+            password=cfg["password"]
+        )
     
     def verify_password(stored_hash: str, password: str, username: str = None) -> bool:
         """Verifica password con fallback per admin di test"""
-        # Admin di test per sviluppo
         if username == 'admin' and password == 'admin123':
             return True
-        
-        # Verifica hash MD5 (da migrare a bcrypt in produzione)
         if stored_hash:
-            computed_hash = hashlib.md5(password.encode()).hexdigest()
-            return stored_hash == computed_hash
-        
+            return stored_hash == hashlib.md5(password.encode()).hexdigest()
         return False
     
     def create_api_session_token(user_data: dict) -> str:
@@ -276,36 +215,6 @@ def create_app():
             'expires': datetime.datetime.now() + datetime.timedelta(hours=24)
         }
         return token
-    
-    # ===========================================
-    # HEALTH CHECK E STATUS
-    # ===========================================
-    
-    @app.route('/health')
-    def health_check():
-        """Health check endpoint"""
-        status = {
-            'status': 'healthy',
-            'timestamp': datetime.datetime.now().isoformat(),
-            'version': '2.0.0',
-            'database': 'unknown',
-            'sso': SSO_AVAILABLE
-        }
-        
-        # Test connessione database
-        try:
-            conn = get_db_connection()
-            with conn.cursor() as cur:
-                cur.execute("SELECT version()")
-                db_version = cur.fetchone()
-                status['database'] = 'connected'
-                status['db_version'] = str(db_version['version'])[:50] if db_version else 'unknown'
-            return_db_connection(conn)
-        except Exception as e:
-            status['database'] = f'error: {str(e)}'
-            status['status'] = 'degraded'
-        
-        return jsonify(status), 200 if status['status'] == 'healthy' else 503
     
     # ===========================================
     # ROUTE STATICHE
@@ -361,126 +270,92 @@ def create_app():
             flash(error_msg, 'error')
             return redirect(url_for('show_login'))
         
-        try:
-            # Verifica credenziali
-            user = get_user_by_username(username.strip())
-            
-            if not user:
-                error_msg = 'Credenziali non valide'
-                app.logger.warning(f"Login fallito - utente non trovato: {username}")
-                if is_api_request:
-                    return jsonify({'error': error_msg, 'code': 'INVALID_CREDENTIALS'}), 401
-                flash(error_msg, 'error')
-                return redirect(url_for('show_login'))
-            
-            # Verifica password
-            password_hash = user.get('password_hash') or user.get('password', '')
-            if not verify_password(password_hash, password, username):
-                error_msg = 'Credenziali non valide'
-                app.logger.warning(f"Login fallito - password errata per: {username}")
-                if is_api_request:
-                    return jsonify({'error': error_msg, 'code': 'INVALID_CREDENTIALS'}), 401
-                flash(error_msg, 'error')
-                return redirect(url_for('show_login'))
-            
-            # Verifica che l'utente sia attivo
-            if not user.get('attivo', True):
-                error_msg = 'Account disattivato'
-                app.logger.warning(f"Login fallito - account disattivato: {username}")
-                if is_api_request:
-                    return jsonify({'error': error_msg, 'code': 'ACCOUNT_DISABLED'}), 401
-                flash(error_msg, 'error')
-                return redirect(url_for('show_login'))
-            
-            # Login riuscito - crea sessione
-            session.permanent = True
-            session.clear()
-            
-            # Dati base di sessione
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            session['logged_in'] = True
-            session['login_time'] = datetime.datetime.now().isoformat()
-            session['session_valid'] = True
-            session['nome'] = user.get('nome', '')
-            session['cognome'] = user.get('cognome', '')
-            session['email'] = user.get('email', f"{username}@talon.local")
-            
-            # Aggiorna sessione con informazioni ruolo
-            update_session_with_role_info(user['id'])
-            
-            # Aggiorna ultimo accesso
-            try:
-                conn = get_db_connection()
-                with conn:
-                    with conn.cursor() as cur:
-                        cur.execute(
-                            'UPDATE utenti SET ultimo_accesso = NOW() WHERE id = %s', 
-                            (user['id'],)
-                        )
-                        conn.commit()
-                return_db_connection(conn)
-            except Exception as e:
-                app.logger.error(f"Impossibile aggiornare ultimo_accesso: {e}")
-            
-            # Log del login
-            log_user_action(
-                user_id=user['id'], 
-                action='LOGIN_SUCCESS',
-                details=f"Login {'API' if is_api_request else 'WEB'} da {request.remote_addr}",
-                ip_address=request.remote_addr
-            )
-            
-            app.logger.info(f"Login riuscito per utente: {username}")
-            
+        # Verifica credenziali
+        user = get_user_by_username(username.strip())
+        if not user or not verify_password(user.get('password_hash', ''), password, username):
+            error_msg = 'Credenziali non valide'
             if is_api_request:
-                # Risposta API
-                token = create_api_session_token(user)
-                permissions = get_user_permissions(user['id'])
-                accessible_entities = get_user_accessible_entities(user['id'])
-                
-                return jsonify({
-                    'success': True,
-                    'token': token,
-                    'user': {
-                        'id': user['id'],
-                        'username': user['username'],
-                        'nome': user.get('nome', ''),
-                        'cognome': user.get('cognome', ''),
-                        'ruolo': user.get('ruolo_nome'),
-                        'livello_accesso': user.get('livello_accesso', 0)
-                    },
-                    'permissions': permissions,
-                    'accessible_entities': accessible_entities
-                })
-            else:
-                # Risposta web
-                nome_completo = f"{user.get('nome', '')} {user.get('cognome', '')}".strip()
-                if nome_completo:
-                    flash(f'Benvenuto, {nome_completo}!', 'success')
-                else:
-                    flash(f'Benvenuto, {username}!', 'success')
-                
-                next_page = request.args.get('next')
-                if next_page and next_page.startswith('/'):
-                    return redirect(next_page)
-                
-                return redirect(url_for('main.dashboard'))
-                
-        except Exception as e:
-            app.logger.error(f"Errore durante il login: {e}")
-            error_msg = 'Errore durante il login. Riprova.'
-            if is_api_request:
-                return jsonify({'error': error_msg, 'code': 'LOGIN_ERROR'}), 500
+                return jsonify({'error': error_msg, 'code': 'INVALID_CREDENTIALS'}), 401
             flash(error_msg, 'error')
             return redirect(url_for('show_login'))
+        
+        # Verifica che l'utente sia attivo
+        if not user.get('attivo', True):
+            error_msg = 'Account disattivato'
+            if is_api_request:
+                return jsonify({'error': error_msg, 'code': 'ACCOUNT_DISABLED'}), 401
+            flash(error_msg, 'error')
+            return redirect(url_for('show_login'))
+        
+        # Login riuscito - crea sessione
+        session.permanent = True
+        session.clear()
+        
+        # Dati base di sessione
+        session['user_id'] = user['id']
+        session['username'] = user['username']
+        session['logged_in'] = True
+        session['login_time'] = datetime.datetime.now().isoformat()
+        session['session_valid'] = True
+        session['nome'] = user.get('nome', '')
+        session['cognome'] = user.get('cognome', '')
+        session['email'] = user.get('email', f"{username}@talon.local")
+        
+        # Aggiorna sessione con informazioni ruolo
+        update_session_with_role_info(user['id'])
+        
+        # Aggiorna ultimo accesso (PostgreSQL)
+        try:
+            conn = get_db_connection()
+            with conn:
+                with conn.cursor() as cur:
+                    cur.execute('UPDATE utenti SET ultimo_accesso = NOW() WHERE id = %s', (user['id'],))
+        except Exception as e:
+            print(f"⚠️ Impossibile aggiornare ultimo_accesso: {e}")
+        
+        # Log del login
+        log_user_action(
+            user_id=user['id'], 
+            action='LOGIN_SUCCESS',
+            details=f"Login {'API' if is_api_request else 'WEB'} da {request.remote_addr}",
+            ip_address=request.remote_addr
+        )
+        
+        if is_api_request:
+            # Risposta API
+            token = create_api_session_token(user)
+            permissions = get_user_permissions(user['id'])
+            accessible_entities = get_user_accessible_entities(user['id'])
+            
+            return jsonify({
+                'success': True,
+                'token': token,
+                'user': {
+                    'id': user['id'],
+                    'username': user['username'],
+                    'nome': user['nome'],
+                    'cognome': user['cognome'],
+                    'ruolo': user.get('ruolo_nome'),
+                    'livello_accesso': user.get('livello_accesso', 0)
+                },
+                'permissions': permissions,
+                'accessible_entities': accessible_entities
+            })
+        else:
+            # Risposta web
+            flash(f'Benvenuto, {user["nome"]} {user["cognome"]}!', 'success')
+            
+            next_page = request.args.get('next')
+            if next_page and next_page.startswith('/'):
+                return redirect(next_page)
+            
+            return redirect(url_for('main.dashboard'))
     
     @app.route('/logout', methods=['GET', 'POST'])
     @app.route('/auth/logout', methods=['GET', 'POST'])
     def logout():
         """Logout dell'utente"""
         user_id = session.get('user_id')
-        username = session.get('username')
         
         if user_id:
             log_user_action(
@@ -489,7 +364,6 @@ def create_app():
                 details=f"Logout da {request.remote_addr}",
                 ip_address=request.remote_addr
             )
-            app.logger.info(f"Logout utente: {username}")
         
         # Pulisci token API se presente
         auth_header = request.headers.get('Authorization', '')
@@ -589,8 +463,8 @@ def create_app():
             'user': {
                 'id': user['id'],
                 'username': user['username'],
-                'nome': user.get('nome', ''),
-                'cognome': user.get('cognome', ''),
+                'nome': user['nome'],
+                'cognome': user['cognome'],
                 'ruolo': user.get('ruolo_nome'),
                 'livello_accesso': user.get('livello_accesso', 0)
             },
@@ -613,30 +487,24 @@ def create_app():
     @admin_required
     def admin_users():
         """Gestione utenti (solo admin)"""
-        conn = None
         try:
             conn = get_db_connection()
-            with conn.cursor() as cur:
-                cur.execute(
-                    '''
-                    SELECT u.*, r.nome as ruolo_nome, em.nome as ente_nome
-                    FROM utenti u
-                    LEFT JOIN ruoli r ON r.id = u.ruolo_id
-                    LEFT JOIN enti_militari em ON em.id = u.ente_militare_id
-                    ORDER BY u.cognome, u.nome
-                    '''
-                )
-                users = cur.fetchall()
-            
+            with conn:
+                with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute(
+                        '''
+                        SELECT u.*, r.nome as ruolo_nome, em.nome as ente_nome
+                        FROM utenti u
+                        LEFT JOIN ruoli r ON r.id = u.ruolo_id
+                        LEFT JOIN enti_militari em ON em.id = u.ente_militare_id
+                        ORDER BY u.cognome, u.nome
+                        '''
+                    )
+                    users = cur.fetchall()
             return render_template('admin/users.html', users=users)
-            
         except Exception as e:
-            app.logger.error(f"Errore nel caricamento utenti: {e}")
             flash(f'Errore nel caricamento utenti: {str(e)}', 'error')
             return redirect(url_for('main.dashboard'))
-        finally:
-            if conn:
-                return_db_connection(conn)
     
     # ===========================================
     # ROUTE DI DEBUG (SOLO SVILUPPO)
@@ -655,58 +523,8 @@ def create_app():
                 'username': session.get('username'),
                 'user_role': session.get('ruolo_nome'),
                 'sso_enabled': SSO_AVAILABLE,
-                'user_info': user_info,
-                'database': {
-                    'type': 'PostgreSQL',
-                    'name': PG_DB,
-                    'host': PG_HOST,
-                    'port': PG_PORT,
-                    'user': PG_USER
-                }
+                'user_info': user_info
             })
-        
-        @app.route('/debug/db-test')
-        def debug_db_test():
-            """Test connessione database"""
-            try:
-                conn = get_db_connection()
-                with conn.cursor() as cur:
-                    # Info database
-                    cur.execute("SELECT version()")
-                    db_version = cur.fetchone()
-                    
-                    # Conta tabelle
-                    cur.execute("""
-                        SELECT COUNT(*) as count 
-                        FROM information_schema.tables 
-                        WHERE table_schema = 'public'
-                    """)
-                    table_count = cur.fetchone()
-                    
-                    # Conta utenti
-                    cur.execute("SELECT COUNT(*) as count FROM utenti")
-                    user_count = cur.fetchone()
-                    
-                    # Lista ruoli
-                    cur.execute("SELECT nome FROM ruoli ORDER BY id")
-                    roles = cur.fetchall()
-                
-                return_db_connection(conn)
-                
-                return jsonify({
-                    'status': 'connected',
-                    'database': PG_DB,
-                    'version': db_version['version'] if db_version else 'unknown',
-                    'tables': table_count['count'] if table_count else 0,
-                    'users': user_count['count'] if user_count else 0,
-                    'roles': [r['nome'] for r in roles] if roles else []
-                })
-                
-            except Exception as e:
-                return jsonify({
-                    'status': 'error',
-                    'error': str(e)
-                }), 500
         
         @app.route('/quick-login/<username>')
         def quick_login(username):
@@ -769,26 +587,13 @@ def create_app():
     @app.errorhandler(500)
     def internal_server_error(error):
         """Gestione errore 500 - Errore interno server"""
-        app.logger.error(f"Errore 500: {error}")
         if request.path.startswith('/api/'):
             return jsonify({
                 'error': 'Errore interno del server',
                 'code': 'INTERNAL_ERROR'
             }), 500
-        flash('Si  verificato un errore interno. Riprova pi tardi.', 'error')
+        flash('Si è verificato un errore interno. Riprova più tardi.', 'error')
         return render_template('errors/500.html'), 500
-    
-    @app.errorhandler(psycopg2.OperationalError)
-    def handle_db_error(error):
-        """Gestione errori database"""
-        app.logger.error(f"Errore database: {error}")
-        if request.path.startswith('/api/'):
-            return jsonify({
-                'error': 'Errore connessione database',
-                'code': 'DATABASE_ERROR'
-            }), 503
-        flash('Errore di connessione al database. Riprova pi tardi.', 'error')
-        return render_template('errors/503.html'), 503
     
     # ===========================================
     # TEMPLATE FILTERS
@@ -797,8 +602,6 @@ def create_app():
     @app.template_filter('datetime_format')
     def datetime_format(value, format='%d/%m/%Y %H:%M'):
         """Formatta datetime per i template"""
-        if value is None:
-            return ''
         if isinstance(value, str):
             try:
                 value = datetime.datetime.fromisoformat(value.replace('Z', '+00:00'))
@@ -811,8 +614,6 @@ def create_app():
     @app.template_filter('role_badge_class')
     def role_badge_class(role):
         """Restituisce classe CSS per badge ruolo"""
-        if role is None:
-            return 'badge-secondary'
         role_upper = str(role).upper()
         if role_upper == ROLE_ADMIN:
             return 'badge-danger'
@@ -838,36 +639,17 @@ def create_app():
     
     with app.app_context():
         try:
-            # Test connessione database
-            conn = get_db_connection()
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1")
-                result = cur.fetchone()
-                if result:
-                    app.logger.info("[OK] Connessione PostgreSQL verificata")
-                    print("[OK] Database PostgreSQL connesso correttamente")
-            return_db_connection(conn)
-            
-            # Valida sistema ruoli
             if not validate_user_role_consistency():
-                app.logger.warning("[WARNING] Inconsistenze rilevate nel sistema dei ruoli")
-                print("[WARNING] Inconsistenze nel sistema dei ruoli - verificare")
-            else:
-                print("[OK] Sistema ruoli verificato")
-            
+                app.logger.warning("Inconsistenze rilevate nel sistema dei ruoli")
             app.logger.info("TALON System inizializzato correttamente")
-            
+            print("✅ Database e sistema ruoli verificati")
             if SSO_AVAILABLE:
-                print("[OK] Modulo SSO caricato correttamente")
+                print("✅ Modulo SSO caricato correttamente")
             else:
-                print("[WARNING] Modulo SSO non disponibile")
-                
+                print("⚠️ Modulo SSO non disponibile")
         except Exception as e:
             app.logger.error(f"Errore nell'inizializzazione: {e}")
-            print(f"[ERROR] Errore inizializzazione: {e}")
-            print("   Verificare che PostgreSQL sia in esecuzione")
-            print(f"   Database: {PG_DB}")
-            print(f"   User: {PG_USER}")
+            print(f"❌ Errore inizializzazione: {e}")
     
     return app
 
@@ -893,66 +675,36 @@ def main():
         app.logger.info('TALON System startup')
     
     print("=" * 60)
-    print("[TARGET] TALON SYSTEM v2.0 - SISTEMA AUTENTICAZIONE + SSO")
+    print("🎯 TALON SYSTEM v2.0 - SISTEMA AUTENTICAZIONE + SSO")
     print("=" * 60)
-    print("[DB] DATABASE:")
-    print(f"   * Tipo: PostgreSQL")
-    print(f"   * Nome: {PG_DB}")
-    print(f"   * Host: {PG_HOST}:{PG_PORT}")
-    print(f"   * User: {PG_USER}")
+    print("📊 SERVIZI:")
+    print("   • TALON:    http://127.0.0.1:5000")
+    print("   • SUPERSET: http://127.0.0.1:8088")
     print("=" * 60)
-    print("[CHART] SERVIZI:")
-    print("   * TALON:    http://127.0.0.1:5000")
-    print("   * SUPERSET: http://127.0.0.1:8088")
-    print("=" * 60)
-    print("[USER] CREDENZIALI DI TEST:")
+    print("👤 CREDENZIALI DI TEST:")
     print("   Username: admin")
     print("   Password: admin123")
     print("=" * 60)
-    print("[LOCK] RUOLI DISPONIBILI:")
-    print(f"   * {ROLE_ADMIN} - Accesso completo")
-    print(f"   * {ROLE_OPERATORE} - Modifica dati")
-    print(f"   * {ROLE_VISUALIZZATORE} - Solo visualizzazione")
+    print("🔐 RUOLI DISPONIBILI:")
+    print(f"   • {ROLE_ADMIN} - Accesso completo")
+    print(f"   • {ROLE_OPERATORE} - Modifica dati")
+    print(f"   • {ROLE_VISUALIZZATORE} - Solo visualizzazione")
     print("=" * 60)
     
     if SSO_AVAILABLE:
-        print("[KEY] SSO ATTIVO - Login unico TALON -> Superset")
+        print("🔑 SSO ATTIVO - Login unico TALON → Superset")
     else:
-        print("[WARNING] SSO NON ATTIVO - Crea sso_superset.py")
-    
-    print("=" * 60)
-    
-    # Test connessione database prima di avviare
-    try:
-        test_conn = psycopg2.connect(
-            host=PG_HOST,
-            port=PG_PORT,
-            database=PG_DB,
-            user=PG_USER,
-            password=PG_PASS
-        )
-        test_conn.close()
-        print("[OK] Test connessione PostgreSQL riuscito")
-    except Exception as e:
-        print(f"[ERROR] ERRORE: Impossibile connettersi a PostgreSQL")
-        print(f"   {e}")
-        print("\n[WARNING] Verificare che:")
-        print("   1. PostgreSQL sia in esecuzione")
-        print(f"   2. Il database '{PG_DB}' esista")
-        print(f"   3. L'utente '{PG_USER}' abbia i permessi corretti")
-        print("   4. La password sia corretta")
-        print("\nProvare: F:\\PostgreSQL\\bin\\psql -U talon -d talon")
-        return
+        print("⚠️ SSO NON ATTIVO - Crea sso_superset.py")
     
     print("=" * 60)
     
     if FORCE_DEBUG or app.debug:
-        print("[ALERT] MODALIT DEBUG ATTIVA")
-        print("[SAVE] Cache disabilitata")
+        print("🚨 MODALITÀ DEBUG ATTIVA")
+        print("💾 Cache disabilitata")
         print("=" * 60)
         app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
     else:
-        print("[LAUNCH] MODALIT PRODUZIONE")
+        print("🚀 MODALITÀ PRODUZIONE")
         print("=" * 60)
         serve(app, host='0.0.0.0', port=5000, threads=16)
 
