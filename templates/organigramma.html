@@ -1,7 +1,7 @@
 {% macro render_tree(nodes) %}
     <ul class="tree">
         {% for node in nodes %}
-            <li class="{{ 'expanded' if node.parent_id is none and not view_all }}">
+            <li>
                 <div class="node-content">
                     {% if node.children %}
                         <span class="toggle-btn" onclick="toggleNode(this); event.stopPropagation();"></span>
@@ -376,17 +376,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const toggleButtons = document.querySelectorAll('.toggle-btn');
     console.log('[Organigramma] Found ' + toggleButtons.length + ' toggle buttons');
     
-    // Espandi primo livello all'avvio (solo se non in view_all)
-    const isViewAll = window.location.search.includes('view=all');
-    if (!isViewAll) {
-        const rootItems = document.querySelectorAll('.tree > li');
-        console.log('[Organigramma] Found ' + rootItems.length + ' root items');
-        rootItems.forEach(item => {
-            if (item.querySelector('.toggle-btn')) {
-                item.classList.add('expanded');
-            }
-        });
-    }
+    // NON espandere nulla all'avvio - tutto rimane compresso di default
+    // Il codice che espandeva il primo livello è stato rimosso
     
     // Aggiungi gestione click su node-content per espandere/comprimere
     const nodeContents = document.querySelectorAll('.tree .node-content');

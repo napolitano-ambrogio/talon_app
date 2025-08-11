@@ -13,8 +13,19 @@
             <label for="ente_svolgimento_id">Ente che svolge l'attività:</label>
             <div class="searchable-select" data-select-id="ente_svolgimento_id"></div>
             <select name="ente_svolgimento_id" id="ente_svolgimento_id" style="display: none;" required>
+                <option value="" disabled>-- Seleziona un ente --</option>
                 {% for ente in enti_militari %}
-                    <option value="{{ ente.id }}" {% if ente.id == attivita.ente_svolgimento_id %}selected{% endif %}>{{ ente.nome }}</option>
+                    <option value="{{ ente.id }}"
+                            data-codice="{{ ente.codice or '' }}"
+                            data-indirizzo="{{ ente.indirizzo or '' }}"
+                            data-civico="{{ ente.civico or '' }}"
+                            data-citta="{{ ente.citta or '' }}"
+                            data-provincia="{{ ente.provincia or '' }}"
+                            data-cap="{{ ente.cap or '' }}"
+                            data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})"
+                            {% if ente.id == attivita.ente_svolgimento_id %}selected{% endif %}>
+                        {{ ente.nome }}
+                    </option>
                 {% endfor %}
             </select>
         </div>
@@ -23,10 +34,13 @@
             <label for="tipologia_id">Tipo di Attività:</label>
             <div class="searchable-select" data-select-id="tipologia_id"></div>
             <select name="tipologia_id" id="tipologia_id" style="display: none;" required>
+                <option value="" disabled>-- Seleziona una tipologia --</option>
                 {% for categoria, sottocategorie in tipologie.items() %}
                     <optgroup label="{{ categoria }}">
                         {% for sub in sottocategorie %}
-                            <option value="{{ sub.id }}" {% if sub.id == attivita.tipologia_id %}selected{% endif %}>{{ sub.nome }}</option>
+                            <option value="{{ sub.id }}" {% if sub.id == attivita.tipologia_id %}selected{% endif %}>
+                                {{ sub.nome }}
+                            </option>
                         {% endfor %}
                     </optgroup>
                 {% endfor %}
@@ -40,7 +54,11 @@
                 <option value="">-- Seleziona un'operazione (se applicabile) --</option>
                 {% for op in operazioni %}
                     <option value="{{ op.id }}"
-                            data-details="{{ op.nome_breve }} {{ op.teatro_operativo }}"
+                            data-nome-missione="{{ op.nome_missione }}"
+                            data-nome-breve="{{ op.nome_breve or '' }}"
+                            data-teatro-operativo="{{ op.teatro_operativo or '' }}"
+                            data-nazione="{{ op.nazione or '' }}"
+                            data-details="{% if op.nome_breve %}{{ op.nome_breve }} • {% endif %}{% if op.teatro_operativo %}{{ op.teatro_operativo }}{% endif %}{% if op.nazione %} • {{ op.nazione }}{% endif %}"
                             {% if op.id == attivita.operazione_id %}selected{% endif %}>
                         {{ op.nome_missione }}
                     </option>
@@ -50,11 +68,11 @@
 
         <div class="form-group">
             <label for="data_inizio">Data Inizio / Data Unica:</label>
-            <input type="date" id="data_inizio" name="data_inizio" value="{{ attivita.data_inizio }}" required>
+            <input type="date" id="data_inizio" name="data_inizio" value="{{ attivita.data_inizio.strftime('%Y-%m-%d') if attivita.data_inizio else '' }}" required>
         </div>
         <div class="form-group">
             <label for="data_fine">Data Fine (opzionale):</label>
-            <input type="date" id="data_fine" name="data_fine" value="{{ attivita.data_fine or '' }}">
+            <input type="date" id="data_fine" name="data_fine" value="{{ attivita.data_fine.strftime('%Y-%m-%d') if attivita.data_fine else '' }}">
         </div>
         <div class="form-group">
             <label for="descrizione">Descrizione Generica:</label>
@@ -76,7 +94,13 @@
                 </div>
                 <div>
                     <label for="unita_di_misura">Unità di Misura:</label>
-                    <input type="text" id="unita_di_misura" name="unita_di_misura" value="{{ dettagli_trasporti.unita_di_misura or '' }}">
+                    <select id="unita_di_misura" name="unita_di_misura">
+                        <option value="" {% if not dettagli_trasporti.unita_di_misura %}selected{% endif %}>-- Seleziona --</option>
+                        <option value="UNITÀ" {% if dettagli_trasporti.unita_di_misura == 'UNITÀ' %}selected{% endif %}>unità</option>
+                        <option value="LITRI" {% if dettagli_trasporti.unita_di_misura == 'LITRI' %}selected{% endif %}>litri</option>
+                        <option value="KG" {% if dettagli_trasporti.unita_di_misura == 'KG' %}selected{% endif %}>kg</option>
+                        <option value="M3" {% if dettagli_trasporti.unita_di_misura == 'M3' %}selected{% endif %}>m³</option>
+                    </select>
                 </div>
             </div>
             <div class="form-group">
@@ -139,7 +163,13 @@
                 </div>
                 <div>
                     <label for="unita_di_misura_rifornimento">Unità di Misura:</label>
-                    <input type="text" id="unita_di_misura_rifornimento" name="unita_di_misura_rifornimento" value="{{ dettagli_rifornimenti.unita_di_misura or '' }}">
+                    <select id="unita_di_misura_rifornimento" name="unita_di_misura_rifornimento">
+                        <option value="" {% if not dettagli_rifornimenti.unita_di_misura %}selected{% endif %}>-- Seleziona --</option>
+                        <option value="UNITÀ" {% if dettagli_rifornimenti.unita_di_misura == 'UNITÀ' %}selected{% endif %}>unità</option>
+                        <option value="LITRI" {% if dettagli_rifornimenti.unita_di_misura == 'LITRI' %}selected{% endif %}>litri</option>
+                        <option value="KG" {% if dettagli_rifornimenti.unita_di_misura == 'KG' %}selected{% endif %}>kg</option>
+                        <option value="M3" {% if dettagli_rifornimenti.unita_di_misura == 'M3' %}selected{% endif %}>m³</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -150,125 +180,124 @@
             <h3>Dettagli Gestione Transito (GETRA)</h3>
 
             <div class="form-group">
-                <label for="tipo_vettore">Tipo vettore:</label>
+                <label for="tipo_vettore">Tipo Vettore:</label>
                 <div class="searchable-select" data-select-id="tipo_vettore"></div>
                 <select id="tipo_vettore" name="tipo_vettore" style="display: none;">
-                    <option value="" {% if not dettagli_getra.tipo_vettore %}selected{% endif %}>-- Seleziona --</option>
-                    <option value="SAFOPS" {% if dettagli_getra.tipo_vettore == 'SAFOPS' %}selected{% endif %}>SAFOPS - SOURCED AIR FORCE OPERATIONS</option>
-                    <option value="SAFCER" {% if dettagli_getra.tipo_vettore == 'SAFCER' %}selected{% endif %}>SAFCER - SOURCED AIR FORCE CEREMONY</option>
-                    <option value="SAFPK" {% if dettagli_getra.tipo_vettore == 'SAFPK' %}selected{% endif %}>SAFPK - SOURCED AIR FORCE PEACE KEEPING</option>
-                    <option value="SAFHA" {% if dettagli_getra.tipo_vettore == 'SAFHA' %}selected{% endif %}>SAFHA - SOURCED AIR FORCE HUMANITARIAN AID</option>
-                    <option value="SAFEXE" {% if dettagli_getra.tipo_vettore == 'SAFEXE' %}selected{% endif %}>SAFEXE - SOURCED AIR FORCE EXERCISES</option>
-                    <option value="SCCOPS" {% if dettagli_getra.tipo_vettore == 'SCCOPS' %}selected{% endif %}>SCCOPS - SOURCED COMMERCIAL CARGO OPERATIONS</option>
-                    <option value="SCCCER" {% if dettagli_getra.tipo_vettore == 'SCCCER' %}selected{% endif %}>SCCCER - SOURCED COMMERCIAL CARGO CEREMONY</option>
-                    <option value="SCCPK" {% if dettagli_getra.tipo_vettore == 'SCCPK' %}selected{% endif %}>SCCPK - SOURCED COMMERCIAL CARGO PEACE KEEPING</option>
-                    <option value="SCCHA" {% if dettagli_getra.tipo_vettore == 'SCCHA' %}selected{% endif %}>SCCHA - SOURCED COMMERCIAL CARGO HUMANITARIAN AID</option>
-                    <option value="SCCEXE" {% if dettagli_getra.tipo_vettore == 'SCCEXE' %}selected{% endif %}>SCCEXE - SOURCED COMMERCIAL CARGO EXERCISES</option>
-                    <option value="SCPOPS" {% if dettagli_getra.tipo_vettore == 'SCPOPS' %}selected{% endif %}>SCPOPS - SOURCED COMMERCIAL PAX OPERATIONS</option>
-                    <option value="SCPCER" {% if dettagli_getra.tipo_vettore == 'SCPCER' %}selected{% endif %}>SCPCER - SOURCED COMMERCIAL PAX CEREMONY</option>
-                    <option value="SCPPK" {% if dettagli_getra.tipo_vettore == 'SCPPK' %}selected{% endif %}>SCPPK - SOURCED COMMERCIAL PAX PEACE KEEPING</option>
-                    <option value="SCPHA" {% if dettagli_getra.tipo_vettore == 'SCPHA' %}selected{% endif %}>SCPHA - SOURCED COMMERCIAL PAX HUMANITARIAN AID</option>
-                    <option value="SCPEXE" {% if dettagli_getra.tipo_vettore == 'SCPEXE' %}selected{% endif %}>SCPEXE - SOURCED COMMERCIAL PAX EXERCISES</option>
-                    <option value="SCSOPS" {% if dettagli_getra.tipo_vettore == 'SCSOPS' %}selected{% endif %}>SCSOPS - SOURCED COMMERCIAL SHIP OPERATIONS</option>
-                    <option value="SCSCER" {% if dettagli_getra.tipo_vettore == 'SCSCER' %}selected{% endif %}>SCSCER - SOURCED COMMERCIAL SHIP CEREMONY</option>
-                    <option value="SCSPK" {% if dettagli_getra.tipo_vettore == 'SCSPK' %}selected{% endif %}>SCSPK - SOURCED COMMERCIAL SHIP PEACE KEEPING</option>
-                    <option value="SCSHA" {% if dettagli_getra.tipo_vettore == 'SCSHA' %}selected{% endif %}>SCSHA - SOURCED COMMERCIAL SHIP HUMANITARIAN AID</option>
-                    <option value="SCSEXE" {% if dettagli_getra.tipo_vettore == 'SCSEXE' %}selected{% endif %}>SCSEXE - SOURCED COMMERCIAL SHIP EXERCISES</option>
-                    <option value="SCTOPS" {% if dettagli_getra.tipo_vettore == 'SCTOPS' %}selected{% endif %}>SCTOPS - SOURCED COMMERCIAL TRAIN OPERATIONS</option>
-                    <option value="SCTCER" {% if dettagli_getra.tipo_vettore == 'SCTCER' %}selected{% endif %}>SCTCER - SOURCED COMMERCIAL TRAIN CEREMONY</option>
-                    <option value="SCTPK" {% if dettagli_getra.tipo_vettore == 'SCTPK' %}selected{% endif %}>SCTPK - SOURCED COMMERCIAL TRAIN PEACE KEEPING</option>
-                    <option value="SCTHA" {% if dettagli_getra.tipo_vettore == 'SCTHA' %}selected{% endif %}>SCTHA - SOURCED COMMERCIAL TRAIN HUMANITARIAN AID</option>
-                    <option value="SCTEXE" {% if dettagli_getra.tipo_vettore == 'SCTEXE' %}selected{% endif %}>SCTEXE - SOURCED COMMERCIAL TRAIN EXERCISES</option>
-                    <option value="SCTROPS" {% if dettagli_getra.tipo_vettore == 'SCTROPS' %}selected{% endif %}>SCTROPS - SOURCED COMMERCIAL TRUCK OPERATIONS</option>
-                    <option value="SCTRCER" {% if dettagli_getra.tipo_vettore == 'SCTRCER' %}selected{% endif %}>SCTRCER - SOURCED COMMERCIAL TRUCK CEREMONY</option>
-                    <option value="SCTRPK" {% if dettagli_getra.tipo_vettore == 'SCTRPK' %}selected{% endif %}>SCTRPK - SOURCED COMMERCIAL TRUCK PEACE KEEPING</option>
-                    <option value="SCTRHA" {% if dettagli_getra.tipo_vettore == 'SCTRHA' %}selected{% endif %}>SCTRHA - SOURCED COMMERCIAL TRUCK HUMANITARIAN AID</option>
-                    <option value="SCTREXE" {% if dettagli_getra.tipo_vettore == 'SCTREXE' %}selected{% endif %}>SCTREXE - SOURCED COMMERCIAL TRUCK EXERCISES</option>
-                    <option value="SAOPS" {% if dettagli_getra.tipo_vettore == 'SAOPS' %}selected{% endif %}>SAOPS - SOURCED ARMY OPERATIONS</option>
-                    <option value="SACER" {% if dettagli_getra.tipo_vettore == 'SACER' %}selected{% endif %}>SACER - SOURCED ARMY CEREMONY</option>
-                    <option value="SAPK" {% if dettagli_getra.tipo_vettore == 'SAPK' %}selected{% endif %}>SAPK - SOURCED ARMY PEACE KEEPING</option>
-                    <option value="SAHA" {% if dettagli_getra.tipo_vettore == 'SAHA' %}selected{% endif %}>SAHA - SOURCED ARMY HUMANITARIAN AID</option>
-                    <option value="SAEXE" {% if dettagli_getra.tipo_vettore == 'SAEXE' %}selected{% endif %}>SAEXE - SOURCED ARMY EXERCISES</option>
-                    <option value="SNOPS" {% if dettagli_getra.tipo_vettore == 'SNOPS' %}selected{% endif %}>SNOPS - SOURCED NAVY OPERATIONS</option>
-                    <option value="SNCER" {% if dettagli_getra.tipo_vettore == 'SNCER' %}selected{% endif %}>SNCER - SOURCED NAVY CEREMONY</option>
-                    <option value="SNPK" {% if dettagli_getra.tipo_vettore == 'SNPK' %}selected{% endif %}>SNPK - SOURCED NAVY PEACE KEEPING</option>
-                    <option value="SNHA" {% if dettagli_getra.tipo_vettore == 'SNHA' %}selected{% endif %}>SNHA - SOURCED NAVY HUMANITARIAN AID</option>
-                    <option value="SNEXE" {% if dettagli_getra.tipo_vettore == 'SNEXE' %}selected{% endif %}>SNEXE - SOURCED NAVY EXERCISES</option>
-                    <option value="SUSAFOPS" {% if dettagli_getra.tipo_vettore == 'SUSAFOPS' %}selected{% endif %}>SUSAFOPS - SOURCED USAF OPERATIONS</option>
-                    <option value="SUSAFCER" {% if dettagli_getra.tipo_vettore == 'SUSAFCER' %}selected{% endif %}>SUSAFCER - SOURCED USAF CEREMONY</option>
-                    <option value="SUSAFPK" {% if dettagli_getra.tipo_vettore == 'SUSAFPK' %}selected{% endif %}>SUSAFPK - SOURCED USAF PEACE KEEPING</option>
-                    <option value="SUSAFHA" {% if dettagli_getra.tipo_vettore == 'SUSAFHA' %}selected{% endif %}>SUSAFHA - SOURCED USAF HUMANITARIAN AID</option>
-                    <option value="SUSAFEXE" {% if dettagli_getra.tipo_vettore == 'SUSAFEXE' %}selected{% endif %}>SUSAFEXE - SOURCED USAF EXERCISES</option>
-                    <option value="SNATOOPS" {% if dettagli_getra.tipo_vettore == 'SNATOOPS' %}selected{% endif %}>SNATOOPS - SOURCED NATO OPERATIONS</option>
-                    <option value="SNATOCER" {% if dettagli_getra.tipo_vettore == 'SNATOCER' %}selected{% endif %}>SNATOCER - SOURCED NATO CEREMONY</option>
-                    <option value="SNATOPK" {% if dettagli_getra.tipo_vettore == 'SNATOPK' %}selected{% endif %}>SNATOPK - SOURCED NATO PEACE KEEPING</option>
-                    <option value="SNATOHA" {% if dettagli_getra.tipo_vettore == 'SNATOHA' %}selected{% endif %}>SNATOHA - SOURCED NATO HUMANITARIAN AID</option>
-                    <option value="SNATOEXE" {% if dettagli_getra.tipo_vettore == 'SNATOEXE' %}selected{% endif %}>SNATOEXE - SOURCED NATO EXERCISES</option>
-                    <option value="UAFOPS" {% if dettagli_getra.tipo_vettore == 'UAFOPS' %}selected{% endif %}>UAFOPS - UNSOURCED AIR FORCE OPERATIONS</option>
-                    <option value="UAFCER" {% if dettagli_getra.tipo_vettore == 'UAFCER' %}selected{% endif %}>UAFCER - UNSOURCED AIR FORCE CEREMONY</option>
-                    <option value="UAFPK" {% if dettagli_getra.tipo_vettore == 'UAFPK' %}selected{% endif %}>UAFPK - UNSOURCED AIR FORCE PEACE KEEPING</option>
-                    <option value="UAFHA" {% if dettagli_getra.tipo_vettore == 'UAFHA' %}selected{% endif %}>UAFHA - UNSOURCED AIR FORCE HUMANITARIAN AID</option>
-                    <option value="UAFEXE" {% if dettagli_getra.tipo_vettore == 'UAFEXE' %}selected{% endif %}>UAFEXE - UNSOURCED AIR FORCE EXERCISES</option>
-                    <option value="UCCOPS" {% if dettagli_getra.tipo_vettore == 'UCCOPS' %}selected{% endif %}>UCCOPS - UNSOURCED COMMERCIAL CARGO OPERATIONS</option>
-                    <option value="UCCCER" {% if dettagli_getra.tipo_vettore == 'UCCCER' %}selected{% endif %}>UCCCER - UNSOURCED COMMERCIAL CARGO CEREMONY</option>
-                    <option value="UCCPK" {% if dettagli_getra.tipo_vettore == 'UCCPK' %}selected{% endif %}>UCCPK - UNSOURCED COMMERCIAL CARGO PEACE KEEPING</option>
-                    <option value="UCCHA" {% if dettagli_getra.tipo_vettore == 'UCCHA' %}selected{% endif %}>UCCHA - UNSOURCED COMMERCIAL CARGO HUMANITARIAN AID</option>
-                    <option value="UCCEXE" {% if dettagli_getra.tipo_vettore == 'UCCEXE' %}selected{% endif %}>UCCEXE - UNSOURCED COMMERCIAL CARGO EXERCISES</option>
-                    <option value="UCPOPS" {% if dettagli_getra.tipo_vettore == 'UCPOPS' %}selected{% endif %}>UCPOPS - UNSOURCED COMMERCIAL PAX OPERATIONS</option>
-                    <option value="UCPCER" {% if dettagli_getra.tipo_vettore == 'UCPCER' %}selected{% endif %}>UCPCER - UNSOURCED COMMERCIAL PAX CEREMONY</option>
-                    <option value="UCPPK" {% if dettagli_getra.tipo_vettore == 'UCPPK' %}selected{% endif %}>UCPPK - UNSOURCED COMMERCIAL PAX PEACE KEEPING</option>
-                    <option value="UCPHA" {% if dettagli_getra.tipo_vettore == 'UCPHA' %}selected{% endif %}>UCPHA - UNSOURCED COMMERCIAL PAX HUMANITARIAN AID</option>
-                    <option value="UCPEXE" {% if dettagli_getra.tipo_vettore == 'UCPEXE' %}selected{% endif %}>UCPEXE - UNSOURCED COMMERCIAL PAX EXERCISES</option>
-                    <option value="UCSOPS" {% if dettagli_getra.tipo_vettore == 'UCSOPS' %}selected{% endif %}>UCSOPS - UNSOURCED COMMERCIAL SHIP OPERATIONS</option>
-                    <option value="UCSCER" {% if dettagli_getra.tipo_vettore == 'UCSCER' %}selected{% endif %}>UCSCER - UNSOURCED COMMERCIAL SHIP CEREMONY</option>
-                    <option value="UCSPK" {% if dettagli_getra.tipo_vettore == 'UCSPK' %}selected{% endif %}>UCSPK - UNSOURCED COMMERCIAL SHIP PEACE KEEPING</option>
-                    <option value="UCSHA" {% if dettagli_getra.tipo_vettore == 'UCSHA' %}selected{% endif %}>UCSHA - UNSOURCED COMMERCIAL SHIP HUMANITARIAN AID</option>
-                    <option value="UCSEXE" {% if dettagli_getra.tipo_vettore == 'UCSEXE' %}selected{% endif %}>UCSEXE - UNSOURCED COMMERCIAL SHIP EXERCISES</option>
-                    <option value="UCTOPS" {% if dettagli_getra.tipo_vettore == 'UCTOPS' %}selected{% endif %}>UCTOPS - UNSOURCED COMMERCIAL TRAIN OPERATIONS</option>
-                    <option value="UCTCER" {% if dettagli_getra.tipo_vettore == 'UCTCER' %}selected{% endif %}>UCTCER - UNSOURCED COMMERCIAL TRAIN CEREMONY</option>
-                    <option value="UCTPK" {% if dettagli_getra.tipo_vettore == 'UCTPK' %}selected{% endif %}>UCTPK - UNSOURCED COMMERCIAL TRAIN PEACE KEEPING</option>
-                    <option value="UCTHA" {% if dettagli_getra.tipo_vettore == 'UCTHA' %}selected{% endif %}>UCTHA - UNSOURCED COMMERCIAL TRAIN HUMANITARIAN AID</option>
-                    <option value="UCTEXE" {% if dettagli_getra.tipo_vettore == 'UCTEXE' %}selected{% endif %}>UCTEXE - UNSOURCED COMMERCIAL TRAIN EXERCISES</option>
-                    <option value="UCTROPS" {% if dettagli_getra.tipo_vettore == 'UCTROPS' %}selected{% endif %}>UCTROPS - UNSOURCED COMMERCIAL TRUCK OPERATIONS</option>
-                    <option value="UCTRCER" {% if dettagli_getra.tipo_vettore == 'UCTRCER' %}selected{% endif %}>UCTRCER - UNSOURCED COMMERCIAL TRUCK CEREMONY</option>
-                    <option value="UCTRPK" {% if dettagli_getra.tipo_vettore == 'UCTRPK' %}selected{% endif %}>UCTRPK - UNSOURCED COMMERCIAL TRUCK PEACE KEEPING</option>
-                    <option value="UCTRHA" {% if dettagli_getra.tipo_vettore == 'UCTRHA' %}selected{% endif %}>UCTRHA - UNSOURCED COMMERCIAL TRUCK HUMANITARIAN AID</option>
-                    <option value="UCTREXE" {% if dettagli_getra.tipo_vettore == 'UCTREXE' %}selected{% endif %}>UCTREXE - UNSOURCED COMMERCIAL TRUCK EXERCISES</option>
-                    <option value="UAOPS" {% if dettagli_getra.tipo_vettore == 'UAOPS' %}selected{% endif %}>UAOPS - UNSOURCED ARMY OPERATIONS</option>
-                    <option value="UACER" {% if dettagli_getra.tipo_vettore == 'UACER' %}selected{% endif %}>UACER - UNSOURCED ARMY CEREMONY</option>
-                    <option value="UAPK" {% if dettagli_getra.tipo_vettore == 'UAPK' %}selected{% endif %}>UAPK - UNSOURCED ARMY PEACE KEEPING</option>
-                    <option value="UAHA" {% if dettagli_getra.tipo_vettore == 'UAHA' %}selected{% endif %}>UAHA - UNSOURCED ARMY HUMANITARIAN AID</option>
-                    <option value="UAEXE" {% if dettagli_getra.tipo_vettore == 'UAEXE' %}selected{% endif %}>UAEXE - UNSOURCED ARMY EXERCISES</option>
-                    <option value="UNOPS" {% if dettagli_getra.tipo_vettore == 'UNOPS' %}selected{% endif %}>UNOPS - UNSOURCED NAVY OPERATIONS</option>
-                    <option value="UNCER" {% if dettagli_getra.tipo_vettore == 'UNCER' %}selected{% endif %}>UNCER - UNSOURCED NAVY CEREMONY</option>
-                    <option value="UNPK" {% if dettagli_getra.tipo_vettore == 'UNPK' %}selected{% endif %}>UNPK - UNSOURCED NAVY PEACE KEEPING</option>
-                    <option value="UNHA" {% if dettagli_getra.tipo_vettore == 'UNHA' %}selected{% endif %}>UNHA - UNSOURCED NAVY HUMANITARIAN AID</option>
-                    <option value="UNEXE" {% if dettagli_getra.tipo_vettore == 'UNEXE' %}selected{% endif %}>UNEXE - UNSOURCED NAVY EXERCISES</option>
-                    <option value="UUSAFOPS" {% if dettagli_getra.tipo_vettore == 'UUSAFOPS' %}selected{% endif %}>UUSAFOPS - UNSOURCED USAF OPERATIONS</option>
-                    <option value="UUSAFCER" {% if dettagli_getra.tipo_vettore == 'UUSAFCER' %}selected{% endif %}>UUSAFCER - UNSOURCED USAF CEREMONY</option>
-                    <option value="UUSAFPK" {% if dettagli_getra.tipo_vettore == 'UUSAFPK' %}selected{% endif %}>UUSAFPK - UNSOURCED USAF PEACE KEEPING</option>
-                    <option value="UUSAFHA" {% if dettagli_getra.tipo_vettore == 'UUSAFHA' %}selected{% endif %}>UUSAFHA - UNSOURCED USAF HUMANITARIAN AID</option>
-                    <option value="UUSAFEXE" {% if dettagli_getra.tipo_vettore == 'UUSAFEXE' %}selected{% endif %}>UUSAFEXE - UNSOURCED USAF EXERCISES</option>
-                    <option value="UNATOOPS" {% if dettagli_getra.tipo_vettore == 'UNATOOPS' %}selected{% endif %}>UNATOOPS - UNSOURCED NATO OPERATIONS</option>
-                    <option value="UNATOCER" {% if dettagli_getra.tipo_vettore == 'UNATOCER' %}selected{% endif %}>UNATOCER - UNSOURCED NATO CEREMONY</option>
-                    <option value="UNATOPK" {% if dettagli_getra.tipo_vettore == 'UNATOPK' %}selected{% endif %}>UNATOPK - UNSOURCED NATO PEACE KEEPING</option>
-                    <option value="UNATOHA" {% if dettagli_getra.tipo_vettore == 'UNATOHA' %}selected{% endif %}>UNATOHA - UNSOURCED NATO HUMANITARIAN AID</option>
-                    <option value="UNATOEXE" {% if dettagli_getra.tipo_vettore == 'UNATOEXE' %}selected{% endif %}>UNATOEXE - UNSOURCED NATO EXERCISES</option>
+                    <option value="">-- Seleziona Vettore --</option>
+                    <option value="SAFOPS">SAFOPS - SOURCED AIR FORCE OPERATIONS</option>
+                    <option value="SAFCER">SAFCER - SOURCED AIR FORCE CEREMONY</option>
+                    <option value="SAFPK">SAFPK - SOURCED AIR FORCE PEACE KEEPING</option>
+                    <option value="SAFHA">SAFHA - SOURCED AIR FORCE HUMANITARIAN AID</option>
+                    <option value="SAFEXE">SAFEXE - SOURCED AIR FORCE EXERCISES</option>
+                    <option value="SCCOPS">SCCOPS - SOURCED COMMERCIAL CARGO OPERATIONS</option>
+                    <option value="SCCCER">SCCCER - SOURCED COMMERCIAL CARGO CEREMONY</option>
+                    <option value="SCCPK">SCCPK - SOURCED COMMERCIAL CARGO PEACE KEEPING</option>
+                    <option value="SCCHA">SCCHA - SOURCED COMMERCIAL CARGO HUMANITARIAN AID</option>
+                    <option value="SCCEXE">SCCEXE - SOURCED COMMERCIAL CARGO EXERCISES</option>
+                    <option value="SCPOPS">SCPOPS - SOURCED COMMERCIAL PAX OPERATIONS</option>
+                    <option value="SCPCER">SCPCER - SOURCED COMMERCIAL PAX CEREMONY</option>
+                    <option value="SCPPK">SCPPK - SOURCED COMMERCIAL PAX PEACE KEEPING</option>
+                    <option value="SCPHA">SCPHA - SOURCED COMMERCIAL PAX HUMANITARIAN AID</option>
+                    <option value="SCPEXE">SCPEXE - SOURCED COMMERCIAL PAX EXERCISES</option>
+                    <option value="SCSOPS">SCSOPS - SOURCED COMMERCIAL SHIP OPERATIONS</option>
+                    <option value="SCSCER">SCSCER - SOURCED COMMERCIAL SHIP CEREMONY</option>
+                    <option value="SCSPK">SCSPK - SOURCED COMMERCIAL SHIP PEACE KEEPING</option>
+                    <option value="SCSHA">SCSHA - SOURCED COMMERCIAL SHIP HUMANITARIAN AID</option>
+                    <option value="SCSEXE">SCSEXE - SOURCED COMMERCIAL SHIP EXERCISES</option>
+                    <option value="SCTOPS">SCTOPS - SOURCED COMMERCIAL TRAIN OPERATIONS</option>
+                    <option value="SCTCER">SCTCER - SOURCED COMMERCIAL TRAIN CEREMONY</option>
+                    <option value="SCTPK">SCTPK - SOURCED COMMERCIAL TRAIN PEACE KEEPING</option>
+                    <option value="SCTHA">SCTHA - SOURCED COMMERCIAL TRAIN HUMANITARIAN AID</option>
+                    <option value="SCTEXE">SCTEXE - SOURCED COMMERCIAL TRAIN EXERCISES</option>
+                    <option value="SCTROPS">SCTROPS - SOURCED COMMERCIAL TRUCK OPERATIONS</option>
+                    <option value="SCTRCER">SCTRCER - SOURCED COMMERCIAL TRUCK CEREMONY</option>
+                    <option value="SCTRPK">SCTRPK - SOURCED COMMERCIAL TRUCK PEACE KEEPING</option>
+                    <option value="SCTRHA">SCTRHA - SOURCED COMMERCIAL TRUCK HUMANITARIAN AID</option>
+                    <option value="SCTREXE">SCTREXE - SOURCED COMMERCIAL TRUCK EXERCISES</option>
+                    <option value="SAOPS">SAOPS - SOURCED ARMY OPERATIONS</option>
+                    <option value="SACER">SACER - SOURCED ARMY CEREMONY</option>
+                    <option value="SAPK">SAPK - SOURCED ARMY PEACE KEEPING</option>
+                    <option value="SAHA">SAHA - SOURCED ARMY HUMANITARIAN AID</option>
+                    <option value="SAEXE">SAEXE - SOURCED ARMY EXERCISES</option>
+                    <option value="SNOPS">SNOPS - SOURCED NAVY OPERATIONS</option>
+                    <option value="SNCER">SNCER - SOURCED NAVY CEREMONY</option>
+                    <option value="SNPK">SNPK - SOURCED NAVY PEACE KEEPING</option>
+                    <option value="SNHA">SNHA - SOURCED NAVY HUMANITARIAN AID</option>
+                    <option value="SNEXE">SNEXE - SOURCED NAVY EXERCISES</option>
+                    <option value="SUSAFOPS">SUSAFOPS - SOURCED USAF OPERATIONS</option>
+                    <option value="SUSAFCER">SUSAFCER - SOURCED USAF CEREMONY</option>
+                    <option value="SUSAFPK">SUSAFPK - SOURCED USAF PEACE KEEPING</option>
+                    <option value="SUSAFHA">SUSAFHA - SOURCED USAF HUMANITARIAN AID</option>
+                    <option value="SUSAFEXE">SUSAFEXE - SOURCED USAF EXERCISES</option>
+                    <option value="SNATOOPS">SNATOOPS - SOURCED NATO OPERATIONS</option>
+                    <option value="SNATOCER">SNATOCER - SOURCED NATO CEREMONY</option>
+                    <option value="SNATOPK">SNATOPK - SOURCED NATO PEACE KEEPING</option>
+                    <option value="SNATOHA">SNATOHA - SOURCED NATO HUMANITARIAN AID</option>
+                    <option value="SNATOEXE">SNATOEXE - SOURCED NATO EXERCISES</option>
+                    <option value="UAFOPS">UAFOPS - UNSOURCED AIR FORCE OPERATIONS</option>
+                    <option value="UAFCER">UAFCER - UNSOURCED AIR FORCE CEREMONY</option>
+                    <option value="UAFPK">UAFPK - UNSOURCED AIR FORCE PEACE KEEPING</option>
+                    <option value="UAFHA">UAFHA - UNSOURCED AIR FORCE HUMANITARIAN AID</option>
+                    <option value="UAFEXE">UAFEXE - UNSOURCED AIR FORCE EXERCISES</option>
+                    <option value="UCCOPS">UCCOPS - UNSOURCED COMMERCIAL CARGO OPERATIONS</option>
+                    <option value="UCCCER">UCCCER - UNSOURCED COMMERCIAL CARGO CEREMONY</option>
+                    <option value="UCCPK">UCCPK - UNSOURCED COMMERCIAL CARGO PEACE KEEPING</option>
+                    <option value="UCCHA">UCCHA - UNSOURCED COMMERCIAL CARGO HUMANITARIAN AID</option>
+                    <option value="UCCEXE">UCCEXE - UNSOURCED COMMERCIAL CARGO EXERCISES</option>
+                    <option value="UCPOPS">UCPOPS - UNSOURCED COMMERCIAL PAX OPERATIONS</option>
+                    <option value="UCPCER">UCPCER - UNSOURCED COMMERCIAL PAX CEREMONY</option>
+                    <option value="UCPPK">UCPPK - UNSOURCED COMMERCIAL PAX PEACE KEEPING</option>
+                    <option value="UCPHA">UCPHA - UNSOURCED COMMERCIAL PAX HUMANITARIAN AID</option>
+                    <option value="UCPEXE">UCPEXE - UNSOURCED COMMERCIAL PAX EXERCISES</option>
+                    <option value="UCSOPS">UCSOPS - UNSOURCED COMMERCIAL SHIP OPERATIONS</option>
+                    <option value="UCSCER">UCSCER - UNSOURCED COMMERCIAL SHIP CEREMONY</option>
+                    <option value="UCSPK">UCSPK - UNSOURCED COMMERCIAL SHIP PEACE KEEPING</option>
+                    <option value="UCSHA">UCSHA - UNSOURCED COMMERCIAL SHIP HUMANITARIAN AID</option>
+                    <option value="UCSEXE">UCSEXE - UNSOURCED COMMERCIAL SHIP EXERCISES</option>
+                    <option value="UCTOPS">UCTOPS - UNSOURCED COMMERCIAL TRAIN OPERATIONS</option>
+                    <option value="UCTCER">UCTCER - UNSOURCED COMMERCIAL TRAIN CEREMONY</option>
+                    <option value="UCTPK">UCTPK - UNSOURCED COMMERCIAL TRAIN PEACE KEEPING</option>
+                    <option value="UCTHA">UCTHA - UNSOURCED COMMERCIAL TRAIN HUMANITARIAN AID</option>
+                    <option value="UCTEXE">UCTEXE - UNSOURCED COMMERCIAL TRAIN EXERCISES</option>
+                    <option value="UCTROPS">UCTROPS - UNSOURCED COMMERCIAL TRUCK OPERATIONS</option>
+                    <option value="UCTRCER">UCTRCER - UNSOURCED COMMERCIAL TRUCK CEREMONY</option>
+                    <option value="UCTRPK">UCTRPK - UNSOURCED COMMERCIAL TRUCK PEACE KEEPING</option>
+                    <option value="UCTRHA">UCTRHA - UNSOURCED COMMERCIAL TRUCK HUMANITARIAN AID</option>
+                    <option value="UCTREXE">UCTREXE - UNSOURCED COMMERCIAL TRUCK EXERCISES</option>
+                    <option value="UAOPS">UAOPS - UNSOURCED ARMY OPERATIONS</option>
+                    <option value="UACER">UACER - UNSOURCED ARMY CEREMONY</option>
+                    <option value="UAPK">UAPK - UNSOURCED ARMY PEACE KEEPING</option>
+                    <option value="UAHA">UAHA - UNSOURCED ARMY HUMANITARIAN AID</option>
+                    <option value="UAEXE">UAEXE - UNSOURCED ARMY EXERCISES</option>
+                    <option value="UNOPS">UNOPS - UNSOURCED NAVY OPERATIONS</option>
+                    <option value="UNCER">UNCER - UNSOURCED NAVY CEREMONY</option>
+                    <option value="UNPK">UNPK - UNSOURCED NAVY PEACE KEEPING</option>
+                    <option value="UNHA">UNHA - UNSOURCED NAVY HUMANITARIAN AID</option>
+                    <option value="UNEXE">UNEXE - UNSOURCED NAVY EXERCISES</option>
+                    <option value="UUSAFOPS">UUSAFOPS - UNSOURCED USAF OPERATIONS</option>
+                    <option value="UUSAFCER">UUSAFCER - UNSOURCED USAF CEREMONY</option>
+                    <option value="UUSAFPK">UUSAFPK - UNSOURCED USAF PEACE KEEPING</option>
+                    <option value="UUSAFHA">UUSAFHA - UNSOURCED USAF HUMANITARIAN AID</option>
+                    <option value="UUSAFEXE">UUSAFEXE - UNSOURCED USAF EXERCISES</option>
+                    <option value="UNATOOPS">UNATOOPS - UNSOURCED NATO OPERATIONS</option>
+                    <option value="UNATOCER">UNATOCER - UNSOURCED NATO CEREMONY</option>
+                    <option value="UNATOPK">UNATOPK - UNSOURCED NATO PEACE KEEPING</option>
+                    <option value="UNATOHA">UNATOHA - UNSOURCED NATO HUMANITARIAN AID</option>
+                    <option value="UNATOEXE">UNATOEXE - UNSOURCED NATO EXERCISES</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label for="seriale_vettore">Seriale:</label>
-                <input type="text" id="seriale_vettore" name="seriale_vettore"
-                    value="{{ dettagli_getra.seriale_vettore or '' }}">
+                <label for="seriale_vettore">Seriale / targa / nominativo:</label>
+                <input type="text" id="seriale_vettore" name="seriale_vettore" value="{{ dettagli_getra.seriale_vettore or '' }}">
             </div>
 
-            <!-- Riga a 4 colonne: Personale · Mezzi · Quantità · UM -->
-            <div class="getra-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+            <!-- Riga GETRA a 4 colonne perfettamente allineata -->
+            <div class="form-group getra-row" style="display:flex; gap:10px; flex-wrap:wrap;">
 
                 <!-- Personale movimentato -->
                 <div style="flex:1">
-                    <label for="numero_personale">Personale movimentato:</label>
+                    <label for="numero_personale">Personale<br>movimentato:</label>
                     <input type="number" id="numero_personale" name="numero_personale"
                         value="{{ dettagli_getra.numero_personale or '' }}"
                         min="0" class="form-control">
@@ -276,7 +305,7 @@
 
                 <!-- Mezzi movimentati -->
                 <div style="flex:1">
-                    <label for="numero_mezzi">Mezzi movimentati:</label>
+                    <label for="numero_mezzi">Mezzi<br>movimentati:</label>
                     <input type="number" id="numero_mezzi" name="numero_mezzi"
                         value="{{ dettagli_getra.numero_mezzi or '' }}"
                         min="0" class="form-control">
@@ -284,7 +313,7 @@
 
                 <!-- Quantità -->
                 <div style="flex:1">
-                    <label for="volume">Quantità<br>o volume:</label>
+                    <label for="volume">Quantità o<br>volume:</label>
                     <input type="number" id="volume" name="volume"
                         value="{{ dettagli_getra.volume or '' }}"
                         min="0" step="any" class="form-control">
@@ -293,12 +322,11 @@
                 <!-- Unità di misura -->
                 <div style="flex:1">
                     <label for="unita_di_misura_getra">Unità di<br>misura:</label>
-                    <select id="unita_di_misura_getra" name="unita_di_misura_getra"
-                            class="form-select">
-                        <option value=""    {% if not dettagli_getra.unita_di_misura %}selected{% endif %}>--</option>
-                        <option value="KG"      {% if dettagli_getra.unita_di_misura == 'KG' %}selected{% endif %}>Kg</option>
-                        <option value="M_LIN"   {% if dettagli_getra.unita_di_misura == 'M_LIN' %}selected{% endif %}>Metri lineari</option>
-                        <option value="M3"      {% if dettagli_getra.unita_di_misura == 'M3' %}selected{% endif %}>Metri cubi</option>
+                    <select id="unita_di_misura_getra" name="unita_di_misura_getra" class="form-select">
+                        <option value="" {% if not dettagli_getra.unita_di_misura %}selected{% endif %}>--</option>
+                        <option value="KG" {% if dettagli_getra.unita_di_misura == 'KG' %}selected{% endif %}>Kg</option>
+                        <option value="M_LIN" {% if dettagli_getra.unita_di_misura == 'M_LIN' %}selected{% endif %}>Metri lineari</option>
+                        <option value="M3" {% if dettagli_getra.unita_di_misura == 'M3' %}selected{% endif %}>Metri cubi</option>
                     </select>
                 </div>
             </div>
@@ -313,16 +341,39 @@
                 <option value="">-- Seleziona (se applicabile) --</option>
                 <optgroup label="ENTI MILITARI">
                     {% for ente in enti_militari %}
-                        <option value="militare-{{ ente.id }}" data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})" {% if ente.id == attivita.partenza_militare_id %}selected{% endif %}>{{ ente.nome }}</option>
+                        <option value="militare-{{ ente.id }}"
+                                data-tipo="militare"
+                                data-codice="{{ ente.codice or '' }}"
+                                data-indirizzo="{{ ente.indirizzo or '' }}"
+                                data-civico="{{ ente.civico or '' }}"
+                                data-cap="{{ ente.cap or '' }}"
+                                data-citta="{{ ente.citta or '' }}"
+                                data-provincia="{{ ente.provincia or '' }}"
+                                data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})"
+                                {% if ente.id == attivita.partenza_militare_id %}selected{% endif %}>
+                            {{ ente.nome }}
+                        </option>
                     {% endfor %}
                 </optgroup>
                 <optgroup label="ENTI CIVILI">
                     {% for ente in enti_civili %}
-                        <option value="civile-{{ ente.id }}" data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}) - {{ ente.nazione or '' }}" {% if ente.id == attivita.partenza_civile_id %}selected{% endif %}>{{ ente.nome }}</option>
+                        <option value="civile-{{ ente.id }}"
+                                data-tipo="civile"
+                                data-indirizzo="{{ ente.indirizzo or '' }}"
+                                data-civico="{{ ente.civico or '' }}"
+                                data-cap="{{ ente.cap or '' }}"
+                                data-citta="{{ ente.citta or '' }}"
+                                data-provincia="{{ ente.provincia or '' }}"
+                                data-nazione="{{ ente.nazione or 'ITALIA' }}"
+                                data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}){% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}"
+                                {% if ente.id == attivita.partenza_civile_id %}selected{% endif %}>
+                            {{ ente.nome }}
+                        </option>
                     {% endfor %}
                 </optgroup>
             </select>
         </div>
+        
         <div class="form-group">
             <label for="destinazione_id">Luogo Destinazione:</label>
             <div class="searchable-select" data-select-id="destinazione_id"></div>
@@ -330,12 +381,34 @@
                 <option value="">-- Seleziona (se applicabile) --</option>
                 <optgroup label="ENTI MILITARI">
                     {% for ente in enti_militari %}
-                        <option value="militare-{{ ente.id }}" data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})" {% if ente.id == attivita.destinazione_militare_id %}selected{% endif %}>{{ ente.nome }}</option>
+                        <option value="militare-{{ ente.id }}"
+                                data-tipo="militare"
+                                data-codice="{{ ente.codice or '' }}"
+                                data-indirizzo="{{ ente.indirizzo or '' }}"
+                                data-civico="{{ ente.civico or '' }}"
+                                data-cap="{{ ente.cap or '' }}"
+                                data-citta="{{ ente.citta or '' }}"
+                                data-provincia="{{ ente.provincia or '' }}"
+                                data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})"
+                                {% if ente.id == attivita.destinazione_militare_id %}selected{% endif %}>
+                            {{ ente.nome }}
+                        </option>
                     {% endfor %}
                 </optgroup>
                 <optgroup label="ENTI CIVILI">
                     {% for ente in enti_civili %}
-                        <option value="civile-{{ ente.id }}" data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}) - {{ ente.nazione or '' }}" {% if ente.id == attivita.destinazione_civile_id %}selected{% endif %}>{{ ente.nome }}</option>
+                        <option value="civile-{{ ente.id }}"
+                                data-tipo="civile"
+                                data-indirizzo="{{ ente.indirizzo or '' }}"
+                                data-civico="{{ ente.civico or '' }}"
+                                data-cap="{{ ente.cap or '' }}"
+                                data-citta="{{ ente.citta or '' }}"
+                                data-provincia="{{ ente.provincia or '' }}"
+                                data-nazione="{{ ente.nazione or 'ITALIA' }}"
+                                data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}){% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}"
+                                {% if ente.id == attivita.destinazione_civile_id %}selected{% endif %}>
+                            {{ ente.nome }}
+                        </option>
                     {% endfor %}
                 </optgroup>
             </select>
@@ -344,49 +417,39 @@
         <hr>
         <h3>Risorse e Note</h3>
         <div class="form-group" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
-            <div><label for="personale_ufficiali">Ufficiali:</label><input type="number" id="personale_ufficiali" name="personale_ufficiali" value="{{ attivita.personale_ufficiali }}" min="0"></div>
-            <div><label for="personale_sottufficiali">Sottufficiali:</label><input type="number" id="personale_sottufficiali" name="personale_sottufficiali" value="{{ attivita.personale_sottufficiali }}" min="0"></div>
-            <div><label for="personale_graduati">Graduati/VFP:</label><input type="number" id="personale_graduati" name="personale_graduati" value="{{ attivita.personale_graduati }}" min="0"></div>
-            <div><label for="personale_civili">Civili:</label><input type="number" id="personale_civili" name="personale_civili" value="{{ attivita.personale_civili }}" min="0"></div>
+            <div>
+                <label for="personale_ufficiali">Ufficiali:</label>
+                <input type="number" id="personale_ufficiali" name="personale_ufficiali" value="{{ attivita.personale_ufficiali or 0 }}" min="0">
+            </div>
+            <div>
+                <label for="personale_sottufficiali">Sottufficiali:</label>
+                <input type="number" id="personale_sottufficiali" name="personale_sottufficiali" value="{{ attivita.personale_sottufficiali or 0 }}" min="0">
+            </div>
+            <div>
+                <label for="personale_graduati">Graduati/VFP:</label>
+                <input type="number" id="personale_graduati" name="personale_graduati" value="{{ attivita.personale_graduati or 0 }}" min="0">
+            </div>
+            <div>
+                <label for="personale_civili">Civili:</label>
+                <input type="number" id="personale_civili" name="personale_civili" value="{{ attivita.personale_civili or 0 }}" min="0">
+            </div>
         </div>
-        <div class="form-group"><label for="note">Note:</label><textarea id="note" name="note" rows="3">{{ attivita.note or '' }}</textarea></div>
+        
+        <div class="form-group">
+            <label for="note">Note:</label>
+            <textarea id="note" name="note" rows="3">{{ attivita.note or '' }}</textarea>
+        </div>
 
         <button type="submit">Aggiorna Attività</button>
     </form>
     <br>
     <a href="{{ url_for('attivita.visualizza_attivita', id=attivita.id) }}" class="cancel-link">Annulla</a>
 </div>
+{% endblock %}
 
-<script>
-    function toggleActivityDetails() {
-        const select = document.getElementById('tipologia_id');
-        const selectedText = select.options[select.selectedIndex].text.trim().toUpperCase();
-        
-        const dettagliTrasportiDiv = document.getElementById('dettagli-trasporti');
-        const dettagliMantenimentoDiv = document.getElementById('dettagli-mantenimento');
-        const dettagliRifornimentiDiv = document.getElementById('dettagli-rifornimenti');
-        const dettagliGetraDiv        = document.getElementById('dettagli-getra');
-
-        // Nascondi tutto
-        [dettagliTrasportiDiv,
-         dettagliMantenimentoDiv,
-         dettagliRifornimentiDiv,
-         dettagliGetraDiv].forEach(div => div.style.display = 'none');
-
-        // Mostra la sezione corretta
-        if (selectedText === 'MOVIMENTI E TRASPORTI') {
-            dettagliTrasportiDiv.style.display = 'block';
-        } else if (selectedText === 'MANTENIMENTO E SQUADRE A CONTATTO') {
-            dettagliMantenimentoDiv.style.display = 'block';
-        } else if (selectedText === 'RIFORNIMENTI') {
-            dettagliRifornimentiDiv.style.display = 'block';
-        } else if (selectedText === 'GESTIONE TRANSITO') {
-            dettagliGetraDiv.style.display = 'block';
-        }
-    }
-
-    // Esegui la funzione al caricamento della pagina e al cambio di selezione
-    document.addEventListener('DOMContentLoaded', toggleActivityDetails);
-    document.getElementById('tipologia_id').addEventListener('change', toggleActivityDetails);
-</script>
+{% block extra_js %}
+<!-- Script condiviso per form attività -->
+<script src="{{ url_for('static', filename='js/attivita_forms.js') }}?v={{ cache_buster }}"></script>
+<!-- Script specifico per modifica -->
+<script src="{{ url_for('static', filename='js/modifica_attivita.js') }}?v={{ cache_buster }}"></script>
 {% endblock %}

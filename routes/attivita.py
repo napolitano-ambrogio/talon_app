@@ -42,7 +42,7 @@ def get_location_name(conn, militare_id, civile_id):
     return None
 
 def validate_activity_access(user_id, activity_id, accessible_entities):
-    """Valida che l'utente abbia accesso all'attivit"""
+    """Valida che l'utente abbia accesso all'attività"""
     if not accessible_entities:
         return None
     conn = get_db_connection()
@@ -60,7 +60,7 @@ def validate_activity_access(user_id, activity_id, accessible_entities):
         conn.close()
 
 def get_tipologie_organizzate(conn):
-    """Recupera tipologie attivit organizzate per categoria"""
+    """Recupera tipologie attività organizzate per categoria"""
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute('SELECT * FROM tipologie_attivita WHERE parent_id IS NULL ORDER BY nome')
@@ -98,7 +98,7 @@ def process_location_ids(partenza_val, destinazione_val):
     return partenza_militare_id, partenza_civile_id, destinazione_militare_id, destinazione_civile_id
 
 def save_activity_details(conn, activity_id, tipologia_nome, form_data):
-    """Salva i dettagli specifici dell'attivit basati sulla tipologia"""
+    """Salva i dettagli specifici dell'attività basati sulla tipologia"""
     with conn.cursor() as cur:
         if tipologia_nome == 'MOVIMENTI E TRASPORTI':
             cur.execute("""
@@ -155,7 +155,7 @@ def save_activity_details(conn, activity_id, tipologia_nome, form_data):
             ))
 
 def get_activity_details(conn, activity_id, tipologia_nome):
-    """Recupera i dettagli specifici dell'attivit"""
+    """Recupera i dettagli specifici dell'attività"""
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         if tipologia_nome == 'MOVIMENTI E TRASPORTI':
             cur.execute('SELECT * FROM dettagli_trasporti WHERE attivita_id = %s', (activity_id,))
@@ -171,13 +171,46 @@ def get_activity_details(conn, activity_id, tipologia_nome):
             return cur.fetchone()
     return {}
 
+def get_enti_form_data(conn, accessible_entities=None):
+    """Recupera i dati degli enti per i form con i campi corretti"""
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        # Enti militari - solo campi che esistono realmente nel DB
+        if accessible_entities:
+            placeholders, params = _build_in_clause(accessible_entities)
+            cur.execute(
+                f'''SELECT id, nome, codice, indirizzo, civico, 
+                          cap, citta, provincia
+                   FROM enti_militari
+                   WHERE id IN ({placeholders}) 
+                   ORDER BY nome''',
+                params
+            )
+        else:
+            cur.execute(
+                '''SELECT id, nome, codice, indirizzo, civico, 
+                          cap, citta, provincia
+                   FROM enti_militari
+                   ORDER BY nome'''
+            )
+        enti_militari = cur.fetchall()
+
+        # Enti civili - tutti i campi esistenti
+        cur.execute(
+            '''SELECT id, nome, indirizzo, civico, cap, citta, provincia, nazione 
+               FROM enti_civili 
+               ORDER BY nome'''
+        )
+        enti_civili = cur.fetchall()
+
+        return enti_militari, enti_civili
+
 # ===========================================
 # ROUTE PRINCIPALI
 # ===========================================
 @attivita_bp.route('/attivita')
 @permission_required('VIEW_ATTIVITA')
 def lista_attivita():
-    """Lista attivit filtrata per cono d'ombra dell'utente"""
+    """Lista attività filtrata per cono d'ombra dell'utente"""
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
     user_role = get_user_role()
@@ -245,7 +278,7 @@ def lista_attivita():
                     enti_per_filtro = cur.fetchall()
 
     except Exception as e:
-        flash(f'Errore nel caricamento delle attivit: {str(e)}', 'error')
+        flash(f'Errore nel caricamento delle attività: {str(e)}', 'error')
         attivita_list = []
         enti_per_filtro = []
     finally:
@@ -255,7 +288,7 @@ def lista_attivita():
     log_user_action(
         user_id,
         'VIEW_ATTIVITA_LIST',
-        f'Visualizzate {len(attivita_list)} attivit - Filtri: search={search}, ente={ente_filter}',
+        f'Visualizzate {len(attivita_list)} attività - Filtri: search={search}, ente={ente_filter}',
         'attivita',
         ip_address=request.remote_addr
     )
@@ -277,38 +310,32 @@ def lista_attivita():
 @operatore_or_admin_required
 @permission_required('CREATE_ATTIVITA')
 def inserisci_attivita_form():
-    """Form inserimento attivit - Solo enti accessibili"""
+    """Form inserimento attività - Solo enti accessibili"""
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
     if not accessible_entities:
-        flash('Non hai accesso a nessun ente per creare attivit.', 'warning')
+        flash('Non hai accesso a nessun ente per creare attività.', 'warning')
         return redirect(url_for('attivita.lista_attivita'))
 
     conn = get_db_connection()
 
     try:
         with conn:
+            # Usa la funzione helper per ottenere i dati degli enti
+            enti_militari, enti_civili = get_enti_form_data(conn, accessible_entities)
+
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                placeholders, params = _build_in_clause(accessible_entities)
+                # Operazioni attive
                 cur.execute(
-                    f'SELECT id, nome, codice FROM enti_militari WHERE id IN ({placeholders}) ORDER BY nome',
-                    params
-                )
-                enti_militari = cur.fetchall()
-
-                cur.execute('SELECT id, nome FROM enti_civili ORDER BY nome')
-                enti_civili = cur.fetchall()
-
-                cur.execute(
-                    '''SELECT id, nome_missione, nome_breve 
+                    '''SELECT id, nome_missione, nome_breve, teatro_operativo, nazione
                        FROM operazioni 
                        WHERE data_fine IS NULL OR data_fine >= CURRENT_DATE
                        ORDER BY nome_missione'''
                 )
                 operazioni = cur.fetchall()
 
-                tipologie_organizzate = get_tipologie_organizzate(conn)
+            tipologie_organizzate = get_tipologie_organizzate(conn)
 
     except Exception as e:
         flash(f'Errore nel caricamento dei dati del form: {str(e)}', 'error')
@@ -333,14 +360,14 @@ def inserisci_attivita_form():
 @operatore_or_admin_required
 @permission_required('CREATE_ATTIVITA')
 def salva_attivita():
-    """Salva nuova attivit con controlli completi"""
+    """Salva nuova attività con controlli completi"""
     user_id = request.current_user['user_id']
 
     # Validazione input base
     required_fields = ['ente_svolgimento_id', 'tipologia_id', 'data_inizio', 'descrizione']
     for field in required_fields:
         if not request.form.get(field, '').strip():
-            flash(f'Il campo {field.replace("_", " ")}  obbligatorio.', 'error')
+            flash(f'Il campo {field.replace("_", " ")} è obbligatorio.', 'error')
             return redirect(url_for('attivita.inserisci_attivita_form'))
 
     ente_svolgimento_id = int(request.form['ente_svolgimento_id'])
@@ -352,7 +379,7 @@ def salva_attivita():
         log_user_action(
             user_id,
             'ACCESS_DENIED_CREATE_ATTIVITA',
-            f'Tentativo creazione attivit per ente {ente_svolgimento_id} non accessibile',
+            f'Tentativo creazione attività per ente {ente_svolgimento_id} non accessibile',
             'attivita',
             result='FAILED'
         )
@@ -367,7 +394,7 @@ def salva_attivita():
             inizio = datetime.strptime(data_inizio, '%Y-%m-%d')
             fine = datetime.strptime(data_fine, '%Y-%m-%d')
             if fine < inizio:
-                flash('La data di fine non pu essere precedente alla data di inizio.', 'error')
+                flash('La data di fine non può essere precedente alla data di inizio.', 'error')
                 return redirect(url_for('attivita.inserisci_attivita_form'))
         except ValueError:
             flash('Formato data non valido.', 'error')
@@ -382,7 +409,7 @@ def salva_attivita():
                 partenza_militare_id, partenza_civile_id, destinazione_militare_id, destinazione_civile_id = \
                     process_location_ids(request.form.get('partenza_id'), request.form.get('destinazione_id'))
 
-                # Inserisci attivit (RETURNING id)
+                # Inserisci attività (RETURNING id)
                 cur.execute("""
                     INSERT INTO attivita (
                         ente_svolgimento_id, tipologia_id, data_inizio, data_fine, descrizione,
@@ -418,12 +445,12 @@ def salva_attivita():
         log_user_action(
             user_id,
             'CREATE_ATTIVITA',
-            f'Creata attivit ID {new_id} per ente {ente_svolgimento_id}',
+            f'Creata attività ID {new_id} per ente {ente_svolgimento_id}',
             'attivita',
             new_id
         )
 
-        flash('Attivit creata con successo.', 'success')
+        flash('Attività creata con successo.', 'success')
         return redirect(url_for('attivita.visualizza_attivita', id=new_id))
 
     except Exception as e:
@@ -431,7 +458,7 @@ def salva_attivita():
         log_user_action(
             user_id,
             'CREATE_ATTIVITA_ERROR',
-            f'Errore creazione attivit: {str(e)}',
+            f'Errore creazione attività: {str(e)}',
             'attivita',
             result='FAILED'
         )
@@ -442,18 +469,18 @@ def salva_attivita():
 @attivita_bp.route('/attivita/<int:id>')
 @permission_required('VIEW_ATTIVITA')
 def visualizza_attivita(id):
-    """Visualizza singola attivit con controllo accesso"""
+    """Visualizza singola attività con controllo accesso"""
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
     # Verifica accesso
     attivita = validate_activity_access(user_id, id, accessible_entities)
     if not attivita:
-        flash('Attivit non trovata o non accessibile.', 'error')
+        flash('Attività non trovata o non accessibile.', 'error')
         log_user_action(
             user_id,
             'ACCESS_DENIED_VIEW_ATTIVITA',
-            f'Tentativo visualizzazione attivit {id} non accessibile',
+            f'Tentativo visualizzazione attività {id} non accessibile',
             'attivita',
             id,
             result='FAILED'
@@ -484,7 +511,7 @@ def visualizza_attivita(id):
                 cur.execute(query, (id,))
                 attivita_completa = cur.fetchone()
                 if not attivita_completa:
-                    flash('Attivit non trovata.', 'error')
+                    flash('Attività non trovata.', 'error')
                     return redirect(url_for('attivita.lista_attivita'))
 
                 partenza = get_location_name(conn, attivita_completa['partenza_militare_id'],
@@ -495,7 +522,7 @@ def visualizza_attivita(id):
                 dettagli_specifici = get_activity_details(conn, id, attivita_completa['tipologia_nome'])
 
     except Exception as e:
-        flash(f'Errore nel caricamento dell\'attivit: {str(e)}', 'error')
+        flash(f'Errore nel caricamento dell\'attività: {str(e)}', 'error')
         return redirect(url_for('attivita.lista_attivita'))
     finally:
         conn.close()
@@ -503,7 +530,7 @@ def visualizza_attivita(id):
     log_user_action(
         user_id,
         'VIEW_ATTIVITA',
-        f'Visualizzata attivit {id}',
+        f'Visualizzata attività {id}',
         'attivita',
         id
     )
@@ -518,18 +545,18 @@ def visualizza_attivita(id):
 @operatore_or_admin_required
 @permission_required('EDIT_ATTIVITA')
 def modifica_attivita_form(id):
-    """Form modifica attivit con controlli accesso"""
+    """Form modifica attività con controlli accesso"""
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
     # Verifica accesso
     attivita = validate_activity_access(user_id, id, accessible_entities)
     if not attivita:
-        flash('Attivit non trovata o non modificabile.', 'error')
+        flash('Attività non trovata o non modificabile.', 'error')
         log_user_action(
             user_id,
             'ACCESS_DENIED_EDIT_ATTIVITA',
-            f'Tentativo modifica attivit {id} non accessibile',
+            f'Tentativo modifica attività {id} non accessibile',
             'attivita',
             id,
             result='FAILED'
@@ -540,31 +567,37 @@ def modifica_attivita_form(id):
 
     try:
         with conn:
+            # Usa la funzione helper per ottenere i dati degli enti con i campi corretti
+            enti_militari, enti_civili = get_enti_form_data(conn, accessible_entities)
+
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                placeholders, params = _build_in_clause(accessible_entities)
+                # Operazioni
                 cur.execute(
-                    f'SELECT id, nome, codice FROM enti_militari WHERE id IN ({placeholders}) ORDER BY nome',
-                    params
+                    '''SELECT id, nome_missione, nome_breve, teatro_operativo, nazione
+                       FROM operazioni 
+                       ORDER BY nome_missione'''
                 )
-                enti_militari = cur.fetchall()
-
-                cur.execute('SELECT id, nome FROM enti_civili ORDER BY nome')
-                enti_civili = cur.fetchall()
-
-                cur.execute('SELECT id, nome_missione, nome_breve FROM operazioni ORDER BY nome_missione')
                 operazioni = cur.fetchall()
 
                 tipologie_organizzate = get_tipologie_organizzate(conn)
 
+                # Recupera tutti i dettagli specifici
                 dettagli = {
-                    'trasporti': None, 'mantenimento': None, 'rifornimenti': None, 'getra': None
+                    'trasporti': None, 
+                    'mantenimento': None, 
+                    'rifornimenti': None, 
+                    'getra': None
                 }
+                
                 cur.execute('SELECT * FROM dettagli_trasporti WHERE attivita_id = %s', (id,))
                 dettagli['trasporti'] = cur.fetchone()
+                
                 cur.execute('SELECT * FROM dettagli_mantenimento WHERE attivita_id = %s', (id,))
                 dettagli['mantenimento'] = cur.fetchone()
+                
                 cur.execute('SELECT * FROM dettagli_rifornimenti WHERE attivita_id = %s', (id,))
                 dettagli['rifornimenti'] = cur.fetchone()
+                
                 cur.execute('SELECT * FROM dettagli_getra WHERE attivita_id = %s', (id,))
                 dettagli['getra'] = cur.fetchone()
 
@@ -577,7 +610,7 @@ def modifica_attivita_form(id):
     log_user_action(
         user_id,
         'ACCESS_EDIT_ATTIVITA_FORM',
-        f'Accesso form modifica attivit {id}',
+        f'Accesso form modifica attività {id}',
         'attivita',
         id
     )
@@ -597,18 +630,18 @@ def modifica_attivita_form(id):
 @operatore_or_admin_required
 @permission_required('EDIT_ATTIVITA')
 def aggiorna_attivita(id):
-    """Aggiorna attivit esistente con controlli completi"""
+    """Aggiorna attività esistente con controlli completi"""
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
     # Verifica accesso
     existing_activity = validate_activity_access(user_id, id, accessible_entities)
     if not existing_activity:
-        flash('Attivit non trovata o non modificabile.', 'error')
+        flash('Attività non trovata o non modificabile.', 'error')
         log_user_action(
             user_id,
             'ACCESS_DENIED_UPDATE_ATTIVITA',
-            f'Tentativo aggiornamento attivit {id} non accessibile',
+            f'Tentativo aggiornamento attività {id} non accessibile',
             'attivita',
             id,
             result='FAILED'
@@ -619,7 +652,7 @@ def aggiorna_attivita(id):
     required_fields = ['ente_svolgimento_id', 'tipologia_id', 'data_inizio', 'descrizione']
     for field in required_fields:
         if not request.form.get(field, '').strip():
-            flash(f'Il campo {field.replace("_", " ")}  obbligatorio.', 'error')
+            flash(f'Il campo {field.replace("_", " ")} è obbligatorio.', 'error')
             return redirect(url_for('attivita.modifica_attivita_form', id=id))
 
     ente_svolgimento_id = int(request.form['ente_svolgimento_id'])
@@ -637,7 +670,7 @@ def aggiorna_attivita(id):
             inizio = datetime.strptime(data_inizio, '%Y-%m-%d')
             fine = datetime.strptime(data_fine, '%Y-%m-%d')
             if fine < inizio:
-                flash('La data di fine non pu essere precedente alla data di inizio.', 'error')
+                flash('La data di fine non può essere precedente alla data di inizio.', 'error')
                 return redirect(url_for('attivita.modifica_attivita_form', id=id))
         except ValueError:
             flash('Formato data non valido.', 'error')
@@ -652,7 +685,7 @@ def aggiorna_attivita(id):
                 partenza_militare_id, partenza_civile_id, destinazione_militare_id, destinazione_civile_id = \
                     process_location_ids(request.form.get('partenza_id'), request.form.get('destinazione_id'))
 
-                # Aggiorna attivit
+                # Aggiorna attività
                 cur.execute("""
                     UPDATE attivita SET
                         ente_svolgimento_id=%s, tipologia_id=%s, data_inizio=%s, data_fine=%s, descrizione=%s,
@@ -690,12 +723,12 @@ def aggiorna_attivita(id):
         log_user_action(
             user_id,
             'UPDATE_ATTIVITA',
-            f'Aggiornata attivit {id}',
+            f'Aggiornata attività {id}',
             'attivita',
             id
         )
 
-        flash('Attivit aggiornata con successo.', 'success')
+        flash('Attività aggiornata con successo.', 'success')
         return redirect(url_for('attivita.visualizza_attivita', id=id))
 
     except Exception as e:
@@ -703,7 +736,7 @@ def aggiorna_attivita(id):
         log_user_action(
             user_id,
             'UPDATE_ATTIVITA_ERROR',
-            f'Errore aggiornamento attivit {id}: {str(e)}',
+            f'Errore aggiornamento attività {id}: {str(e)}',
             'attivita',
             id,
             result='FAILED'
@@ -715,14 +748,14 @@ def aggiorna_attivita(id):
 @attivita_bp.route('/attivita/elimina/<int:id>', methods=['POST'])
 @admin_required
 def elimina_attivita(id):
-    """Elimina attivit - Solo ADMIN"""
+    """Elimina attività - Solo ADMIN"""
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
-    # Anche se  admin, verifica che l'attivit esista (per log coerente)
+    # Anche se è admin, verifica che l'attività esista (per log coerente)
     attivita = validate_activity_access(user_id, id, accessible_entities)
     if not attivita:
-        flash('Attivit non trovata.', 'error')
+        flash('Attività non trovata.', 'error')
         return redirect(url_for('attivita.lista_attivita'))
 
     conn = get_db_connection()
@@ -750,19 +783,19 @@ def elimina_attivita(id):
         log_user_action(
             user_id,
             'DELETE_ATTIVITA',
-            f'Eliminata attivit "{descrizione}" dell\'ente {ente_nome}',
+            f'Eliminata attività "{descrizione}" dell\'ente {ente_nome}',
             'attivita',
             id
         )
 
-        flash('Attivit eliminata con successo.', 'success')
+        flash('Attività eliminata con successo.', 'success')
 
     except Exception as e:
         flash(f'Errore durante l\'eliminazione: {str(e)}', 'error')
         log_user_action(
             user_id,
             'DELETE_ATTIVITA_ERROR',
-            f'Errore eliminazione attivit {id}: {str(e)}',
+            f'Errore eliminazione attività {id}: {str(e)}',
             'attivita',
             id,
             result='FAILED'
@@ -773,17 +806,17 @@ def elimina_attivita(id):
     return redirect(url_for('attivita.lista_attivita'))
 
 # ===========================================
-# ROUTE AGGIUNTIVE E UTILIT
+# ROUTE AGGIUNTIVE E UTILITÀ
 # ===========================================
 @attivita_bp.route('/attivita/export')
 @permission_required('VIEW_ATTIVITA')
 def export_attivita():
-    """Esporta attivit in formato CSV"""
+    """Esporta attività in formato CSV"""
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
     if not accessible_entities:
-        flash('Nessuna attivit accessibile per l\'export.', 'warning')
+        flash('Nessuna attività accessibile per l\'export.', 'warning')
         return redirect(url_for('attivita.lista_attivita'))
 
     conn = get_db_connection()
@@ -845,7 +878,7 @@ def export_attivita():
     log_user_action(
         user_id,
         'EXPORT_ATTIVITA',
-        f'Esportate {len(attivita_export)} attivit in CSV',
+        f'Esportate {len(attivita_export)} attività in CSV',
         'attivita'
     )
 
@@ -859,12 +892,12 @@ def export_attivita():
 @attivita_bp.route('/attivita/statistiche')
 @permission_required('VIEW_ATTIVITA')
 def statistiche_attivita():
-    """Statistiche attivit per l'utente corrente"""
+    """Statistiche attività per l'utente corrente"""
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
     if not accessible_entities:
-        flash('Nessuna attivit accessibile per le statistiche.', 'warning')
+        flash('Nessuna attività accessibile per le statistiche.', 'warning')
         return redirect(url_for('attivita.lista_attivita'))
 
     conn = get_db_connection()
@@ -885,7 +918,7 @@ def statistiche_attivita():
                 """, params)
                 stats_generali = cur.fetchone()
 
-                # Attivit per ente
+                # Attività per ente
                 cur.execute(f"""
                     SELECT 
                         em.nome as ente_nome,
@@ -899,7 +932,7 @@ def statistiche_attivita():
                 """, params)
                 stats_per_ente = cur.fetchall()
 
-                # Attivit per tipologia
+                # Attività per tipologia
                 cur.execute(f"""
                     SELECT 
                         ta.nome as tipologia_nome,
@@ -912,7 +945,7 @@ def statistiche_attivita():
                 """, params)
                 stats_per_tipologia = cur.fetchall()
 
-                # Attivit per mese (ultimi 12 mesi)
+                # Attività per mese (ultimi 12 mesi)
                 cur.execute(f"""
                     SELECT 
                         TO_CHAR(date_trunc('month', data_inizio), 'YYYY-MM') AS mese,
@@ -934,7 +967,7 @@ def statistiche_attivita():
     log_user_action(
         user_id,
         'VIEW_ATTIVITA_STATS',
-        'Visualizzate statistiche attivit',
+        'Visualizzate statistiche attività',
         'attivita'
     )
 
@@ -943,12 +976,3 @@ def statistiche_attivita():
                            stats_per_ente=stats_per_ente,
                            stats_per_tipologia=stats_per_tipologia,
                            stats_per_mese=stats_per_mese)
-
-# ===========================================
-# GESTIONE ERRORI SPECIFICHE
-# ===========================================
-@attivita_bp.errorhandler(Exception)
-def handle_db_error(error):
-    """Gestione errori generici per attivit"""
-    flash('Errore nel database delle attivit. Contattare l\'amministratore.', 'error')
-    return redirect(url_for('attivita.lista_attivita'))

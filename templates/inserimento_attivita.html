@@ -15,7 +15,16 @@
             <select name="ente_svolgimento_id" id="ente_svolgimento_id" style="display: none;" required>
                 <option value="" disabled selected>-- Seleziona un ente --</option>
                 {% for ente in enti_militari %}
-                    <option value="{{ ente.id }}">{{ ente.nome }}</option>
+                    <option value="{{ ente.id }}"
+                            data-codice="{{ ente.codice or '' }}"
+                            data-indirizzo="{{ ente.indirizzo or '' }}"
+                            data-civico="{{ ente.civico or '' }}"
+                            data-citta="{{ ente.citta or '' }}"
+                            data-provincia="{{ ente.provincia or '' }}"
+                            data-cap="{{ ente.cap or '' }}"
+                            data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})">
+                        {{ ente.nome }}
+                    </option>
                 {% endfor %}
             </select>
         </div>
@@ -41,7 +50,14 @@
             <select name="operazione_id" id="operazione_id" style="display: none;">
                 <option value="">-- Seleziona un'operazione (se applicabile) --</option>
                 {% for op in operazioni %}
-                    <option value="{{ op.id }}" data-details="{{ op.nome_breve }} {{ op.teatro_operativo }}">{{ op.nome_missione }}</option>
+                    <option value="{{ op.id }}"
+                            data-nome-missione="{{ op.nome_missione }}"
+                            data-nome-breve="{{ op.nome_breve or '' }}"
+                            data-teatro-operativo="{{ op.teatro_operativo or '' }}"
+                            data-nazione="{{ op.nazione or '' }}"
+                            data-details="{% if op.nome_breve %}{{ op.nome_breve }} • {% endif %}{% if op.teatro_operativo %}{{ op.teatro_operativo }}{% endif %}{% if op.nazione %} • {{ op.nazione }}{% endif %}">
+                        {{ op.nome_missione }}
+                    </option>
                 {% endfor %}
             </select>
         </div>
@@ -76,10 +92,10 @@
                     <label for="unita_di_misura">Unità di Misura:</label>
                     <select id="unita_di_misura" name="unita_di_misura">
                         <option value="">-- Seleziona --</option>
-                        <option value="unità">unità</option>
-                        <option value="litri">litri</option>
-                        <option value="kg">kg</option>
-                        <option value="m3">m³</option>
+                        <option value="UNITÀ">unità</option>
+                        <option value="LITRI">litri</option>
+                        <option value="KG">kg</option>
+                        <option value="M3">m³</option>
                     </select>
                 </div>
             </div>
@@ -89,7 +105,7 @@
             </div>
         </div>
 
-        <!-- NUOVA SEZIONE DETTAGLI MANTENIMENTO (nascosta di default) -->
+        <!-- SEZIONE DETTAGLI MANTENIMENTO (nascosta di default) -->
         <div id="dettagli-mantenimento" style="display: none;">
             <hr>
             <h3>Dettagli Mantenimento e Squadre a Contatto</h3>
@@ -117,7 +133,7 @@
             </div>
         </div>
 
-        <!-- NUOVA SEZIONE DETTAGLI RIFORNIMENTI (nascosta di default) -->
+        <!-- SEZIONE DETTAGLI RIFORNIMENTI (nascosta di default) -->
         <div id="dettagli-rifornimenti" style="display: none;">
             <hr>
             <h3>Dettagli Rifornimenti</h3>
@@ -145,10 +161,10 @@
                     <label for="unita_di_misura_rifornimento">Unità di Misura:</label>
                     <select id="unita_di_misura_rifornimento" name="unita_di_misura_rifornimento">
                         <option value="">-- Seleziona --</option>
-                        <option value="unità">unità</option>
-                        <option value="litri">litri</option>
-                        <option value="kg">kg</option>
-                        <option value="m3">m³</option>
+                        <option value="UNITÀ">unità</option>
+                        <option value="LITRI">litri</option>
+                        <option value="KG">kg</option>
+                        <option value="M3">m³</option>
                     </select>
                 </div>
             </div>
@@ -160,6 +176,7 @@
             <h3>Dettagli Gestione Transito (GETRA)</h3>
 
             <div class="form-group">
+                <label for="tipo_vettore">Tipo Vettore:</label>
                 <div class="searchable-select" data-select-id="tipo_vettore"></div>
                 <select id="tipo_vettore" name="tipo_vettore" style="display: none;">
                     <option value="">-- Seleziona Vettore --</option>
@@ -309,7 +326,7 @@
             </div>
         </div>
 
-        <!-- Sezioni Località, Risorse e Note (invariate) -->
+        <!-- Sezioni Località, Risorse e Note -->
         <hr><h3>Località</h3>
         <div class="form-group">
             <label for="partenza_id">Luogo Partenza:</label>
@@ -318,16 +335,37 @@
                 <option value="">-- Seleziona (se applicabile) --</option>
                 <optgroup label="ENTI MILITARI">
                     {% for ente in enti_militari %}
-                        <option value="militare-{{ ente.id }}" data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})">{{ ente.nome }}</option>
+                        <option value="militare-{{ ente.id }}"
+                                data-tipo="militare"
+                                data-codice="{{ ente.codice or '' }}"
+                                data-indirizzo="{{ ente.indirizzo or '' }}"
+                                data-civico="{{ ente.civico or '' }}"
+                                data-cap="{{ ente.cap or '' }}"
+                                data-citta="{{ ente.citta or '' }}"
+                                data-provincia="{{ ente.provincia or '' }}"
+                                data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})">
+                            {{ ente.nome }}
+                        </option>
                     {% endfor %}
                 </optgroup>
                 <optgroup label="ENTI CIVILI">
                     {% for ente in enti_civili %}
-                        <option value="civile-{{ ente.id }}" data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}) - {{ ente.nazione or '' }}">{{ ente.nome }}</option>
+                        <option value="civile-{{ ente.id }}"
+                                data-tipo="civile"
+                                data-indirizzo="{{ ente.indirizzo or '' }}"
+                                data-civico="{{ ente.civico or '' }}"
+                                data-cap="{{ ente.cap or '' }}"
+                                data-citta="{{ ente.citta or '' }}"
+                                data-provincia="{{ ente.provincia or '' }}"
+                                data-nazione="{{ ente.nazione or 'ITALIA' }}"
+                                data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}){% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}">
+                            {{ ente.nome }}
+                        </option>
                     {% endfor %}
                 </optgroup>
             </select>
         </div>
+        
         <div class="form-group">
             <label for="destinazione_id">Luogo Destinazione:</label>
             <div class="searchable-select" data-select-id="destinazione_id"></div>
@@ -335,24 +373,61 @@
                 <option value="">-- Seleziona (se applicabile) --</option>
                 <optgroup label="ENTI MILITARI">
                     {% for ente in enti_militari %}
-                        <option value="militare-{{ ente.id }}" data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})">{{ ente.nome }}</option>
+                        <option value="militare-{{ ente.id }}"
+                                data-tipo="militare"
+                                data-codice="{{ ente.codice or '' }}"
+                                data-indirizzo="{{ ente.indirizzo or '' }}"
+                                data-civico="{{ ente.civico or '' }}"
+                                data-cap="{{ ente.cap or '' }}"
+                                data-citta="{{ ente.citta or '' }}"
+                                data-provincia="{{ ente.provincia or '' }}"
+                                data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})">
+                            {{ ente.nome }}
+                        </option>
                     {% endfor %}
                 </optgroup>
                 <optgroup label="ENTI CIVILI">
                     {% for ente in enti_civili %}
-                        <option value="civile-{{ ente.id }}" data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}) - {{ ente.nazione or '' }}">{{ ente.nome }}</option>
+                        <option value="civile-{{ ente.id }}"
+                                data-tipo="civile"
+                                data-indirizzo="{{ ente.indirizzo or '' }}"
+                                data-civico="{{ ente.civico or '' }}"
+                                data-cap="{{ ente.cap or '' }}"
+                                data-citta="{{ ente.citta or '' }}"
+                                data-provincia="{{ ente.provincia or '' }}"
+                                data-nazione="{{ ente.nazione or 'ITALIA' }}"
+                                data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}){% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}">
+                            {{ ente.nome }}
+                        </option>
                     {% endfor %}
                 </optgroup>
             </select>
         </div>
+        
         <hr><h3>Risorse e Note</h3>
         <div class="form-group" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
-            <div><label for="personale_ufficiali">Ufficiali:</label><input type="number" id="personale_ufficiali" name="personale_ufficiali" value="0" min="0"></div>
-            <div><label for="personale_sottufficiali">Sottufficiali:</label><input type="number" id="personale_sottufficiali" name="personale_sottufficiali" value="0" min="0"></div>
-            <div><label for="personale_graduati">Graduati/VFP:</label><input type="number" id="personale_graduati" name="personale_graduati" value="0" min="0"></div>
-            <div><label for="personale_civili">Civili:</label><input type="number" id="personale_civili" name="personale_civili" value="0" min="0"></div>
+            <div>
+                <label for="personale_ufficiali">Ufficiali:</label>
+                <input type="number" id="personale_ufficiali" name="personale_ufficiali" value="0" min="0">
+            </div>
+            <div>
+                <label for="personale_sottufficiali">Sottufficiali:</label>
+                <input type="number" id="personale_sottufficiali" name="personale_sottufficiali" value="0" min="0">
+            </div>
+            <div>
+                <label for="personale_graduati">Graduati/VFP:</label>
+                <input type="number" id="personale_graduati" name="personale_graduati" value="0" min="0">
+            </div>
+            <div>
+                <label for="personale_civili">Civili:</label>
+                <input type="number" id="personale_civili" name="personale_civili" value="0" min="0">
+            </div>
         </div>
-        <div class="form-group"><label for="note">Note:</label><textarea id="note" name="note" rows="3"></textarea></div>
+        
+        <div class="form-group">
+            <label for="note">Note:</label>
+            <textarea id="note" name="note" rows="3"></textarea>
+        </div>
 
         <button type="submit">Salva Attività</button>
     </form>
@@ -360,33 +435,11 @@
     <a href="{{ url_for('attivita.lista_attivita') }}" class="cancel-link">Annulla</a>
 </div>
 
-<script>
-    // Logica specifica di questa pagina
-    document.getElementById('tipologia_id').addEventListener('change', function() {
-        const select = document.getElementById('tipologia_id');
-        const selectedText = select.options[select.selectedIndex].text.trim().toUpperCase();
-        
-        const dettagliTrasportiDiv = document.getElementById('dettagli-trasporti');
-        const dettagliMantenimentoDiv = document.getElementById('dettagli-mantenimento');
-        const dettagliRifornimentiDiv = document.getElementById('dettagli-rifornimenti');
-        const dettagliGetraDiv        = document.getElementById('dettagli-getra');
+{% endblock %}
 
-        // Nascondi tutte le sezioni di dettaglio per iniziare
-        [dettagliTrasportiDiv,
-         dettagliMantenimentoDiv,
-         dettagliRifornimentiDiv,
-         dettagliGetraDiv].forEach(div => div.style.display = 'none');
-
-        // Mostra la sezione corretta in base alla selezione
-        if (selectedText === 'MOVIMENTI E TRASPORTI') {
-            dettagliTrasportiDiv.style.display = 'block';
-        } else if (selectedText === 'MANTENIMENTO E SQUADRE A CONTATTO') {
-            dettagliMantenimentoDiv.style.display = 'block';
-        } else if (selectedText === 'RIFORNIMENTI') {
-            dettagliRifornimentiDiv.style.display = 'block';
-        } else if (selectedText === 'GESTIONE TRANSITO') {
-            dettagliGetraDiv.style.display = 'block';
-        }
-    });
-</script>
+{% block extra_js %}
+<!-- Script condiviso per form attività -->
+<script src="{{ url_for('static', filename='js/attivita_forms.js') }}?v={{ cache_buster }}"></script>
+<!-- Script specifico per inserimento -->
+<script src="{{ url_for('static', filename='js/inserimento_attivita.js') }}?v={{ cache_buster }}"></script>
 {% endblock %}

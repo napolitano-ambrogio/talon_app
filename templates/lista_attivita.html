@@ -2,10 +2,14 @@
 
 {% block title %}Elenco Attività - TALON{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/lista_attivita.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="detail-header">
     <h3>Elenco Attività</h3>
-    <a href="{{ url_for('attivita.inserisci_attivita_form') }}" class="btn-modifica" style="background-color: #28a745;">Nuova Attività</a>
+    <a href="{{ url_for('attivita.inserisci_attivita_form') }}" class="btn-modifica">Nuova Attività</a>
 </div>
 
 <div class="list-container">
@@ -41,7 +45,7 @@
         <tbody id="attivitaTableBody">
             {% for attivita in attivita_list %}
             <tr class="clickable-row" data-href="{{ url_for('attivita.visualizza_attivita', id=attivita.id) }}">
-                <td>{{ attivita.data_inizio.split('-') | reverse | join('/') if attivita.data_inizio }}</td>
+                <td>{{ attivita.data_inizio.strftime('%d/%m/%Y') if attivita.data_inizio else '' }}</td>
                 <td>{{ attivita.tipologia_nome }}</td>
                 <td>{{ attivita.ente_nome }}</td>
                 <td>{{ attivita.operazione_nome or 'N/D' }}</td>
@@ -59,60 +63,5 @@
     </table>
 </div>
 
-<script>
-    document.querySelectorAll('.clickable-row').forEach(row => {
-        row.addEventListener('click', () => {
-            window.location.href = row.dataset.href;
-        });
-    });
-
-    const searchInput = document.getElementById('searchInput');
-    const tableBody = document.getElementById('attivitaTableBody');
-    const allRows = tableBody.querySelectorAll('tr.clickable-row');
-    const noResultsRow = document.getElementById('no-results-row');
-
-    searchInput.addEventListener('input', function () {
-        const searchTerm = this.value.toUpperCase();
-        let visibleRows = 0;
-
-        allRows.forEach(row => {
-            const rowText = row.textContent.toUpperCase();
-            if (rowText.includes(searchTerm)) {
-                row.style.display = '';
-                visibleRows++;
-            } else {
-                row.style.display = 'none';
-            }
-        });
-
-        noResultsRow.style.display = (visibleRows === 0 && allRows.length > 0) ? 'table-row' : 'none';
-    });
-
-    document.querySelectorAll('.styled-table th.sortable').forEach(header => {
-        header.addEventListener('click', () => {
-            const column = parseInt(header.dataset.column);
-            const isAsc = header.classList.contains('sorted-asc');
-            const order = isAsc ? 'desc' : 'asc';
-            const rows = Array.from(tableBody.querySelectorAll('tr.clickable-row'));
-
-            document.querySelectorAll('.styled-table th.sortable').forEach(h => {
-                h.classList.remove('sorted-asc', 'sorted-desc');
-                const arrow = h.querySelector('[data-arrow]');
-                if (arrow) arrow.textContent = '▲▼';
-            });
-
-            header.classList.add(order === 'asc' ? 'sorted-asc' : 'sorted-desc');
-            const arrow = header.querySelector('[data-arrow]');
-            if (arrow) arrow.textContent = order === 'asc' ? '▲' : '▼';
-
-            rows.sort((a, b) => {
-                const textA = a.children[column].textContent.trim().toUpperCase();
-                const textB = b.children[column].textContent.trim().toUpperCase();
-                return order === 'asc' ? textA.localeCompare(textB) : textB.localeCompare(textA);
-            });
-
-            rows.forEach(row => tableBody.appendChild(row));
-        });
-    });
-</script>
+<script src="{{ url_for('static', filename='js/lista_attivita.js') }}"></script>
 {% endblock %}

@@ -33,9 +33,9 @@
                 <div class="detail-item">
                     <dt>Periodo</dt>
                     <dd>
-                        Dal: {{ attivita.data_inizio.split('-') | reverse | join('/') if attivita.data_inizio }}
+                        Dal: {{ attivita.data_inizio.strftime('%d/%m/%Y') if attivita.data_inizio else 'N/D' }}
                         {% if attivita.data_fine %}
-                            <br> Al: {{ attivita.data_fine.split('-') | reverse | join('/') }}
+                            <br> Al: {{ attivita.data_fine.strftime('%d/%m/%Y') }}
                         {% endif %}
                     </dd>
                 </div>
@@ -311,9 +311,9 @@
 
         <hr style="margin-top: 30px; margin-bottom: 20px;">
         <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
-            <!-- CORREZIONE: Link al form di modifica -->
+            <!-- Link al form di modifica -->
             <a href="{{ url_for('attivita.modifica_attivita_form', id=attivita.id) }}" style="background-color: #007bff; color: white; padding: 10px 20px; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em; text-decoration: none;">Modifica</a>
-            <!-- CORREZIONE: Action del form di eliminazione -->
+            <!-- Form di eliminazione -->
             <form action="{{ url_for('attivita.elimina_attivita', id=attivita.id) }}" method="POST" onsubmit="return confirm('Sei sicuro di voler eliminare questa attività? L\'azione è irreversibile.') && confirm('ATTENZIONE: Confermi definitivamente l\'eliminazione?');" style="margin: 0;">
                 <button type="submit" style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">Elimina Attività</button>
             </form>

@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ cache_buster }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}?v={{ cache_buster }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-roles.css') }}?v={{ cache_buster }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/searchable_select.css') }}?v={{ cache_buster }}">
 
     {% block extra_css %}{% endblock %}
 </head>
@@ -129,6 +130,7 @@
     <script src="{{ url_for('static', filename='js/sidebar.js') }}?v={{ cache_buster }}"></script>
     <script src="{{ url_for('static', filename='js/sidebar-role-manager.js') }}?v={{ cache_buster }}"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/searchable_select.js') }}?v={{ cache_buster }}"></script>
     {% endif %}
 
     <script>

@@ -233,7 +233,7 @@ def get_enti_militari_stats(accessible_entities):
         conn.close()
 
 def check_ente_militare_dependencies(ente_id):
-    """Verifica dipendenze (figli, utenti, attivit)."""
+    """Verifica dipendenze (figli, utenti, attività)."""
     conn = pg_conn()
     try:
         deps = []
@@ -250,11 +250,33 @@ def check_ente_militare_dependencies(ente_id):
             if r and r['count'] > 0:
                 deps.append(f"{r['count']} utenti collegati")
 
+        # Controllo COMPLETO di tutte le relazioni con attivita
+        # I campi corretti sono: ente_svolgimento_id, destinazione_militare_id, partenza_militare_id
         with conn.cursor() as cur:
-            cur.execute('SELECT COUNT(*) AS count FROM attivita WHERE ente_svolgimento_id = %s', (ente_id,))
+            cur.execute(
+                """
+                SELECT COUNT(*) AS count 
+                FROM attivita 
+                WHERE ente_svolgimento_id = %s 
+                   OR destinazione_militare_id = %s
+                   OR partenza_militare_id = %s
+                """, 
+                (ente_id, ente_id, ente_id)
+            )
             r = cur.fetchone()
             if r and r['count'] > 0:
-                deps.append(f"{r['count']} attivit collegate")
+                deps.append(f"{r['count']} attività collegate")
+
+        # Controllo nella tabella operazioni (se esiste ente_responsabile_id)
+        try:
+            with conn.cursor() as cur:
+                cur.execute('SELECT COUNT(*) AS count FROM operazioni WHERE ente_responsabile_id = %s', (ente_id,))
+                r = cur.fetchone()
+                if r and r['count'] > 0:
+                    deps.append(f"{r['count']} operazioni collegate")
+        except Exception:
+            # Se il campo non esiste, ignora
+            pass
 
         return deps
     finally:

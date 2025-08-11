@@ -945,33 +945,90 @@ button[style*="background-color:#d9534f"]:active::before {
   color: var(--text-primary);
 }
 
-.form-container input,
+/* STILI UNIFORMI PER TUTTI I CAMPI INPUT, SELECT E TEXTAREA */
+.form-container input[type="text"],
+.form-container input[type="email"],
+.form-container input[type="password"],
+.form-container input[type="number"],
+.form-container input[type="tel"],
+.form-container input[type="url"],
+.form-container input[type="search"],
+.form-container input[type="date"],
+.form-container input[type="datetime-local"],
+.form-container input[type="month"],
+.form-container input[type="week"],
+.form-container input[type="time"],
+.form-container input:not([type]),
 .form-container select,
-.form-container textarea {
-  width: 100%;
-  padding: 12px var(--spacing-md);
-  border: 2px solid var(--border-color);
-  border-radius: var(--border-radius);
+.form-container textarea,
+/* Aggiungiamo anche gli input con la classe searchable-select-input */
+.searchable-select-input,
+input.searchable-select-input {
+  width: 100% !important;
+  padding: 8px 12px !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  color: #495057 !important;
+  background-color: #fff !important;
+  background-clip: padding-box !important;
   text-transform: uppercase;
-  font-family: inherit;
-  transition: all var(--transition-fast);
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  font-family: inherit !important;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+  box-shadow: none !important;
+  height: auto !important;
+  min-height: 38px !important;
 }
 
-.form-container input:focus,
+/* Stati di focus uniformi */
+.form-container input[type="text"]:focus,
+.form-container input[type="email"]:focus,
+.form-container input[type="password"]:focus,
+.form-container input[type="number"]:focus,
+.form-container input[type="tel"]:focus,
+.form-container input[type="url"]:focus,
+.form-container input[type="search"]:focus,
+.form-container input[type="date"]:focus,
+.form-container input[type="datetime-local"]:focus,
+.form-container input[type="month"]:focus,
+.form-container input[type="week"]:focus,
+.form-container input[type="time"]:focus,
+.form-container input:not([type]):focus,
 .form-container select:focus,
-.form-container textarea:focus {
-  outline: none;
-  border-color: var(--secondary-color);
-  background: white;
-  box-shadow: 0 4px 20px rgba(52, 152, 219, 0.2);
-  transform: translateY(-2px);
+.form-container textarea:focus,
+.searchable-select-input:focus,
+input.searchable-select-input:focus {
+  color: #495057 !important;
+  background-color: #fff !important;
+  border-color: #80bdff !important;
+  outline: 0 !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
 }
 
+/* Placeholder uniformi */
+.form-container input::placeholder,
+.form-container select::placeholder,
+.form-container textarea::placeholder,
+.searchable-select-input::placeholder {
+  color: #6c757d !important;
+  opacity: 1 !important;
+}
+
+/* Textarea specifica */
 .form-container textarea {
   resize: vertical;
-  min-height: 100px;
+  min-height: 100px !important;
+}
+
+/* Override per i select nativi */
+.form-container select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px 12px;
+  padding-right: 2.25rem !important;
 }
 
 .cancel-link {
@@ -1352,6 +1409,136 @@ input:checked + .talon-slider:before {
   font-style: italic;
 }
 
+/* Miglioramenti per searchable select con ricerca avanzata */
+.searchable-select-options li {
+    padding: 10px 12px;
+    line-height: 1.4;
+}
+
+.searchable-select-options .option-main-text {
+    display: block;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.searchable-select-options .option-details {
+    display: block;
+    font-size: 0.85em;
+    color: var(--text-muted);
+    margin-top: 2px;
+    line-height: 1.3;
+}
+
+.searchable-select-options .option-match-info {
+    display: block;
+    font-size: 0.75em;
+    color: #28a745;
+    font-style: italic;
+    margin-top: 3px;
+}
+
+/* Evidenziazione termini di ricerca con mark invece di strong */
+.searchable-select-options mark {
+    background-color: #fff3cd;
+    color: inherit;
+    font-weight: 600;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+/* Miglior separazione tra risultati */
+.searchable-select-options li:not(.group-label) {
+    border-bottom: 1px solid var(--border-light);
+}
+
+.searchable-select-options li:last-child {
+    border-bottom: none;
+}
+
+/* Hover effect migliorato */
+.searchable-select-options li:hover:not(.group-label):not(.no-results) {
+    background: linear-gradient(135deg, rgba(52, 152, 219, 0.05) 0%, rgba(52, 152, 219, 0.1) 100%);
+    cursor: pointer;
+}
+
+/* Focus per accessibilità tastiera */
+.searchable-select-options li:focus {
+    outline: 2px solid var(--secondary-color);
+    outline-offset: -2px;
+    background-color: var(--bg-hover);
+}
+
+/* Messaggio "nessun risultato" migliorato */
+.searchable-select-options .no-results {
+    padding: 20px;
+    text-align: center;
+    background: var(--bg-tertiary);
+    border-radius: var(--border-radius-sm);
+    margin: 5px;
+}
+
+.searchable-select-options .no-results strong {
+    color: var(--accent-color);
+}
+
+/* Input di ricerca migliorato */
+.searchable-select-search {
+    padding: 10px 12px;
+    font-size: 14px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.searchable-select-search:focus {
+    border-bottom-color: var(--secondary-color);
+    background-color: var(--bg-secondary);
+}
+
+/* Placeholder più descrittivo */
+.searchable-select-search::placeholder {
+    color: var(--text-light);
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+/* Scrollbar personalizzata per risultati lunghi */
+.searchable-select-dropdown {
+    max-height: 400px; /* Aumentato per vedere più risultati */
+}
+
+/* Animazione di apertura migliorata */
+@keyframes slideDownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        max-height: 400px;
+    }
+}
+
+.searchable-select-dropdown.open {
+    animation: slideDownFade 0.3s ease-out;
+}
+
+/* Responsive per mobile */
+@media (max-width: 768px) {
+    .searchable-select-dropdown {
+        max-height: 300px;
+    }
+    
+    .searchable-select-options li {
+        padding: 12px;
+    }
+    
+    .searchable-select-options .option-details {
+        font-size: 0.8em;
+    }
+}
+
 /* ===== DASHBOARD SPECIFIC STYLES ===== */
 .dashboard-controls {
   margin: 20px 0;
@@ -1708,4 +1895,81 @@ input:checked + .talon-slider:before {
     --border-medium: #cbd5e0;
     --border-dark: #a0aec0;
   }
+}
+
+/* ===== FORM LOADER ===== */
+.form-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255,255,255,0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #2196F3;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ===== INDICATORE MODIFICHE ===== */
+#modified-indicator {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    z-index: 1000;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ===== CAMPI INVALIDI ===== */
+.is-invalid {
+    border-color: #dc3545 !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23dc3545' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right calc(0.375em + 0.1875rem) center;
+    background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+    padding-right: calc(1.5em + 0.75rem);
+}
+
+.invalid-feedback {
+    display: none;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: #dc3545;
+}
+
+.is-invalid ~ .invalid-feedback {
+    display: block;
 }
