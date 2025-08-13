@@ -13,7 +13,7 @@
         <ul id="menu-list" role="list">
             <!-- Dashboard - Accessibile a tutti -->
             <li draggable="true" data-menu-id="dashboard" role="listitem">
-                <a href="{{ url_for('main.dashboard') }}" aria-label="Dashboard">
+                <a href="{{ url_for('main.dashboard') }}" aria-label="Dashboard" data-spa-link>
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="3" y="3" width="7" height="7"></rect>
                         <rect x="14" y="3" width="7" height="7"></rect>
@@ -26,7 +26,7 @@
             
             <!-- Enti Militari - Accessibile a tutti -->
             <li draggable="true" data-menu-id="enti_militari" role="listitem">
-                <a href="{{ url_for('enti_militari.organigramma') }}" aria-label="Enti Militari">
+                <a href="{{ url_for('enti_militari.organigramma') }}" aria-label="Enti Militari" data-spa-link>
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="9" y="2" width="6" height="5" rx="1"></rect>
                         <rect x="3" y="17" width="6" height="5" rx="1"></rect>
@@ -42,7 +42,7 @@
             
             <!-- Enti Civili - Accessibile a tutti -->
             <li draggable="true" data-menu-id="enti_civili" role="listitem">
-                <a href="{{ url_for('enti_civili.enti_civili') }}" aria-label="Enti Civili">
+                <a href="{{ url_for('enti_civili.enti_civili') }}" aria-label="Enti Civili" data-spa-link>
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                         <circle cx="8.5" cy="7" r="4"/>
@@ -56,7 +56,7 @@
             <!-- Attività - Solo OPERATORE e ADMIN -->
             {% if session.get('ruolo_nome') in ['ADMIN', 'OPERATORE'] %}
             <li draggable="true" data-menu-id="attivita" role="listitem" data-min-role="OPERATORE">
-                <a href="{{ url_for('attivita.lista_attivita') }}" aria-label="Attività">
+                <a href="{{ url_for('attivita.lista_attivita') }}" aria-label="Attività" data-spa-link>
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                         <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -71,7 +71,7 @@
             <!-- Operazioni - Solo OPERATORE e ADMIN -->
             {% if session.get('ruolo_nome') in ['ADMIN', 'OPERATORE'] %}
             <li draggable="true" data-menu-id="operazioni" role="listitem" data-min-role="OPERATORE">
-                <a href="{{ url_for('operazioni.lista_operazioni') }}" aria-label="Operazioni">
+                <a href="{{ url_for('operazioni.lista_operazioni') }}" aria-label="Operazioni" data-spa-link>
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="10"></circle>
                         <line x1="2" y1="12" x2="22" y2="12"></line>
@@ -86,7 +86,7 @@
         <!-- Sistema - Solo ADMIN, separato dal menu principale -->
         {% if session.get('ruolo_nome') == 'ADMIN' %}
         <div class="sistema-section">
-            <a href="{{ url_for('main.dashboard_admin') }}" aria-label="Sistema" class="sistema-btn">
+            <a href="{{ url_for('main.dashboard_admin') }}" aria-label="Sistema" class="sistema-btn" data-spa-link>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="3"></circle>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>

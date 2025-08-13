@@ -1,0 +1,302 @@
+{% extends "_base.html" %}
+
+{% block title %}Informazioni Sistema - TALON{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="{{ url_for('main.dashboard_admin') }}" data-spa-link>Dashboard Admin</a>
+</li>
+<li class="breadcrumb-item">
+    <a href="{{ url_for('main.impostazioni') }}" data-spa-link>Impostazioni</a>
+</li>
+<li class="breadcrumb-item active">Informazioni Sistema</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-server"></i> Informazioni Sistema</h2>
+                <div>
+                    <a href="{{ url_for('main.dashboard_admin') }}" class="btn btn-outline-primary me-2" data-spa-link data-spa-force="true" data-spa-no-cache="true">
+                        <i class="fas fa-arrow-left"></i> Torna al Sistema
+                    </a>
+                    <button class="btn btn-outline-secondary" onclick="refreshSystemInfo()">
+                        <i class="fas fa-sync-alt"></i> Aggiorna
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Overview Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center bg-primary text-white">
+                <div class="card-body">
+                    <i class="fas fa-database fa-2x mb-2"></i>
+                    <h5 class="card-title">{{ stats.database_size_mb }}</h5>
+                    <p class="card-text">Dimensione Database</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                    <i class="fas fa-table fa-2x mb-2"></i>
+                    <h5 class="card-title">{{ stats.total_records }}</h5>
+                    <p class="card-text">Record Totali</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-info text-white">
+                <div class="card-body">
+                    <i class="fas fa-code-branch fa-2x mb-2"></i>
+                    <h5 class="card-title">{{ stats.system_version }}</h5>
+                    <p class="card-text">Versione TALON</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center bg-warning text-dark">
+                <div class="card-body">
+                    <i class="fas fa-network-wired fa-2x mb-2"></i>
+                    <h5 class="card-title">{{ stats.connection_count }}</h5>
+                    <p class="card-text">Connessioni Attive</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Database Information -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-database"></i> Database PostgreSQL
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Versione PostgreSQL:</strong></td>
+                            <td><code>{{ stats.postgres_version or 'N/A' }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Dimensione Database:</strong></td>
+                            <td>{{ stats.database_size_mb }} ({{ stats.database_size }} bytes)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Record Totali:</strong></td>
+                            <td>{{ stats.total_records }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Connessioni Attive:</strong></td>
+                            <td>{{ stats.connection_count }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Statistics -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar"></i> Statistiche Tabelle
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Tabella</th>
+                                    <th class="text-end">Record</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for table_name, count in stats.table_counts.items() %}
+                                <tr>
+                                    <td><code>{{ table_name }}</code></td>
+                                    <td class="text-end">{{ count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- System Information -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs"></i> Sistema TALON
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Versione:</strong></td>
+                            <td><span class="badge bg-primary">{{ stats.system_version }}</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Modalità:</strong></td>
+                            <td>
+                                {% if config.get('DEBUG') %}
+                                <span class="badge bg-warning">DEBUG</span>
+                                {% else %}
+                                <span class="badge bg-success">PRODUCTION</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>SPA Mode:</strong></td>
+                            <td><span class="badge bg-info">Enabled</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>SSO:</strong></td>
+                            <td>
+                                {% if sso_enabled %}
+                                <span class="badge bg-success">Enabled</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Disabled</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ambiente:</strong></td>
+                            <td><code>{{ config.get('FLASK_ENV', 'production') }}</code></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Server Information -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-server"></i> Informazioni Server
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <td><strong>Python:</strong></td>
+                            <td><code>{{ stats.python_version or 'N/A' }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Flask:</strong></td>
+                            <td><code>{{ stats.flask_version or 'N/A' }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ultimo Restart:</strong></td>
+                            <td>{{ stats.uptime or 'N/A' }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Timezone:</strong></td>
+                            <td><code>{{ stats.timezone or 'UTC' }}</code></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Charts Placeholder -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line"></i> Performance Monitoring
+                    </h5>
+                </div>
+                <div class="card-body text-center text-muted">
+                    <i class="fas fa-chart-line fa-3x mb-3"></i>
+                    <p>Grafici di performance e monitoraggio in tempo reale</p>
+                    <p class="small">(Funzionalità in fase di sviluppo)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshSystemInfo() {
+    if (window.TalonApp && window.TalonApp.navigate) {
+        window.TalonApp.navigate(window.location.pathname, { force: true });
+    } else {
+        window.location.reload();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('System info page loaded');
+    
+    // Force reload when navigating to dashboard_admin
+    const tornaSistemaBtn = document.querySelector('a[href*="dashboard_admin"]');
+    if (tornaSistemaBtn) {
+        tornaSistemaBtn.addEventListener('click', function(e) {
+            console.log('[System Info] Navigating to dashboard_admin, forcing full reload');
+            // Clear cache to force fresh load
+            if (window.TalonSPA) {
+                window.TalonSPA.clearCache();
+            }
+        });
+    }
+    
+    // Add refresh timer (optional)
+    const refreshInterval = 300000; // 5 minutes
+    setTimeout(() => {
+        if (window.TalonApp && window.TalonApp.showToast) {
+            window.TalonApp.showToast('Aggiornamento automatico dati sistema...', 'info');
+        }
+        refreshSystemInfo();
+    }, refreshInterval);
+});
+</script>
+
+<style>
+.card .fa-2x {
+    opacity: 0.8;
+}
+
+.table td {
+    border-top: 1px solid #dee2e6;
+}
+
+.table-sm td {
+    padding: 0.5rem 0.75rem;
+}
+
+code {
+    background-color: #f8f9fa;
+    color: #e83e8c;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.bg-primary .card-title,
+.bg-success .card-title,
+.bg-info .card-title,
+.bg-warning .card-title {
+    font-weight: bold;
+}
+</style>
+{% endblock %}

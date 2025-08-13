@@ -1,14 +1,18 @@
-# app.py - Versione ottimizzata con sistema auth a 3 ruoli + SSO Superset (PostgreSQL)
+# app.py - Versione ottimizzata con sistema auth a 3 ruoli + SSO Superset + SPA Support (PostgreSQL)
 import sys
 import os
+import re
+import json
+from functools import wraps
 
 # FORZA DEBUG MODE PER SVILUPPO
 os.environ['FLASK_ENV'] = 'development'
 os.environ['FLASK_DEBUG'] = '1'
 
+# Aggiungi il percorso root al sys.path per import corretti
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Flask, request, jsonify, render_template, redirect, session, flash, url_for, Response
+from flask import Flask, request, jsonify, render_template, redirect, session, flash, url_for, Response, get_flashed_messages
 import hashlib
 import datetime
 from waitress import serve
@@ -65,14 +69,123 @@ from auth import (
     debug_user_permissions, get_system_auth_stats, ROLE_ADMIN, ROLE_OPERATORE, ROLE_VISUALIZZATORE
 )
 
-# Importa i blueprint esistenti
+# Importa i blueprint dai percorsi corretti
 from routes.main import main_bp
 from routes.enti_militari import enti_militari_bp
 from routes.enti_civili import enti_civili_bp
 from routes.operazioni import operazioni_bp
 from routes.attivita import attivita_bp
 
+# ===========================================
+# FUNZIONI SPA SUPPORT
+# ===========================================
+
+def spa_response(f):
+    """
+    Decoratore per supportare navigazione SPA.
+    Rileva richieste AJAX e ritorna solo il contenuto necessario.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Esegui la funzione originale
+        response = f(*args, **kwargs)
+        
+        # Verifica se è una richiesta SPA
+        is_spa_request = (
+            request.headers.get('X-SPA-Request') == 'true' or
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        )
+        
+        if is_spa_request and isinstance(response, str):
+            # È una risposta HTML, dobbiamo processarla per SPA
+            try:
+                # Crea una risposta minima con solo il contenuto necessario
+                spa_data = {
+                    'html': response,
+                    'title': 'TALON System',
+                    'success': True
+                }
+                
+                # Se possiamo estrarre il titolo dalla risposta
+                title_match = re.search(r'<title>(.*?)</title>', response, re.IGNORECASE)
+                if title_match:
+                    spa_data['title'] = title_match.group(1)
+                
+                # Ritorna JSON per richieste SPA
+                return jsonify(spa_data)
+                
+            except Exception as e:
+                print(f"Errore processing SPA response: {e}")
+                # In caso di errore, ritorna la risposta normale
+                return response
+        
+        return response
+    
+    return decorated_function
+
+def render_template_spa(template_name, **context):
+    """
+    Versione di render_template che supporta SPA.
+    Se è una richiesta SPA, ritorna JSON con HTML parziale.
+    """
+    is_spa = (
+        request.headers.get('X-SPA-Request') == 'true' or
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    )
+    
+    if is_spa:
+        # Renderizza il template completo
+        full_html = render_template(template_name, **context)
+        
+        # Estrai le parti necessarie
+        title = 'TALON System'
+        content = full_html
+        breadcrumb = ''
+        
+        # Estrai il titolo
+        title_match = re.search(r'<title>(.*?)</title>', full_html, re.IGNORECASE)
+        if title_match:
+            title = title_match.group(1).strip()
+        
+        # Estrai il contenuto principale
+        content_match = re.search(
+            r'<div class="flex-grow-1 p-3 main-content"[^>]*>(.*?)</div>\s*(?:<footer|$)',
+            full_html,
+            re.DOTALL | re.IGNORECASE
+        )
+        if content_match:
+            content = content_match.group(1).strip()
+        
+        # Estrai breadcrumb
+        breadcrumb_match = re.search(
+            r'<ol class="breadcrumb[^"]*">(.*?)</ol>',
+            full_html,
+            re.DOTALL | re.IGNORECASE
+        )
+        if breadcrumb_match:
+            breadcrumb = breadcrumb_match.group(1).strip()
+        
+        # Ottieni flash messages
+        flash_messages = get_flashed_messages(with_categories=True)
+        
+        # Restituisci JSON per SPA
+        return jsonify({
+            'success': True,
+            'title': title,
+            'content': content,
+            'breadcrumb': breadcrumb,
+            'template': template_name,
+            'flash_messages': flash_messages
+        })
+    
+    # Richiesta normale
+    return render_template(template_name, **context)
+
 def create_app():
+    """
+    Factory function per creare l'applicazione Flask.
+    Organizzata per modularità e manutenibilità.
+    """
     app = Flask(
         __name__,
         template_folder='templates',
@@ -117,14 +230,32 @@ def create_app():
     }
     
     # ===========================================
-    # CONFIGURAZIONE ANTI-CACHE PER DEBUG
+    # MIDDLEWARE SPA
+    # ===========================================
+    
+    @app.before_request
+    def before_request_spa():
+        """Prepara richieste SPA"""
+        if request.headers.get('X-SPA-Request') == 'true':
+            request.is_spa = True
+        else:
+            request.is_spa = False
+    
+    # ===========================================
+    # CONFIGURAZIONE ANTI-CACHE PER DEBUG + SPA
     # ===========================================
     
     if app.debug:
         app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
         
         @app.after_request
-        def disable_caching_in_debug(response):
+        def after_request_handler(response):
+            """Gestisce headers per cache e SPA"""
+            # Aggiungi header per identificare risposte SPA
+            if hasattr(request, 'is_spa') and request.is_spa:
+                response.headers['X-SPA-Response'] = 'true'
+            
+            # Disabilita cache in debug
             if request.endpoint == 'static':
                 response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
                 response.headers['Pragma'] = 'no-cache'
@@ -133,6 +264,7 @@ def create_app():
                 response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
                 response.headers['Pragma'] = 'no-cache'
                 response.headers['Expires'] = '0'
+            
             return response
     
     # ===========================================
@@ -289,7 +421,8 @@ def create_app():
             'timestamp': datetime.datetime.now().isoformat(),
             'version': '2.0.0',
             'database': 'unknown',
-            'sso': SSO_AVAILABLE
+            'sso': SSO_AVAILABLE,
+            'spa_enabled': True
         }
         
         # Test connessione database
@@ -306,6 +439,12 @@ def create_app():
             status['status'] = 'degraded'
         
         return jsonify(status), 200 if status['status'] == 'healthy' else 503
+
+    # Test SPA
+    @app.route('/test-spa')
+    def test_spa():
+        """Endpoint test per verificare funzionalità SPA"""
+        return render_template('test-spa.html')
     
     # ===========================================
     # ROUTE STATICHE
@@ -318,6 +457,27 @@ def create_app():
         if os.path.exists(favicon_path):
             return app.send_static_file('favicon.ico')
         return Response(status=204)
+    
+    @app.route('/external/<path:filename>')
+    def external_files(filename):
+        """Serve file dalla directory esterna F:\\tools\\Script"""
+        external_path = 'F:\\tools\\Script'
+        file_path = os.path.join(external_path, filename)
+        
+        # Verifica sicurezza: il file deve essere nella directory external
+        if not os.path.abspath(file_path).startswith(os.path.abspath(external_path)):
+            return Response(status=404)
+        
+        # Verifica che il file esista
+        if not os.path.exists(file_path):
+            return Response(status=404)
+        
+        try:
+            from flask import send_file
+            return send_file(file_path)
+        except Exception as e:
+            app.logger.error(f"Errore serving external file {filename}: {e}")
+            return Response(status=500)
     
     @app.route('/')
     def root():
@@ -478,7 +638,7 @@ def create_app():
     @app.route('/logout', methods=['GET', 'POST'])
     @app.route('/auth/logout', methods=['GET', 'POST'])
     def logout():
-        """Logout dell'utente"""
+        """Logout dell'utente - NON usa SPA per forzare reload completo"""
         user_id = session.get('user_id')
         username = session.get('username')
         
@@ -599,20 +759,22 @@ def create_app():
         })
     
     # ===========================================
-    # ROUTE DI AMMINISTRAZIONE
+    # ROUTE DI AMMINISTRAZIONE (con supporto SPA)
     # ===========================================
     
     @app.route('/impostazioni')
     @admin_required
+    @spa_response
     def impostazioni():
-        """Pagina impostazioni (solo admin)"""
-        return render_template('impostazioni.html')
+        """Pagina impostazioni (solo admin) con supporto SPA"""
+        return render_template_spa('impostazioni.html')
     
     @app.route('/impostazioni/utenti')
     @app.route('/admin/users')
     @admin_required
+    @spa_response
     def admin_users():
-        """Gestione utenti (solo admin)"""
+        """Gestione utenti (solo admin) con supporto SPA"""
         conn = None
         try:
             conn = get_db_connection()
@@ -628,11 +790,20 @@ def create_app():
                 )
                 users = cur.fetchall()
             
-            return render_template('admin/users.html', users=users)
+            return render_template_spa('admin/users.html', users=users)
             
         except Exception as e:
             app.logger.error(f"Errore nel caricamento utenti: {e}")
             flash(f'Errore nel caricamento utenti: {str(e)}', 'error')
+            
+            # Se è una richiesta SPA, ritorna JSON con errore
+            if hasattr(request, 'is_spa') and request.is_spa:
+                return jsonify({
+                    'success': False,
+                    'error': str(e),
+                    'redirect': url_for('main.dashboard')
+                }), 500
+            
             return redirect(url_for('main.dashboard'))
         finally:
             if conn:
@@ -655,6 +826,7 @@ def create_app():
                 'username': session.get('username'),
                 'user_role': session.get('ruolo_nome'),
                 'sso_enabled': SSO_AVAILABLE,
+                'spa_enabled': True,
                 'user_info': user_info,
                 'database': {
                     'type': 'PostgreSQL',
@@ -775,7 +947,7 @@ def create_app():
                 'error': 'Errore interno del server',
                 'code': 'INTERNAL_ERROR'
             }), 500
-        flash('Si  verificato un errore interno. Riprova pi tardi.', 'error')
+        flash('Si è verificato un errore interno. Riprova più tardi.', 'error')
         return render_template('errors/500.html'), 500
     
     @app.errorhandler(psycopg2.OperationalError)
@@ -787,7 +959,7 @@ def create_app():
                 'error': 'Errore connessione database',
                 'code': 'DATABASE_ERROR'
             }), 503
-        flash('Errore di connessione al database. Riprova pi tardi.', 'error')
+        flash('Errore di connessione al database. Riprova più tardi.', 'error')
         return render_template('errors/503.html'), 503
     
     # ===========================================
@@ -861,6 +1033,8 @@ def create_app():
                 print("[OK] Modulo SSO caricato correttamente")
             else:
                 print("[WARNING] Modulo SSO non disponibile")
+            
+            print("[OK] SPA Navigation abilitato")
                 
         except Exception as e:
             app.logger.error(f"Errore nell'inizializzazione: {e}")
@@ -872,7 +1046,10 @@ def create_app():
     return app
 
 def main():
-    """Funzione principale"""
+    """
+    Funzione principale per avviare l'applicazione.
+    Gestisce modalità debug e produzione.
+    """
     app = create_app()
     
     FORCE_DEBUG = True  # Cambia a False per produzione
@@ -881,8 +1058,10 @@ def main():
         import logging
         from logging.handlers import RotatingFileHandler
         
+        # Crea directory logs se non esiste
         os.makedirs('logs', exist_ok=True)
         
+        # Setup logging file per produzione
         file_handler = RotatingFileHandler('logs/talon.log', maxBytes=10240000, backupCount=10)
         file_handler.setFormatter(logging.Formatter(
             '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
@@ -893,7 +1072,7 @@ def main():
         app.logger.info('TALON System startup')
     
     print("=" * 60)
-    print("[TARGET] TALON SYSTEM v2.0 - SISTEMA AUTENTICAZIONE + SSO")
+    print("[TARGET] TALON SYSTEM v2.0 - SISTEMA AUTENTICAZIONE + SSO + SPA")
     print("=" * 60)
     print("[DB] DATABASE:")
     print(f"   * Tipo: PostgreSQL")
@@ -914,11 +1093,18 @@ def main():
     print(f"   * {ROLE_OPERATORE} - Modifica dati")
     print(f"   * {ROLE_VISUALIZZATORE} - Solo visualizzazione")
     print("=" * 60)
+    print("[NEW] FUNZIONALITÀ:")
     
     if SSO_AVAILABLE:
-        print("[KEY] SSO ATTIVO - Login unico TALON -> Superset")
+        print("   ✓ SSO ATTIVO - Login unico TALON -> Superset")
     else:
-        print("[WARNING] SSO NON ATTIVO - Crea sso_superset.py")
+        print("   ✗ SSO NON ATTIVO - Crea sso_superset.py")
+    
+    print("   ✓ SPA Navigation - Navigazione senza reload")
+    print("   ✓ Fullscreen persistente tra pagine")
+    print("   ✓ Loading animations")
+    print("   ✓ Toast notifications")
+    print("   ✓ Modular JavaScript structure")
     
     print("=" * 60)
     
@@ -947,12 +1133,12 @@ def main():
     print("=" * 60)
     
     if FORCE_DEBUG or app.debug:
-        print("[ALERT] MODALIT DEBUG ATTIVA")
+        print("[ALERT] MODALITÀ DEBUG ATTIVA")
         print("[SAVE] Cache disabilitata")
         print("=" * 60)
         app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
     else:
-        print("[LAUNCH] MODALIT PRODUZIONE")
+        print("[LAUNCH] MODALITÀ PRODUZIONE")
         print("=" * 60)
         serve(app, host='0.0.0.0', port=5000, threads=16)
 

@@ -2,105 +2,271 @@
 
 {% block title %}Dashboard Sistema - TALON{% endblock %}
 
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard_admin.css') }}">
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <h1 class="page-title mb-4">
-        <i class="fas fa-tachometer-alt"></i> Dashboard Sistema
-    </h1>
+<div class="container-fluid dashboard-container">
+    <!-- Header con stato sistema -->
+    <div class="dashboard-header">
+        <h1 class="page-title">
+            <i class="fas fa-tachometer-alt"></i> Dashboard Sistema
+            <span class="system-status" data-status="online">
+                <i class="fas fa-circle"></i> Sistema Operativo
+            </span>
+        </h1>
+        <div class="last-update">
+            Ultimo aggiornamento: <span id="lastUpdateTime">--:--:--</span>
+            <button class="btn btn-sm btn-outline-primary ms-2" id="refreshDashboard">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+    </div>
     
-    <!-- Stats Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card stat-card text-white bg-primary">
+    <!-- Stats Cards con animazioni migliorate -->
+    <div class="row stats-row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stat-card gradient-primary" data-stat="users">
                 <div class="card-body">
-                    <h5 class="card-title">UTENTI ATTIVI</h5>
-                    <h2 class="card-text">{{ stats.users_by_role.values()|sum|default(0) }}</h2>
-                    <small>
-                        Admin: {{ stats.users_by_role.ADMIN|default(0) }} | 
-                        Operatore: {{ stats.users_by_role.OPERATORE|default(0) }} | 
-                        Visualizzatore: {{ stats.users_by_role.VISUALIZZATORE|default(0) }}
-                    </small>
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h5 class="card-title">UTENTI ATTIVI</h5>
+                        <h2 class="card-value counter" data-target="{{ stats.users_by_role.values()|sum|default(0) }}">0</h2>
+                        <div class="stat-breakdown">
+                            <span class="badge bg-dark">Admin: {{ stats.users_by_role.ADMIN|default(0) }}</span>
+                            <span class="badge bg-secondary">Operatore: {{ stats.users_by_role.OPERATORE|default(0) }}</span>
+                            <span class="badge bg-light text-dark">Visualizzatore: {{ stats.users_by_role.VISUALIZZATORE|default(0) }}</span>
+                        </div>
+                    </div>
+                    <div class="stat-progress">
+                        <div class="progress">
+                            <div class="progress-bar" style="width: 75%"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="col-md-3">
-            <div class="card stat-card text-white bg-success">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stat-card gradient-success" data-stat="enti-civili">
                 <div class="card-body">
-                    <h5 class="card-title">ENTI CIVILI</h5>
-                    <h2 class="card-text">{{ stats.enti_civili|default(0) }}</h2>
+                    <div class="stat-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h5 class="card-title">ENTI CIVILI</h5>
+                        <h2 class="card-value counter" data-target="{{ stats.enti_civili|default(0) }}">0</h2>
+                        <div class="stat-trend">
+                            <i class="fas fa-arrow-up"></i> +12% questo mese
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="col-md-3">
-            <div class="card stat-card text-white bg-info">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stat-card gradient-info" data-stat="enti-militari">
                 <div class="card-body">
-                    <h5 class="card-title">ENTI MILITARI</h5>
-                    <h2 class="card-text">{{ stats.enti_militari|default(0) }}</h2>
+                    <div class="stat-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h5 class="card-title">ENTI MILITARI</h5>
+                        <h2 class="card-value counter" data-target="{{ stats.enti_militari|default(0) }}">0</h2>
+                        <div class="stat-trend">
+                            <i class="fas fa-minus"></i> Stabile
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="col-md-3">
-            <div class="card stat-card text-white bg-warning">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card stat-card gradient-warning" data-stat="operazioni">
                 <div class="card-body">
-                    <h5 class="card-title">OPERAZIONI ATTIVE</h5>
-                    <h2 class="card-text">{{ stats.operazioni_attive|default(0) }}</h2>
+                    <div class="stat-icon">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h5 class="card-title">OPERAZIONI ATTIVE</h5>
+                        <h2 class="card-value counter" data-target="{{ stats.operazioni_attive|default(0) }}">0</h2>
+                        <div class="stat-trend">
+                            <i class="fas fa-arrow-down"></i> -5% questa settimana
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Info Sistema -->
+    <!-- Grafici e Info Sistema -->
     <div class="row">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-info-circle"></i> Informazioni Sistema</h5>
+        <!-- Grafico Attività -->
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-chart-line"></i> Attività Sistema</h5>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary active" data-period="week">Settimana</button>
+                        <button type="button" class="btn btn-outline-secondary" data-period="month">Mese</button>
+                        <button type="button" class="btn btn-outline-secondary" data-period="year">Anno</button>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <table class="table table-sm">
-                        <tr>
-                            <td>Versione Sistema:</td>
-                            <td><strong>2.0.0</strong></td>
-                        </tr>
-                        <tr>
-                            <td>Database:</td>
-                            <td><strong>SQLite</strong></td>
-                        </tr>
-                        <tr>
-                            <td>Ultimo Accesso:</td>
-                            <td><strong>{{ session.get('login_time')|datetime_format('%d/%m/%Y %H:%M') if session.get('login_time') else 'N/A' }}</strong></td>
-                        </tr>
-                        <tr>
-                            <td>Ruolo Utente:</td>
-                            <td><strong class="text-danger">{{ session.get('ruolo_nome', 'N/A') }}</strong></td>
-                        </tr>
-                    </table>
+                    <canvas id="activityChart" height="100"></canvas>
                 </div>
             </div>
         </div>
         
-        <div class="col-md-6">
-            <div class="card">
+        <!-- Info Sistema -->
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle"></i> Informazioni Sistema</h5>
+                </div>
+                <div class="card-body">
+                    <div class="system-info">
+                        <div class="info-item">
+                            <span class="info-label">Versione Sistema:</span>
+                            <span class="info-value">2.0.0</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Database:</span>
+                            <span class="info-value">SQLite</span>
+                            <span class="status-indicator online"></span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Ultimo Accesso:</span>
+                            <span class="info-value">{{ session.get('login_time')|datetime_format('%d/%m/%Y %H:%M') if session.get('login_time') else 'N/A' }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Ruolo Utente:</span>
+                            <span class="info-value text-danger fw-bold">{{ session.get('ruolo_nome', 'N/A') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Utilizzo CPU:</span>
+                            <div class="progress mt-1">
+                                <div class="progress-bar bg-success" style="width: 35%">35%</div>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Memoria:</span>
+                            <div class="progress mt-1">
+                                <div class="progress-bar bg-info" style="width: 60%">60%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Azioni Rapide e Attività Recenti -->
+    <div class="row">
+        <!-- Azioni Rapide -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
                 <div class="card-header">
                     <h5><i class="fas fa-bolt"></i> Azioni Rapide</h5>
                 </div>
                 <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('main.gestione_utenti') }}" class="btn btn-primary">
-                            <i class="fas fa-users"></i> Gestione Utenti
+                    <div class="quick-actions">
+                        <a href="{{ url_for('main.gestione_utenti') }}" class="action-card">
+                            <div class="action-icon bg-primary">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="action-content">
+                                <h6>Gestione Utenti</h6>
+                                <small>Gestisci utenti e permessi</small>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
                         </a>
-                        <a href="{{ url_for('main.info_sistema') }}" class="btn btn-info">
-                            <i class="fas fa-server"></i> Informazioni Sistema
+                        
+                        <a href="{{ url_for('main.info_sistema') }}" class="action-card">
+                            <div class="action-icon bg-info">
+                                <i class="fas fa-server"></i>
+                            </div>
+                            <div class="action-content">
+                                <h6>Informazioni Sistema</h6>
+                                <small>Dettagli e configurazioni</small>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
                         </a>
-                        <button class="btn btn-secondary" disabled>
-                            <i class="fas fa-database"></i> Backup Database (In sviluppo)
-                        </button>
-                        <button class="btn btn-dark" disabled>
-                            <i class="fas fa-file-alt"></i> Visualizza Log (In sviluppo)
-                        </button>
+                        
+                        <a href="#" class="action-card" onclick="showComingSoon(); return false;">
+                            <div class="action-icon bg-secondary">
+                                <i class="fas fa-database"></i>
+                            </div>
+                            <div class="action-content">
+                                <h6>Backup Database</h6>
+                                <small class="text-muted">In sviluppo</small>
+                            </div>
+                            <i class="fas fa-lock"></i>
+                        </a>
+                        
+                        <a href="#" class="action-card" onclick="showComingSoon(); return false;">
+                            <div class="action-icon bg-dark">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div class="action-content">
+                                <h6>Visualizza Log</h6>
+                                <small class="text-muted">In sviluppo</small>
+                            </div>
+                            <i class="fas fa-lock"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Attività Recenti -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-history"></i> Attività Recenti</h5>
+                    <button class="btn btn-sm btn-outline-secondary">Vedi Tutte</button>
+                </div>
+                <div class="card-body">
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-icon bg-success">
+                                <i class="fas fa-user-plus"></i>
+                            </div>
+                            <div class="activity-content">
+                                <p><strong>Nuovo utente registrato</strong></p>
+                                <small class="text-muted">Mario Rossi - 5 minuti fa</small>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon bg-warning">
+                                <i class="fas fa-edit"></i>
+                            </div>
+                            <div class="activity-content">
+                                <p><strong>Ente modificato</strong></p>
+                                <small class="text-muted">Comando Provinciale - 1 ora fa</small>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon bg-info">
+                                <i class="fas fa-file-export"></i>
+                            </div>
+                            <div class="activity-content">
+                                <p><strong>Export dati completato</strong></p>
+                                <small class="text-muted">Report mensile - 2 ore fa</small>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon bg-danger">
+                                <i class="fas fa-user-times"></i>
+                            </div>
+                            <div class="activity-content">
+                                <p><strong>Utente disattivato</strong></p>
+                                <small class="text-muted">Giuseppe Verdi - 3 ore fa</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -108,19 +274,9 @@
     </div>
 </div>
 
-<style>
-.stat-card {
-    transition: transform 0.2s;
-}
-.stat-card:hover {
-    transform: translateY(-5px);
-}
-.stat-card .card-body {
-    padding: 1.5rem;
-}
-.stat-card h2 {
-    font-size: 2.5rem;
-    margin: 0.5rem 0;
-}
-</style>
+{% endblock %}
+
+{% block additional_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard_admin.js') }}"></script>
 {% endblock %}

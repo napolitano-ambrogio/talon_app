@@ -1,308 +1,664 @@
 /**
- * TALON LOGIN FORM HANDLER
+ * ========================================
+ * TALON - LOGIN FORM HANDLER (SPA VERSION)
  * File: static/js/login.js
  * 
- * Gestisce SOLO la logica del form di login
- * Neural Network gestita da neural-network.js
+ * Versione: 2.0.0 - Ottimizzata per SPA
+ * Gestisce la logica del form di login
+ * con supporto completo SPA
+ * ========================================
  */
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('[TALON Login] Sistema di login inizializzato');
-    
-    // Elementi del DOM
-    const form = document.getElementById('loginForm');
-    const btn = document.getElementById('loginBtn');
-    const inputs = document.querySelectorAll('input');
-    
+(function(window, document) {
+    'use strict';
+
+    // Namespace globale
+    window.TalonLogin = window.TalonLogin || {};
+
     // ========================================
-    // GESTIONE SUBMIT FORM
+    // STATO E CONFIGURAZIONE
     // ========================================
     
-    form.addEventListener('submit', function(e) {
-        // Disabilita il pulsante e mostra loading
-        btn.disabled = true;
-        btn.classList.add('loading');
-        btn.textContent = 'ACCESSO IN CORSO...';
-        
-        console.log('[TALON Login] Invio credenziali in corso...');
-        
-        // Timeout di sicurezza - riabilita dopo 5 secondi se non redirect
-        setTimeout(() => {
-            if (btn.disabled) {
-                btn.disabled = false;
-                btn.classList.remove('loading');
-                btn.textContent = 'ACCEDI';
-                console.log('[TALON Login] Timeout - pulsante riabilitato');
-            }
-        }, 5000);
-    });
-    
+    const state = {
+        initialized: false,
+        form: null,
+        submitBtn: null,
+        inputs: [],
+        eventHandlers: new Map(),
+        submitTimeout: null,
+        networkCheckInterval: null,
+        isSubmitting: false
+    };
+
+    const config = {
+        SUBMIT_TIMEOUT: 5000,
+        NETWORK_CHECK_INTERVAL: 10000,
+        DEBUG_MODE: localStorage.getItem('talonDebugMode') === 'true',
+        ANIMATION_DURATION: 300
+    };
+
     // ========================================
-    // GESTIONE INPUT FIELDS
-    // ========================================
-    
-    inputs.forEach(input => {
-        // Effetto focus migliorato
-        input.addEventListener('focus', function() {
-            this.parentElement.classList.add('focused');
-            console.log(`[TALON Login] Focus su campo: ${this.name}`);
-        });
-        
-        input.addEventListener('blur', function() {
-            this.parentElement.classList.remove('focused');
-        });
-        
-        // Validazione in tempo reale
-        input.addEventListener('input', function() {
-            if (this.value.trim() !== '') {
-                this.classList.add('has-content');
-            } else {
-                this.classList.remove('has-content');
-            }
-            
-            // Validazione username (solo lettere e numeri)
-            if (this.name === 'username') {
-                const isValid = /^[a-zA-Z0-9_.-]*$/.test(this.value);
-                if (!isValid && this.value.length > 0) {
-                    this.style.borderColor = '#ef4444';
-                } else {
-                    this.style.borderColor = '';
-                }
-            }
-        });
-        
-        // Rimuovi spazi iniziali e finali
-        input.addEventListener('blur', function() {
-            this.value = this.value.trim();
-        });
-    });
-    
-    // ========================================
-    // GESTIONE KEYBOARD
+    // INIZIALIZZAZIONE
     // ========================================
     
-    // Gestione tasto Enter
-    form.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            
-            // Verifica che tutti i campi required siano compilati
-            const requiredInputs = form.querySelectorAll('input[required]');
-            let allValid = true;
-            
-            requiredInputs.forEach(input => {
-                if (!input.value.trim()) {
-                    allValid = false;
-                    input.focus();
-                    input.style.borderColor = '#ef4444';
-                    setTimeout(() => {
-                        input.style.borderColor = '';
-                    }, 2000);
-                }
-            });
-            
-            if (allValid) {
-                form.requestSubmit();
-            }
+    function initialize() {
+        log('[TALON Login] Inizializzazione sistema login (SPA)...');
+
+        // Cleanup precedente se necessario
+        if (state.initialized) {
+            cleanup();
         }
-    });
-    
-    // Navigazione tra campi con Tab
-    inputs.forEach((input, index) => {
-        input.addEventListener('keydown', function(e) {
-            if (e.key === 'Tab') {
-                // Comportamento tab normale, ma logga per debug
-                console.log(`[TALON Login] Tab navigation: ${this.name} -> ${inputs[index + 1]?.name || 'submit'}`);
-            }
-        });
-    });
-    
-    // ========================================
-    // GESTIONE ERRORI E CONNESSIONE
-    // ========================================
-    
-    // Gestione stato connessione
-    window.addEventListener('online', function() {
-        console.log('[TALON Login] ✅ Connessione ripristinata');
-        
-        // Riabilita form se era disabilitato
-        if (btn.disabled && !btn.classList.contains('loading')) {
-            btn.disabled = false;
-            btn.textContent = 'ACCEDI';
+
+        // Verifica se siamo nella pagina login
+        if (!isLoginPage()) {
+            log('[TALON Login] Non nella pagina login, skip init');
+            return;
         }
-        
-        // Rimuovi eventuali messaggi di errore di rete
-        const networkErrors = document.querySelectorAll('.alert-network-error');
-        networkErrors.forEach(alert => alert.remove());
-    });
-    
-    window.addEventListener('offline', function() {
-        console.log('[TALON Login] ❌ Connessione persa');
-        
-        // Disabilita form temporaneamente
-        if (btn.classList.contains('loading')) {
-            btn.disabled = false;
-            btn.classList.remove('loading');
-            btn.textContent = 'CONNESSIONE PERSA';
-            
-            // Mostra messaggio di errore
-            showNetworkError('Connessione Internet persa. Controlla la tua connessione.');
+
+        // Trova elementi DOM
+        if (!initializeDOM()) {
+            log('[TALON Login] Elementi DOM non trovati');
+            return;
         }
-    });
-    
-    // ========================================
-    // FUNZIONI HELPER
-    // ========================================
-    
-    function showNetworkError(message) {
-        // Rimuovi errori esistenti
-        const existingErrors = document.querySelectorAll('.alert-network-error');
-        existingErrors.forEach(alert => alert.remove());
+
+        // Setup handlers
+        setupFormSubmitHandler();
+        setupInputHandlers();
+        setupKeyboardHandlers();
+        setupConnectionHandlers();
         
-        // Crea nuovo alert
-        const alertDiv = document.createElement('div');
-        alertDiv.className = 'alert alert-error alert-network-error';
-        alertDiv.textContent = message;
-        
-        // Inserisci prima del form
-        const flashContainer = document.querySelector('.flash-messages') || 
-                              form.parentNode.insertBefore(document.createElement('div'), form);
-        if (!flashContainer.classList.contains('flash-messages')) {
-            flashContainer.className = 'flash-messages';
+        // Setup debug mode se attivo
+        if (config.DEBUG_MODE) {
+            setupDebugMode();
         }
+
+        // Auto-focus primo campo
+        autoFocusFirstField();
         
-        flashContainer.appendChild(alertDiv);
+        // Check neural network
+        checkNeuralNetwork();
+
+        state.initialized = true;
+        log('[TALON Login] ✅ Sistema login inizializzato');
         
-        // Rimuovi automaticamente dopo 5 secondi
-        setTimeout(() => {
-            alertDiv.remove();
-        }, 5000);
+        // Emetti evento
+        emitEvent('login:ready');
     }
+
+    // ========================================
+    // CLEANUP
+    // ========================================
     
-    // Validazione form completa
-    function validateForm() {
-        let isValid = true;
-        const errors = [];
-        
-        // Controlla username
-        const username = document.getElementById('username').value.trim();
-        if (!username) {
-            errors.push('Username è obbligatorio');
-            isValid = false;
-        } else if (username.length < 3) {
-            errors.push('Username deve essere almeno 3 caratteri');
-            isValid = false;
-        } else if (!/^[a-zA-Z0-9_.-]+$/.test(username)) {
-            errors.push('Username può contenere solo lettere, numeri, punti, trattini e underscore');
-            isValid = false;
+    function cleanup() {
+        log('[TALON Login] Cleanup in corso...');
+
+        // Clear timeouts
+        if (state.submitTimeout) {
+            clearTimeout(state.submitTimeout);
+            state.submitTimeout = null;
         }
-        
-        // Controlla password
-        const password = document.getElementById('password').value;
-        if (!password) {
-            errors.push('Password è obbligatoria');
-            isValid = false;
-        } else if (password.length < 4) {
-            errors.push('Password deve essere almeno 4 caratteri');
-            isValid = false;
+
+        // Clear intervals
+        if (state.networkCheckInterval) {
+            clearInterval(state.networkCheckInterval);
+            state.networkCheckInterval = null;
         }
+
+        // Rimuovi event handlers
+        state.eventHandlers.forEach((handlers, element) => {
+            if (element && element.removeEventListener) {
+                handlers.forEach(([event, handler]) => {
+                    element.removeEventListener(event, handler);
+                });
+            }
+        });
+        state.eventHandlers.clear();
+
+        // Rimuovi elementi dinamici
+        document.querySelectorAll('.alert-network-error').forEach(el => el.remove());
+
+        // Reset stato
+        state.form = null;
+        state.submitBtn = null;
+        state.inputs = [];
+        state.isSubmitting = false;
+        state.initialized = false;
+
+        log('[TALON Login] ✅ Cleanup completato');
+    }
+
+    // ========================================
+    // UTILITY FUNCTIONS
+    // ========================================
+    
+    function log(...args) {
+        if (config.DEBUG_MODE) {
+            console.log(...args);
+        }
+    }
+
+    function isLoginPage() {
+        return window.location.pathname.includes('login') ||
+               document.getElementById('loginForm') ||
+               document.querySelector('form[action*="login"]');
+    }
+
+    function emitEvent(eventName, detail = {}) {
+        const event = new CustomEvent(eventName, {
+            detail: detail,
+            bubbles: true,
+            cancelable: true
+        });
+        document.dispatchEvent(event);
+    }
+
+    function addEventHandler(element, event, handler, options = {}) {
+        if (!element) return;
         
-        // Mostra errori se presenti
-        if (!isValid) {
-            console.log('[TALON Login] Errori validazione:', errors);
-            // Potresti mostrare gli errori nell'UI se necessario
+        element.addEventListener(event, handler, options);
+        
+        // Salva handler per cleanup
+        if (!state.eventHandlers.has(element)) {
+            state.eventHandlers.set(element, []);
+        }
+        state.eventHandlers.get(element).push([event, handler]);
+    }
+
+    // ========================================
+    // INIZIALIZZAZIONE DOM
+    // ========================================
+    
+    function initializeDOM() {
+        state.form = document.getElementById('loginForm') || 
+                    document.querySelector('form[action*="login"]');
+        
+        if (!state.form) return false;
+
+        state.submitBtn = document.getElementById('loginBtn') ||
+                         state.form.querySelector('button[type="submit"]') ||
+                         state.form.querySelector('input[type="submit"]');
+        
+        state.inputs = Array.from(state.form.querySelectorAll('input'));
+        
+        return true;
+    }
+
+    // ========================================
+    // FORM SUBMIT HANDLER
+    // ========================================
+    
+    function setupFormSubmitHandler() {
+        if (!state.form) return;
+
+        const submitHandler = function(e) {
+            // Previeni submit multipli
+            if (state.isSubmitting) {
+                e.preventDefault();
+                return;
+            }
+
+            state.isSubmitting = true;
+
+            // Disabilita il pulsante e mostra loading
+            if (state.submitBtn) {
+                state.submitBtn.disabled = true;
+                state.submitBtn.classList.add('loading');
+                
+                const originalText = state.submitBtn.textContent;
+                state.submitBtn.textContent = 'ACCESSO IN CORSO...';
+                
+                // Salva testo originale per ripristino
+                state.submitBtn.dataset.originalText = originalText;
+            }
+            
+            log('[TALON Login] Invio credenziali in corso...');
+            
+            // Timeout di sicurezza
+            state.submitTimeout = setTimeout(() => {
+                resetSubmitButton();
+                state.isSubmitting = false;
+                log('[TALON Login] Timeout - pulsante riabilitato');
+            }, config.SUBMIT_TIMEOUT);
+        };
+
+        addEventHandler(state.form, 'submit', submitHandler);
+    }
+
+    function resetSubmitButton() {
+        if (!state.submitBtn) return;
+        
+        state.submitBtn.disabled = false;
+        state.submitBtn.classList.remove('loading');
+        
+        const originalText = state.submitBtn.dataset.originalText || 'ACCEDI';
+        state.submitBtn.textContent = originalText;
+    }
+
+    // ========================================
+    // INPUT HANDLERS
+    // ========================================
+    
+    function setupInputHandlers() {
+        state.inputs.forEach(input => {
+            // Focus handler
+            const focusHandler = function() {
+                this.parentElement?.classList.add('focused');
+                log(`[TALON Login] Focus su campo: ${this.name}`);
+            };
+            
+            const blurHandler = function() {
+                this.parentElement?.classList.remove('focused');
+                // Trim value
+                this.value = this.value.trim();
+            };
+            
+            addEventHandler(input, 'focus', focusHandler);
+            addEventHandler(input, 'blur', blurHandler);
+            
+            // Validazione in tempo reale
+            const inputHandler = function() {
+                // Aggiungi classe has-content
+                if (this.value.trim() !== '') {
+                    this.classList.add('has-content');
+                } else {
+                    this.classList.remove('has-content');
+                }
+                
+                // Validazione username
+                if (this.name === 'username') {
+                    validateUsername(this);
+                }
+                
+                // Rimuovi errori precedenti
+                this.classList.remove('is-invalid');
+            };
+            
+            addEventHandler(input, 'input', inputHandler);
+        });
+    }
+
+    function validateUsername(input) {
+        const isValid = /^[a-zA-Z0-9_.-]*$/.test(input.value);
+        
+        if (!isValid && input.value.length > 0) {
+            input.style.borderColor = '#ef4444';
+            showFieldError(input, 'Username può contenere solo lettere, numeri e ._-');
+        } else {
+            input.style.borderColor = '';
+            hideFieldError(input);
         }
         
         return isValid;
     }
-    
-    // ========================================
-    // MIGLIORAMENTI UX
-    // ========================================
-    
-    // Auto-focus sul primo campo vuoto all'avvio
-    setTimeout(() => {
-        const firstEmptyInput = Array.from(inputs).find(input => !input.value.trim());
-        if (firstEmptyInput) {
-            firstEmptyInput.focus();
+
+    function showFieldError(field, message) {
+        let errorEl = field.parentNode?.querySelector('.field-error');
+        if (!errorEl) {
+            errorEl = document.createElement('small');
+            errorEl.className = 'field-error text-danger';
+            field.parentNode?.appendChild(errorEl);
         }
-    }, 500);
+        errorEl.textContent = message;
+    }
+
+    function hideFieldError(field) {
+        const errorEl = field.parentNode?.querySelector('.field-error');
+        if (errorEl) {
+            errorEl.remove();
+        }
+    }
+
+    // ========================================
+    // KEYBOARD HANDLERS
+    // ========================================
     
-    // Shake animation per errori
+    function setupKeyboardHandlers() {
+        if (!state.form) return;
+
+        // Gestione Enter
+        const keydownHandler = function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                
+                // Verifica campi required
+                if (validateForm()) {
+                    state.form.requestSubmit();
+                }
+            }
+        };
+        
+        addEventHandler(state.form, 'keydown', keydownHandler);
+        
+        // Tab navigation logging
+        state.inputs.forEach((input, index) => {
+            const tabHandler = function(e) {
+                if (e.key === 'Tab') {
+                    const nextInput = state.inputs[index + 1];
+                    log(`[TALON Login] Tab navigation: ${this.name} -> ${nextInput?.name || 'submit'}`);
+                }
+            };
+            
+            addEventHandler(input, 'keydown', tabHandler);
+        });
+    }
+
+    function validateForm() {
+        let isValid = true;
+        const errors = [];
+        
+        state.inputs.forEach(input => {
+            if (input.hasAttribute('required') && !input.value.trim()) {
+                input.classList.add('is-invalid');
+                errors.push(`${input.name} è obbligatorio`);
+                isValid = false;
+                
+                // Focus sul primo campo con errore
+                if (errors.length === 1) {
+                    input.focus();
+                    shakeElement(input);
+                }
+            }
+        });
+        
+        // Validazione specifica username
+        const usernameInput = state.form.querySelector('input[name="username"]');
+        if (usernameInput && !validateUsername(usernameInput)) {
+            isValid = false;
+        }
+        
+        if (!isValid && errors.length > 0) {
+            log('[TALON Login] Errori validazione:', errors);
+            showNetworkError(errors[0]);
+        }
+        
+        return isValid;
+    }
+
+    // ========================================
+    // CONNECTION HANDLERS
+    // ========================================
+    
+    function setupConnectionHandlers() {
+        // Online handler
+        const onlineHandler = function() {
+            log('[TALON Login] ✅ Connessione ripristinata');
+            
+            // Riabilita form
+            if (state.submitBtn && !state.isSubmitting) {
+                resetSubmitButton();
+            }
+            
+            // Rimuovi errori di rete
+            document.querySelectorAll('.alert-network-error').forEach(alert => alert.remove());
+            
+            updateConnectionStatus(true);
+        };
+        
+        // Offline handler
+        const offlineHandler = function() {
+            log('[TALON Login] ❌ Connessione persa');
+            
+            // Disabilita form temporaneamente
+            if (state.submitBtn && state.submitBtn.classList.contains('loading')) {
+                state.submitBtn.disabled = false;
+                state.submitBtn.classList.remove('loading');
+                state.submitBtn.textContent = 'CONNESSIONE PERSA';
+                
+                showNetworkError('Connessione Internet persa. Controlla la tua connessione.');
+            }
+            
+            updateConnectionStatus(false);
+        };
+        
+        addEventHandler(window, 'online', onlineHandler);
+        addEventHandler(window, 'offline', offlineHandler);
+        
+        // Check iniziale
+        updateConnectionStatus(navigator.onLine);
+    }
+
+    function updateConnectionStatus(isOnline) {
+        const statusEl = document.querySelector('.connection-status');
+        if (statusEl) {
+            statusEl.textContent = isOnline ? 'Online' : 'Offline';
+            statusEl.className = `connection-status ${isOnline ? 'text-success' : 'text-danger'}`;
+        }
+    }
+
+    // ========================================
+    // UI FEEDBACK
+    // ========================================
+    
+    function showNetworkError(message) {
+        // Rimuovi errori esistenti
+        document.querySelectorAll('.alert-network-error').forEach(alert => alert.remove());
+        
+        // Crea nuovo alert
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-network-error';
+        alertDiv.style.cssText = `
+            margin: 1rem 0;
+            animation: slideDown 0.3s ease-out;
+        `;
+        alertDiv.textContent = message;
+        
+        // Inserisci prima del form
+        state.form?.parentNode?.insertBefore(alertDiv, state.form);
+        
+        // Auto-rimuovi dopo 5 secondi
+        setTimeout(() => {
+            alertDiv.style.animation = 'slideUp 0.3s ease-out';
+            setTimeout(() => alertDiv.remove(), 300);
+        }, 5000);
+    }
+
     function shakeElement(element) {
         element.style.animation = 'shake 0.5s ease-in-out';
         setTimeout(() => {
             element.style.animation = '';
         }, 500);
     }
+
+    function autoFocusFirstField() {
+        setTimeout(() => {
+            const firstEmptyInput = state.inputs.find(input => 
+                !input.value.trim() && input.type !== 'hidden'
+            );
+            if (firstEmptyInput) {
+                firstEmptyInput.focus();
+            }
+        }, 500);
+    }
+
+    // ========================================
+    // NEURAL NETWORK INTEGRATION
+    // ========================================
     
-    // CSS per shake animation (se non presente)
-    if (!document.querySelector('#shake-animation-css')) {
+    function checkNeuralNetwork() {
+        setTimeout(() => {
+            if (window.TALON_NeuralNetwork && window.TALON_NeuralNetwork.isInitialized()) {
+                log('[TALON Login] ✅ Neural Network attiva');
+                
+                // Effetti su interazione form
+                state.inputs.forEach(input => {
+                    const neuralFocusHandler = () => {
+                        if (window.TALON_NeuralNetwork.activateNodes) {
+                            window.TALON_NeuralNetwork.activateNodes(2);
+                        }
+                    };
+                    addEventHandler(input, 'focus', neuralFocusHandler);
+                });
+                
+                // Effetto durante submit
+                const neuralSubmitHandler = () => {
+                    if (window.TALON_NeuralNetwork.activateNodes) {
+                        window.TALON_NeuralNetwork.activateNodes(5);
+                    }
+                };
+                addEventHandler(state.form, 'submit', neuralSubmitHandler);
+                
+            } else {
+                log('[TALON Login] ⚠️ Neural Network non disponibile');
+            }
+        }, 1000);
+    }
+
+    // ========================================
+    // DEBUG MODE
+    // ========================================
+    
+    function setupDebugMode() {
+        log('[TALON Login] 🐛 Debug mode attivo');
+        
+        // Esponi funzioni debug
+        window.TalonLoginDebug = {
+            validateForm: validateForm,
+            shakeForm: () => shakeElement(state.form),
+            simulateSubmit: () => state.form?.requestSubmit(),
+            fillTestData: () => {
+                const usernameInput = state.form?.querySelector('input[name="username"]');
+                const passwordInput = state.form?.querySelector('input[name="password"]');
+                if (usernameInput) usernameInput.value = 'admin';
+                if (passwordInput) passwordInput.value = 'admin';
+                log('Test data inserted');
+            },
+            getState: () => ({ ...state }),
+            toggleDebug: () => {
+                config.DEBUG_MODE = !config.DEBUG_MODE;
+                localStorage.setItem('talonDebugMode', config.DEBUG_MODE.toString());
+                log('Debug mode:', config.DEBUG_MODE);
+            }
+        };
+        
+        log('[TALON Login] Debug commands available:', Object.keys(window.TalonLoginDebug));
+    }
+
+    // ========================================
+    // STYLES
+    // ========================================
+    
+    function injectStyles() {
+        if (document.getElementById('login-styles')) return;
+        
         const style = document.createElement('style');
-        style.id = 'shake-animation-css';
+        style.id = 'login-styles';
         style.textContent = `
             @keyframes shake {
                 0%, 100% { transform: translateX(0); }
                 25% { transform: translateX(-5px); }
                 75% { transform: translateX(5px); }
             }
+            
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
+            @keyframes slideUp {
+                from {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+            }
+            
+            .loading {
+                position: relative;
+                color: transparent !important;
+            }
+            
+            .loading::after {
+                content: "";
+                position: absolute;
+                width: 16px;
+                height: 16px;
+                top: 50%;
+                left: 50%;
+                margin-left: -8px;
+                margin-top: -8px;
+                border: 2px solid #f3f3f3;
+                border-radius: 50%;
+                border-top: 2px solid #3498db;
+                animation: spin 1s linear infinite;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            .field-error {
+                display: block;
+                margin-top: 0.25rem;
+                font-size: 0.875em;
+            }
         `;
         document.head.appendChild(style);
     }
-    
+
     // ========================================
-    // INTERAZIONE CON NEURAL NETWORK (OPZIONALE)
-    // ========================================
-    
-    // Controllo se neural network è disponibile e reattiva
-    setTimeout(() => {
-        if (window.TALON_NeuralNetwork && window.TALON_NeuralNetwork.isRunning()) {
-            console.log('[TALON Login] ✅ Neural Network attiva');
-            
-            // Effetti opzionali su interazione form
-            inputs.forEach(input => {
-                input.addEventListener('focus', () => {
-                    // Piccolo boost di attività quando user interagisce
-                    if (window.TALON_NeuralNetwork.activateNodes) {
-                        window.TALON_NeuralNetwork.activateNodes(2);
-                    }
-                });
-            });
-            
-            // Effetto speciale durante il submit
-            form.addEventListener('submit', () => {
-                if (window.TALON_NeuralNetwork.activateNodes) {
-                    window.TALON_NeuralNetwork.activateNodes(5);
-                }
-            });
-            
-        } else {
-            console.log('[TALON Login] ⚠️ Neural Network non disponibile');
-        }
-    }, 1000);
-    
-    // ========================================
-    // DEBUG E SVILUPPO
+    // PUBLIC API
     // ========================================
     
-    // Debug mode (solo se localStorage debug attivo)
-    if (localStorage.getItem('talonDebugMode') === 'true') {
-        console.log('[TALON Login] 🐛 Debug mode attivo');
+    window.TalonLogin = {
+        // Core methods
+        initialize: initialize,
+        cleanup: cleanup,
         
-        // Esponi funzioni utili per debug
-        window.TalonLoginDebug = {
-            validateForm: validateForm,
-            shakeForm: () => shakeElement(form),
-            simulateSubmit: () => form.requestSubmit(),
-            fillTestData: () => {
-                document.getElementById('username').value = 'admin';
-                document.getElementById('password').value = 'admin';
-                console.log('Test data inserted');
-            }
-        };
+        // Validation
+        validateForm: validateForm,
         
-        console.log('[TALON Login] Debug commands available:', Object.keys(window.TalonLoginDebug));
+        // UI methods
+        showError: showNetworkError,
+        shake: shakeElement,
+        
+        // State
+        isInitialized: () => state.initialized,
+        isSubmitting: () => state.isSubmitting,
+        
+        // Config
+        getConfig: () => ({ ...config }),
+        setDebug: (value) => { 
+            config.DEBUG_MODE = value;
+            localStorage.setItem('talonDebugMode', value.toString());
+        },
+        
+        // Version
+        version: '2.0.0'
+    };
+
+    // ========================================
+    // SPA INTEGRATION
+    // ========================================
+    
+    // Inietta stili una volta sola
+    injectStyles();
+    
+    // Listener per eventi SPA
+    if (window.TalonApp) {
+        window.TalonApp.on('content:loaded', initialize);
+        window.TalonApp.on('navigation:start', cleanup);
+    } else {
+        document.addEventListener('spa:content-loaded', initialize);
+        document.addEventListener('spa:navigation-start', cleanup);
     }
-    
-    console.log('[TALON Login] ✅ Inizializzazione completata');
-});
+
+    // Auto-inizializzazione per primo caricamento
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+        setTimeout(initialize, 100);
+    }
+
+    log('[TALON Login] Modulo caricato v' + window.TalonLogin.version + ' (SPA Ready)');
+
+})(window, document);

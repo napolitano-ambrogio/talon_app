@@ -1,6 +1,10 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+# routes/attivita.py - Blueprint per gestione attività con supporto SPA
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, get_flashed_messages, Response
 from datetime import datetime
 from psycopg2.extras import RealDictCursor
+import re
+import csv
+import io
 
 # Import dal modulo auth (usa Postgres)
 from auth import (
@@ -12,24 +16,129 @@ from auth import (
     get_auth_db_connection  # connessione centralizzata a PostgreSQL
 )
 
-attivita_bp = Blueprint('attivita', __name__, template_folder='../templates')
+# ===========================================
+# DEFINIZIONE BLUEPRINT
+# ===========================================
+attivita_bp = Blueprint(
+    'attivita',
+    __name__,
+    template_folder='../templates/attivita',  # Punta alla sottocartella attivita
+    static_folder='../static'
+)
 
 # ===========================================
-# DB HELPER (wrapper)
+# HELPERS DATABASE
 # ===========================================
+
 def get_db_connection():
+    """
+    Wrapper per ottenere la connessione database dal modulo auth.
+    Centralizza la gestione delle connessioni PostgreSQL.
+    """
     return get_auth_db_connection()
+
+# ===========================================
+# HELPERS SPA (Single Page Application)
+# ===========================================
+
+def is_spa_request():
+    """
+    Verifica se la richiesta corrente è una richiesta SPA.
+    
+    Returns:
+        bool: True se è una richiesta AJAX/SPA, False altrimenti
+    """
+    return (
+        request.headers.get('X-SPA-Request') == 'true' or
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    )
+
+def render_spa_template(template_name, **context):
+    """
+    Renderizza un template con supporto SPA.
+    Se è una richiesta SPA, ritorna JSON con HTML parziale.
+    
+    Args:
+        template_name: Nome del template (relativo alla cartella attivita/)
+        **context: Variabili di contesto per il template
+        
+    Returns:
+        Response: JSON per richieste SPA, HTML per richieste normali
+    """
+    if is_spa_request():
+        # Renderizza il template
+        html = render_template(template_name, **context)
+        
+        # Estrai le parti necessarie per SPA
+        title = 'TALON System - Attività'
+        content = html
+        breadcrumb = ''
+        
+        # Estrai il titolo
+        title_match = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE)
+        if title_match:
+            title = title_match.group(1).strip()
+        
+        # Estrai il contenuto principale
+        content_match = re.search(
+            r'<div class="flex-grow-1 p-3 main-content"[^>]*>(.*?)(?=<footer|<script|</main>|$)',
+            html,
+            re.DOTALL | re.IGNORECASE
+        )
+        if content_match:
+            content = content_match.group(1).strip()
+        
+        # Estrai breadcrumb
+        breadcrumb_match = re.search(
+            r'<ol class="breadcrumb[^"]*">(.*?)</ol>',
+            html,
+            re.DOTALL | re.IGNORECASE
+        )
+        if breadcrumb_match:
+            breadcrumb = breadcrumb_match.group(1).strip()
+        
+        # Restituisci JSON per SPA
+        return jsonify({
+            'success': True,
+            'title': title,
+            'content': content,
+            'breadcrumb': breadcrumb,
+            'template': template_name,
+            'flash_messages': get_flashed_messages(with_categories=True)
+        })
+    
+    # Richiesta normale
+    return render_template(template_name, **context)
 
 # ===========================================
 # FUNZIONI HELPER
 # ===========================================
+
 def _build_in_clause(ids):
-    """Ritorna (placeholders, params) per una IN clause sicura."""
+    """
+    Costruisce placeholders e parametri per una IN clause sicura.
+    
+    Args:
+        ids: Lista di ID
+        
+    Returns:
+        tuple: (placeholders string, params list)
+    """
     placeholders = ','.join(['%s'] * len(ids))
     return placeholders, list(ids)
 
 def get_location_name(conn, militare_id, civile_id):
-    """Recupera il nome di una location (militare o civile)"""
+    """
+    Recupera il nome di una location (militare o civile).
+    
+    Args:
+        conn: Connessione database
+        militare_id: ID ente militare
+        civile_id: ID ente civile
+        
+    Returns:
+        str: Nome della location o None
+    """
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         if militare_id:
             cur.execute('SELECT nome FROM enti_militari WHERE id = %s', (militare_id,))
@@ -42,9 +151,20 @@ def get_location_name(conn, militare_id, civile_id):
     return None
 
 def validate_activity_access(user_id, activity_id, accessible_entities):
-    """Valida che l'utente abbia accesso all'attività"""
+    """
+    Valida che l'utente abbia accesso all'attività.
+    
+    Args:
+        user_id: ID utente
+        activity_id: ID attività
+        accessible_entities: Lista enti accessibili
+        
+    Returns:
+        dict: Dati attività se accessibile, None altrimenti
+    """
     if not accessible_entities:
         return None
+    
     conn = get_db_connection()
     try:
         placeholders, params = _build_in_clause(accessible_entities)
@@ -60,7 +180,15 @@ def validate_activity_access(user_id, activity_id, accessible_entities):
         conn.close()
 
 def get_tipologie_organizzate(conn):
-    """Recupera tipologie attività organizzate per categoria"""
+    """
+    Recupera tipologie attività organizzate per categoria.
+    
+    Args:
+        conn: Connessione database
+        
+    Returns:
+        dict: Dizionario con tipologie organizzate per categoria
+    """
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute('SELECT * FROM tipologie_attivita WHERE parent_id IS NULL ORDER BY nome')
@@ -73,11 +201,21 @@ def get_tipologie_organizzate(conn):
                 tipologie_organizzate[cat['nome']] = sottocategorie
 
             return tipologie_organizzate
-    except Exception:
+    except Exception as e:
+        print(f"Errore nel recupero tipologie: {e}")
         return {}
 
 def process_location_ids(partenza_val, destinazione_val):
-    """Processa gli ID di partenza e destinazione"""
+    """
+    Processa gli ID di partenza e destinazione dal form.
+    
+    Args:
+        partenza_val: Valore campo partenza (formato: "tipo-id")
+        destinazione_val: Valore campo destinazione (formato: "tipo-id")
+        
+    Returns:
+        tuple: (partenza_militare_id, partenza_civile_id, destinazione_militare_id, destinazione_civile_id)
+    """
     partenza_militare_id = partenza_civile_id = None
     destinazione_militare_id = destinazione_civile_id = None
 
@@ -98,7 +236,15 @@ def process_location_ids(partenza_val, destinazione_val):
     return partenza_militare_id, partenza_civile_id, destinazione_militare_id, destinazione_civile_id
 
 def save_activity_details(conn, activity_id, tipologia_nome, form_data):
-    """Salva i dettagli specifici dell'attività basati sulla tipologia"""
+    """
+    Salva i dettagli specifici dell'attività basati sulla tipologia.
+    
+    Args:
+        conn: Connessione database
+        activity_id: ID attività
+        tipologia_nome: Nome della tipologia
+        form_data: Dati del form
+    """
     with conn.cursor() as cur:
         if tipologia_nome == 'MOVIMENTI E TRASPORTI':
             cur.execute("""
@@ -155,7 +301,17 @@ def save_activity_details(conn, activity_id, tipologia_nome, form_data):
             ))
 
 def get_activity_details(conn, activity_id, tipologia_nome):
-    """Recupera i dettagli specifici dell'attività"""
+    """
+    Recupera i dettagli specifici dell'attività.
+    
+    Args:
+        conn: Connessione database
+        activity_id: ID attività
+        tipologia_nome: Nome della tipologia
+        
+    Returns:
+        dict: Dettagli specifici o dizionario vuoto
+    """
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         if tipologia_nome == 'MOVIMENTI E TRASPORTI':
             cur.execute('SELECT * FROM dettagli_trasporti WHERE attivita_id = %s', (activity_id,))
@@ -172,9 +328,18 @@ def get_activity_details(conn, activity_id, tipologia_nome):
     return {}
 
 def get_enti_form_data(conn, accessible_entities=None):
-    """Recupera i dati degli enti per i form con i campi corretti"""
+    """
+    Recupera i dati degli enti per i form.
+    
+    Args:
+        conn: Connessione database
+        accessible_entities: Lista ID enti accessibili (opzionale)
+        
+    Returns:
+        tuple: (enti_militari list, enti_civili list)
+    """
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        # Enti militari - solo campi che esistono realmente nel DB
+        # Enti militari - solo quelli accessibili se specificato
         if accessible_entities:
             placeholders, params = _build_in_clause(accessible_entities)
             cur.execute(
@@ -194,7 +359,7 @@ def get_enti_form_data(conn, accessible_entities=None):
             )
         enti_militari = cur.fetchall()
 
-        # Enti civili - tutti i campi esistenti
+        # Enti civili - tutti disponibili
         cur.execute(
             '''SELECT id, nome, indirizzo, civico, cap, citta, provincia, nazione 
                FROM enti_civili 
@@ -207,10 +372,13 @@ def get_enti_form_data(conn, accessible_entities=None):
 # ===========================================
 # ROUTE PRINCIPALI
 # ===========================================
+
 @attivita_bp.route('/attivita')
 @permission_required('VIEW_ATTIVITA')
 def lista_attivita():
-    """Lista attività filtrata per cono d'ombra dell'utente"""
+    """
+    Lista attività filtrata per cono d'ombra dell'utente con supporto SPA.
+    """
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
     user_role = get_user_role()
@@ -226,6 +394,7 @@ def lista_attivita():
     try:
         attivita_list = []
         enti_per_filtro = []
+        
         if accessible_entities:
             placeholders, params = _build_in_clause(accessible_entities)
             base_query = f"""
@@ -247,6 +416,7 @@ def lista_attivita():
             """
             qparams = params[:]
 
+            # Applica filtri
             if search:
                 base_query += " AND (a.descrizione ILIKE %s OR em.nome ILIKE %s OR ta.nome ILIKE %s)"
                 like = f'%{search}%'
@@ -271,6 +441,7 @@ def lista_attivita():
                     cur.execute(base_query, qparams)
                     attivita_list = cur.fetchall()
 
+                    # Enti per filtro dropdown
                     cur.execute(
                         f'SELECT id, nome FROM enti_militari WHERE id IN ({placeholders}) ORDER BY nome',
                         params
@@ -284,7 +455,7 @@ def lista_attivita():
     finally:
         conn.close()
 
-    # Log
+    # Log accesso
     log_user_action(
         user_id,
         'VIEW_ATTIVITA_LIST',
@@ -293,7 +464,7 @@ def lista_attivita():
         ip_address=request.remote_addr
     )
 
-    return render_template(
+    return render_spa_template(
         'lista_attivita.html',
         attivita_list=attivita_list,
         enti_per_filtro=enti_per_filtro,
@@ -310,19 +481,28 @@ def lista_attivita():
 @operatore_or_admin_required
 @permission_required('CREATE_ATTIVITA')
 def inserisci_attivita_form():
-    """Form inserimento attività - Solo enti accessibili"""
+    """
+    Form inserimento attività con supporto SPA.
+    Solo enti accessibili all'utente.
+    """
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
     if not accessible_entities:
         flash('Non hai accesso a nessun ente per creare attività.', 'warning')
+        if is_spa_request():
+            return jsonify({
+                'success': False,
+                'error': 'Nessun ente accessibile',
+                'redirect': url_for('attivita.lista_attivita')
+            }), 403
         return redirect(url_for('attivita.lista_attivita'))
 
     conn = get_db_connection()
 
     try:
         with conn:
-            # Usa la funzione helper per ottenere i dati degli enti
+            # Recupera dati per il form
             enti_militari, enti_civili = get_enti_form_data(conn, accessible_entities)
 
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -343,6 +523,7 @@ def inserisci_attivita_form():
     finally:
         conn.close()
 
+    # Log accesso
     log_user_action(
         user_id,
         'ACCESS_CREATE_ATTIVITA_FORM',
@@ -350,24 +531,32 @@ def inserisci_attivita_form():
         ip_address=request.remote_addr
     )
 
-    return render_template('inserimento_attivita.html',
-                           enti_militari=enti_militari,
-                           enti_civili=enti_civili,
-                           operazioni=operazioni,
-                           tipologie=tipologie_organizzate)
+    return render_spa_template(
+        'inserimento_attivita.html',
+        enti_militari=enti_militari,
+        enti_civili=enti_civili,
+        operazioni=operazioni,
+        tipologie=tipologie_organizzate
+    )
 
 @attivita_bp.route('/salva_attivita', methods=['POST'])
 @operatore_or_admin_required
 @permission_required('CREATE_ATTIVITA')
 def salva_attivita():
-    """Salva nuova attività con controlli completi"""
+    """
+    Salva nuova attività con controlli completi.
+    Supporta richieste SPA.
+    """
     user_id = request.current_user['user_id']
 
     # Validazione input base
     required_fields = ['ente_svolgimento_id', 'tipologia_id', 'data_inizio', 'descrizione']
     for field in required_fields:
         if not request.form.get(field, '').strip():
-            flash(f'Il campo {field.replace("_", " ")} è obbligatorio.', 'error')
+            error_msg = f'Il campo {field.replace("_", " ")} è obbligatorio.'
+            flash(error_msg, 'error')
+            if is_spa_request():
+                return jsonify({'success': False, 'error': error_msg}), 400
             return redirect(url_for('attivita.inserisci_attivita_form'))
 
     ente_svolgimento_id = int(request.form['ente_svolgimento_id'])
@@ -375,7 +564,8 @@ def salva_attivita():
     # Verifica accesso all'ente
     accessible_entities = get_user_accessible_entities(user_id)
     if ente_svolgimento_id not in accessible_entities:
-        flash('Non hai accesso all\'ente selezionato.', 'error')
+        error_msg = 'Non hai accesso all\'ente selezionato.'
+        flash(error_msg, 'error')
         log_user_action(
             user_id,
             'ACCESS_DENIED_CREATE_ATTIVITA',
@@ -383,6 +573,8 @@ def salva_attivita():
             'attivita',
             result='FAILED'
         )
+        if is_spa_request():
+            return jsonify({'success': False, 'error': error_msg}), 403
         return redirect(url_for('attivita.inserisci_attivita_form'))
 
     # Validazione date
@@ -394,10 +586,16 @@ def salva_attivita():
             inizio = datetime.strptime(data_inizio, '%Y-%m-%d')
             fine = datetime.strptime(data_fine, '%Y-%m-%d')
             if fine < inizio:
-                flash('La data di fine non può essere precedente alla data di inizio.', 'error')
+                error_msg = 'La data di fine non può essere precedente alla data di inizio.'
+                flash(error_msg, 'error')
+                if is_spa_request():
+                    return jsonify({'success': False, 'error': error_msg}), 400
                 return redirect(url_for('attivita.inserisci_attivita_form'))
         except ValueError:
-            flash('Formato data non valido.', 'error')
+            error_msg = 'Formato data non valido.'
+            flash(error_msg, 'error')
+            if is_spa_request():
+                return jsonify({'success': False, 'error': error_msg}), 400
             return redirect(url_for('attivita.inserisci_attivita_form'))
 
     conn = get_db_connection()
@@ -409,7 +607,7 @@ def salva_attivita():
                 partenza_militare_id, partenza_civile_id, destinazione_militare_id, destinazione_civile_id = \
                     process_location_ids(request.form.get('partenza_id'), request.form.get('destinazione_id'))
 
-                # Inserisci attività (RETURNING id)
+                # Inserisci attività
                 cur.execute("""
                     INSERT INTO attivita (
                         ente_svolgimento_id, tipologia_id, data_inizio, data_fine, descrizione,
@@ -442,6 +640,7 @@ def salva_attivita():
                 if tipologia_result:
                     save_activity_details(conn, new_id, tipologia_result['nome'], request.form)
 
+        # Log successo
         log_user_action(
             user_id,
             'CREATE_ATTIVITA',
@@ -451,10 +650,19 @@ def salva_attivita():
         )
 
         flash('Attività creata con successo.', 'success')
+        
+        if is_spa_request():
+            return jsonify({
+                'success': True,
+                'message': 'Attività creata con successo',
+                'redirect': url_for('attivita.visualizza_attivita', id=new_id)
+            })
+        
         return redirect(url_for('attivita.visualizza_attivita', id=new_id))
 
     except Exception as e:
-        flash(f'Errore durante il salvataggio: {str(e)}', 'error')
+        error_msg = f'Errore durante il salvataggio: {str(e)}'
+        flash(error_msg, 'error')
         log_user_action(
             user_id,
             'CREATE_ATTIVITA_ERROR',
@@ -462,6 +670,10 @@ def salva_attivita():
             'attivita',
             result='FAILED'
         )
+        
+        if is_spa_request():
+            return jsonify({'success': False, 'error': error_msg}), 500
+        
         return redirect(url_for('attivita.inserisci_attivita_form'))
     finally:
         conn.close()
@@ -469,14 +681,17 @@ def salva_attivita():
 @attivita_bp.route('/attivita/<int:id>')
 @permission_required('VIEW_ATTIVITA')
 def visualizza_attivita(id):
-    """Visualizza singola attività con controllo accesso"""
+    """
+    Visualizza singola attività con controllo accesso e supporto SPA.
+    """
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
     # Verifica accesso
     attivita = validate_activity_access(user_id, id, accessible_entities)
     if not attivita:
-        flash('Attività non trovata o non accessibile.', 'error')
+        error_msg = 'Attività non trovata o non accessibile.'
+        flash(error_msg, 'error')
         log_user_action(
             user_id,
             'ACCESS_DENIED_VIEW_ATTIVITA',
@@ -485,6 +700,14 @@ def visualizza_attivita(id):
             id,
             result='FAILED'
         )
+        
+        if is_spa_request():
+            return jsonify({
+                'success': False,
+                'error': error_msg,
+                'redirect': url_for('attivita.lista_attivita')
+            }), 403
+        
         return redirect(url_for('attivita.lista_attivita'))
 
     conn = get_db_connection()
@@ -492,6 +715,7 @@ def visualizza_attivita(id):
     try:
         with conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Query completa per recuperare tutti i dettagli
                 query = """
                     SELECT
                         a.*,
@@ -510,23 +734,36 @@ def visualizza_attivita(id):
                 """
                 cur.execute(query, (id,))
                 attivita_completa = cur.fetchone()
+                
                 if not attivita_completa:
                     flash('Attività non trovata.', 'error')
+                    if is_spa_request():
+                        return jsonify({
+                            'success': False,
+                            'error': 'Attività non trovata',
+                            'redirect': url_for('attivita.lista_attivita')
+                        }), 404
                     return redirect(url_for('attivita.lista_attivita'))
 
+                # Recupera nomi location
                 partenza = get_location_name(conn, attivita_completa['partenza_militare_id'],
                                              attivita_completa['partenza_civile_id'])
                 destinazione = get_location_name(conn, attivita_completa['destinazione_militare_id'],
                                                  attivita_completa['destinazione_civile_id'])
 
+                # Recupera dettagli specifici
                 dettagli_specifici = get_activity_details(conn, id, attivita_completa['tipologia_nome'])
 
     except Exception as e:
-        flash(f'Errore nel caricamento dell\'attività: {str(e)}', 'error')
+        error_msg = f'Errore nel caricamento dell\'attività: {str(e)}'
+        flash(error_msg, 'error')
+        if is_spa_request():
+            return jsonify({'success': False, 'error': error_msg}), 500
         return redirect(url_for('attivita.lista_attivita'))
     finally:
         conn.close()
 
+    # Log visualizzazione
     log_user_action(
         user_id,
         'VIEW_ATTIVITA',
@@ -535,24 +772,29 @@ def visualizza_attivita(id):
         id
     )
 
-    return render_template('descrizione_attivita.html',
-                           attivita=attivita_completa,
-                           partenza=partenza,
-                           destinazione=destinazione,
-                           dettagli_specifici=dettagli_specifici)
+    return render_spa_template(
+        'descrizione_attivita.html',
+        attivita=attivita_completa,
+        partenza=partenza,
+        destinazione=destinazione,
+        dettagli_specifici=dettagli_specifici
+    )
 
 @attivita_bp.route('/attivita/modifica/<int:id>')
 @operatore_or_admin_required
 @permission_required('EDIT_ATTIVITA')
 def modifica_attivita_form(id):
-    """Form modifica attività con controlli accesso"""
+    """
+    Form modifica attività con controlli accesso e supporto SPA.
+    """
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
     # Verifica accesso
     attivita = validate_activity_access(user_id, id, accessible_entities)
     if not attivita:
-        flash('Attività non trovata o non modificabile.', 'error')
+        error_msg = 'Attività non trovata o non modificabile.'
+        flash(error_msg, 'error')
         log_user_action(
             user_id,
             'ACCESS_DENIED_EDIT_ATTIVITA',
@@ -561,13 +803,21 @@ def modifica_attivita_form(id):
             id,
             result='FAILED'
         )
+        
+        if is_spa_request():
+            return jsonify({
+                'success': False,
+                'error': error_msg,
+                'redirect': url_for('attivita.lista_attivita')
+            }), 403
+        
         return redirect(url_for('attivita.lista_attivita'))
 
     conn = get_db_connection()
 
     try:
         with conn:
-            # Usa la funzione helper per ottenere i dati degli enti con i campi corretti
+            # Recupera dati per il form
             enti_militari, enti_civili = get_enti_form_data(conn, accessible_entities)
 
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -602,11 +852,15 @@ def modifica_attivita_form(id):
                 dettagli['getra'] = cur.fetchone()
 
     except Exception as e:
-        flash(f'Errore nel caricamento dei dati: {str(e)}', 'error')
+        error_msg = f'Errore nel caricamento dei dati: {str(e)}'
+        flash(error_msg, 'error')
+        if is_spa_request():
+            return jsonify({'success': False, 'error': error_msg}), 500
         return redirect(url_for('attivita.visualizza_attivita', id=id))
     finally:
         conn.close()
 
+    # Log accesso
     log_user_action(
         user_id,
         'ACCESS_EDIT_ATTIVITA_FORM',
@@ -615,29 +869,34 @@ def modifica_attivita_form(id):
         id
     )
 
-    return render_template('modifica_attivita.html',
-                           attivita=attivita,
-                           dettagli_trasporti=dettagli['trasporti'] or {},
-                           dettagli_mantenimento=dettagli['mantenimento'] or {},
-                           dettagli_rifornimenti=dettagli['rifornimenti'] or {},
-                           dettagli_getra=dettagli['getra'] or {},
-                           enti_militari=enti_militari,
-                           enti_civili=enti_civili,
-                           operazioni=operazioni,
-                           tipologie=tipologie_organizzate)
+    return render_spa_template(
+        'modifica_attivita.html',
+        attivita=attivita,
+        dettagli_trasporti=dettagli['trasporti'] or {},
+        dettagli_mantenimento=dettagli['mantenimento'] or {},
+        dettagli_rifornimenti=dettagli['rifornimenti'] or {},
+        dettagli_getra=dettagli['getra'] or {},
+        enti_militari=enti_militari,
+        enti_civili=enti_civili,
+        operazioni=operazioni,
+        tipologie=tipologie_organizzate
+    )
 
 @attivita_bp.route('/attivita/aggiorna/<int:id>', methods=['POST'])
 @operatore_or_admin_required
 @permission_required('EDIT_ATTIVITA')
 def aggiorna_attivita(id):
-    """Aggiorna attività esistente con controlli completi"""
+    """
+    Aggiorna attività esistente con controlli completi e supporto SPA.
+    """
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
     # Verifica accesso
     existing_activity = validate_activity_access(user_id, id, accessible_entities)
     if not existing_activity:
-        flash('Attività non trovata o non modificabile.', 'error')
+        error_msg = 'Attività non trovata o non modificabile.'
+        flash(error_msg, 'error')
         log_user_action(
             user_id,
             'ACCESS_DENIED_UPDATE_ATTIVITA',
@@ -646,19 +905,29 @@ def aggiorna_attivita(id):
             id,
             result='FAILED'
         )
+        
+        if is_spa_request():
+            return jsonify({'success': False, 'error': error_msg}), 403
+        
         return redirect(url_for('attivita.lista_attivita'))
 
     # Validazione input
     required_fields = ['ente_svolgimento_id', 'tipologia_id', 'data_inizio', 'descrizione']
     for field in required_fields:
         if not request.form.get(field, '').strip():
-            flash(f'Il campo {field.replace("_", " ")} è obbligatorio.', 'error')
+            error_msg = f'Il campo {field.replace("_", " ")} è obbligatorio.'
+            flash(error_msg, 'error')
+            if is_spa_request():
+                return jsonify({'success': False, 'error': error_msg}), 400
             return redirect(url_for('attivita.modifica_attivita_form', id=id))
 
     ente_svolgimento_id = int(request.form['ente_svolgimento_id'])
 
     if ente_svolgimento_id not in accessible_entities:
-        flash('Non hai accesso all\'ente selezionato.', 'error')
+        error_msg = 'Non hai accesso all\'ente selezionato.'
+        flash(error_msg, 'error')
+        if is_spa_request():
+            return jsonify({'success': False, 'error': error_msg}), 403
         return redirect(url_for('attivita.modifica_attivita_form', id=id))
 
     # Validazione date
@@ -670,10 +939,16 @@ def aggiorna_attivita(id):
             inizio = datetime.strptime(data_inizio, '%Y-%m-%d')
             fine = datetime.strptime(data_fine, '%Y-%m-%d')
             if fine < inizio:
-                flash('La data di fine non può essere precedente alla data di inizio.', 'error')
+                error_msg = 'La data di fine non può essere precedente alla data di inizio.'
+                flash(error_msg, 'error')
+                if is_spa_request():
+                    return jsonify({'success': False, 'error': error_msg}), 400
                 return redirect(url_for('attivita.modifica_attivita_form', id=id))
         except ValueError:
-            flash('Formato data non valido.', 'error')
+            error_msg = 'Formato data non valido.'
+            flash(error_msg, 'error')
+            if is_spa_request():
+                return jsonify({'success': False, 'error': error_msg}), 400
             return redirect(url_for('attivita.modifica_attivita_form', id=id))
 
     conn = get_db_connection()
@@ -720,6 +995,7 @@ def aggiorna_attivita(id):
                 if tipologia_result:
                     save_activity_details(conn, id, tipologia_result['nome'], request.form)
 
+        # Log successo
         log_user_action(
             user_id,
             'UPDATE_ATTIVITA',
@@ -729,10 +1005,19 @@ def aggiorna_attivita(id):
         )
 
         flash('Attività aggiornata con successo.', 'success')
+        
+        if is_spa_request():
+            return jsonify({
+                'success': True,
+                'message': 'Attività aggiornata con successo',
+                'redirect': url_for('attivita.visualizza_attivita', id=id)
+            })
+        
         return redirect(url_for('attivita.visualizza_attivita', id=id))
 
     except Exception as e:
-        flash(f'Errore durante l\'aggiornamento: {str(e)}', 'error')
+        error_msg = f'Errore durante l\'aggiornamento: {str(e)}'
+        flash(error_msg, 'error')
         log_user_action(
             user_id,
             'UPDATE_ATTIVITA_ERROR',
@@ -741,6 +1026,10 @@ def aggiorna_attivita(id):
             id,
             result='FAILED'
         )
+        
+        if is_spa_request():
+            return jsonify({'success': False, 'error': error_msg}), 500
+        
         return redirect(url_for('attivita.modifica_attivita_form', id=id))
     finally:
         conn.close()
@@ -748,14 +1037,19 @@ def aggiorna_attivita(id):
 @attivita_bp.route('/attivita/elimina/<int:id>', methods=['POST'])
 @admin_required
 def elimina_attivita(id):
-    """Elimina attività - Solo ADMIN"""
+    """
+    Elimina attività - Solo ADMIN con supporto SPA.
+    """
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
-    # Anche se è admin, verifica che l'attività esista (per log coerente)
+    # Verifica che l'attività esista
     attivita = validate_activity_access(user_id, id, accessible_entities)
     if not attivita:
-        flash('Attività non trovata.', 'error')
+        error_msg = 'Attività non trovata.'
+        flash(error_msg, 'error')
+        if is_spa_request():
+            return jsonify({'success': False, 'error': error_msg}), 404
         return redirect(url_for('attivita.lista_attivita'))
 
     conn = get_db_connection()
@@ -763,6 +1057,7 @@ def elimina_attivita(id):
     try:
         with conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Recupera info per il log
                 cur.execute(
                     '''SELECT a.descrizione, em.nome as ente_nome 
                        FROM attivita a 
@@ -772,14 +1067,18 @@ def elimina_attivita(id):
                 )
                 info_attivita = cur.fetchone()
 
+                # Elimina dettagli correlati
                 for table in ['dettagli_trasporti', 'dettagli_mantenimento', 'dettagli_rifornimenti', 'dettagli_getra']:
                     cur.execute(f'DELETE FROM {table} WHERE attivita_id = %s', (id,))
 
+                # Elimina attività principale
                 cur.execute('DELETE FROM attivita WHERE id = %s', (id,))
 
+        # Prepara info per il log
         descrizione = (info_attivita['descrizione'][:50] if info_attivita and info_attivita.get('descrizione') else f'ID {id}')
         ente_nome = info_attivita['ente_nome'] if info_attivita and info_attivita.get('ente_nome') else 'N/A'
 
+        # Log eliminazione
         log_user_action(
             user_id,
             'DELETE_ATTIVITA',
@@ -789,9 +1088,17 @@ def elimina_attivita(id):
         )
 
         flash('Attività eliminata con successo.', 'success')
+        
+        if is_spa_request():
+            return jsonify({
+                'success': True,
+                'message': 'Attività eliminata con successo',
+                'redirect': url_for('attivita.lista_attivita')
+            })
 
     except Exception as e:
-        flash(f'Errore durante l\'eliminazione: {str(e)}', 'error')
+        error_msg = f'Errore durante l\'eliminazione: {str(e)}'
+        flash(error_msg, 'error')
         log_user_action(
             user_id,
             'DELETE_ATTIVITA_ERROR',
@@ -800,6 +1107,10 @@ def elimina_attivita(id):
             id,
             result='FAILED'
         )
+        
+        if is_spa_request():
+            return jsonify({'success': False, 'error': error_msg}), 500
+            
     finally:
         conn.close()
 
@@ -808,10 +1119,13 @@ def elimina_attivita(id):
 # ===========================================
 # ROUTE AGGIUNTIVE E UTILITÀ
 # ===========================================
+
 @attivita_bp.route('/attivita/export')
 @permission_required('VIEW_ATTIVITA')
 def export_attivita():
-    """Esporta attività in formato CSV"""
+    """
+    Esporta attività in formato CSV.
+    """
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
@@ -851,10 +1165,6 @@ def export_attivita():
         conn.close()
 
     # Genera CSV
-    import csv
-    from flask import Response
-    import io
-
     output = io.StringIO()
     writer = csv.writer(output)
 
@@ -875,6 +1185,7 @@ def export_attivita():
             a['personale_civili'], a['note'], a['data_creazione']
         ])
 
+    # Log export
     log_user_action(
         user_id,
         'EXPORT_ATTIVITA',
@@ -892,12 +1203,20 @@ def export_attivita():
 @attivita_bp.route('/attivita/statistiche')
 @permission_required('VIEW_ATTIVITA')
 def statistiche_attivita():
-    """Statistiche attività per l'utente corrente"""
+    """
+    Statistiche attività per l'utente corrente con supporto SPA.
+    """
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
     if not accessible_entities:
         flash('Nessuna attività accessibile per le statistiche.', 'warning')
+        if is_spa_request():
+            return jsonify({
+                'success': False,
+                'error': 'Nessuna attività accessibile',
+                'redirect': url_for('attivita.lista_attivita')
+            }), 403
         return redirect(url_for('attivita.lista_attivita'))
 
     conn = get_db_connection()
@@ -959,11 +1278,17 @@ def statistiche_attivita():
                 stats_per_mese = cur.fetchall()
 
     except Exception as e:
-        flash(f'Errore nel caricamento delle statistiche: {str(e)}', 'error')
+        error_msg = f'Errore nel caricamento delle statistiche: {str(e)}'
+        flash(error_msg, 'error')
         stats_generali, stats_per_ente, stats_per_tipologia, stats_per_mese = None, [], [], []
+        
+        if is_spa_request():
+            return jsonify({'success': False, 'error': error_msg}), 500
+            
     finally:
         conn.close()
 
+    # Log visualizzazione statistiche
     log_user_action(
         user_id,
         'VIEW_ATTIVITA_STATS',
@@ -971,8 +1296,10 @@ def statistiche_attivita():
         'attivita'
     )
 
-    return render_template('statistiche_attivita.html',
-                           stats_generali=stats_generali,
-                           stats_per_ente=stats_per_ente,
-                           stats_per_tipologia=stats_per_tipologia,
-                           stats_per_mese=stats_per_mese)
+    return render_spa_template(
+        'statistiche_attivita.html',
+        stats_generali=stats_generali,
+        stats_per_ente=stats_per_ente,
+        stats_per_tipologia=stats_per_tipologia,
+        stats_per_mese=stats_per_mese
+    )

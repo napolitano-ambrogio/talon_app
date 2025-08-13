@@ -1,10 +1,11 @@
 /**
  * ========================================
- * TALON - ATTIVITÀ FORMS SHARED
+ * TALON - ATTIVITÀ FORMS SHARED (SPA VERSION)
  * File: static/js/attivita_forms.js
  * 
+ * Versione: 2.0.0 - Ottimizzata per SPA
  * Logica condivisa tra i form di inserimento
- * e modifica attività
+ * e modifica attività con supporto completo SPA
  * ========================================
  */
 
@@ -23,6 +24,10 @@
         'RIFORNIMENTI': 'dettagli-rifornimenti',
         'GESTIONE TRANSITO': 'dettagli-getra'
     };
+
+    // Flag per tracking inizializzazione
+    let isInitialized = false;
+    let currentConfig = null;
 
     /**
      * Toggle visibilità sezioni dettaglio basato su tipologia
@@ -94,21 +99,55 @@
     function initializeFormListeners(config = {}) {
         const tipologiaSelectId = config.tipologiaSelectId || 'tipologia_id';
         
+        // Rimuovi vecchi listener se esistono
+        cleanupFormListeners(tipologiaSelectId);
+        
         // Listener per cambio tipologia
         const tipologiaSelect = document.getElementById(tipologiaSelectId);
         if (tipologiaSelect) {
-            tipologiaSelect.addEventListener('change', function() {
+            const changeHandler = function() {
                 toggleActivityDetails(tipologiaSelectId);
                 
                 // Callback custom se fornito
                 if (config.onTipologiaChange) {
                     config.onTipologiaChange(this.value, this.options[this.selectedIndex].text);
                 }
-            });
+            };
+            
+            tipologiaSelect.addEventListener('change', changeHandler);
+            
+            // Salva handler per cleanup
+            tipologiaSelect._spaChangeHandler = changeHandler;
         }
 
         // Inizializza searchable selects se disponibili
-        if (window.TALON_API && window.TALON_API.refreshSearchableSelects) {
+        initializeSearchableSelects();
+        
+        // Salva configurazione corrente
+        currentConfig = config;
+    }
+
+    /**
+     * Cleanup listener esistenti
+     */
+    function cleanupFormListeners(selectId) {
+        const select = document.getElementById(selectId);
+        if (select && select._spaChangeHandler) {
+            select.removeEventListener('change', select._spaChangeHandler);
+            delete select._spaChangeHandler;
+        }
+    }
+
+    /**
+     * Inizializza searchable selects compatibile con SPA
+     */
+    function initializeSearchableSelects() {
+        // Usa API globale se disponibile
+        if (window.TalonApp && window.TalonApp.refreshSearchableSelects) {
+            setTimeout(() => {
+                window.TalonApp.refreshSearchableSelects();
+            }, 100);
+        } else if (window.TALON_API && window.TALON_API.refreshSearchableSelects) {
             setTimeout(() => {
                 window.TALON_API.refreshSearchableSelects();
             }, 100);
@@ -258,6 +297,9 @@
         const getraSection = document.getElementById('dettagli-getra');
         if (!getraSection) return;
 
+        // Cleanup vecchi listener
+        cleanupGetraListeners();
+
         // Auto-calcolo volume se presenti tutti i dati
         const inputs = {
             personale: getraSection.querySelector('#numero_personale'),
@@ -267,7 +309,7 @@
 
         // Listener per suggerimento unità di misura basato su volume
         if (inputs.volume) {
-            inputs.volume.addEventListener('change', function() {
+            const volumeHandler = function() {
                 const value = parseFloat(this.value);
                 const unitSelect = getraSection.querySelector('#unita_di_misura_getra');
                 
@@ -281,10 +323,27 @@
                         unitSelect.value = 'M3';
                     }
                 }
-            });
+            };
+            
+            inputs.volume.addEventListener('change', volumeHandler);
+            inputs.volume._spaVolumeHandler = volumeHandler;
         }
 
         console.log('[TalonAttivitaForms] Sezione GETRA inizializzata');
+    }
+
+    /**
+     * Cleanup listener GETRA
+     */
+    function cleanupGetraListeners() {
+        const getraSection = document.getElementById('dettagli-getra');
+        if (!getraSection) return;
+        
+        const volumeInput = getraSection.querySelector('#volume');
+        if (volumeInput && volumeInput._spaVolumeHandler) {
+            volumeInput.removeEventListener('change', volumeInput._spaVolumeHandler);
+            delete volumeInput._spaVolumeHandler;
+        }
     }
 
     /**
@@ -350,16 +409,111 @@
      * Inizializza validazione date
      */
     function initializeDateValidation() {
+        // Cleanup vecchi listener
+        cleanupDateValidation();
+        
         const dataInizio = document.getElementById('data_inizio');
         const dataFine = document.getElementById('data_fine');
         
         if (dataInizio) {
             dataInizio.addEventListener('change', validateDateRange);
+            dataInizio._spaDateHandler = validateDateRange;
         }
         
         if (dataFine) {
             dataFine.addEventListener('change', validateDateRange);
+            dataFine._spaDateHandler = validateDateRange;
         }
+    }
+
+    /**
+     * Cleanup validazione date
+     */
+    function cleanupDateValidation() {
+        const dataInizio = document.getElementById('data_inizio');
+        const dataFine = document.getElementById('data_fine');
+        
+        if (dataInizio && dataInizio._spaDateHandler) {
+            dataInizio.removeEventListener('change', dataInizio._spaDateHandler);
+            delete dataInizio._spaDateHandler;
+        }
+        
+        if (dataFine && dataFine._spaDateHandler) {
+            dataFine.removeEventListener('change', dataFine._spaDateHandler);
+            delete dataFine._spaDateHandler;
+        }
+    }
+
+    /**
+     * Inizializzazione completa del modulo (SPA-friendly)
+     */
+    function initialize() {
+        console.log('[TalonAttivitaForms] Inizializzazione modulo SPA...');
+        
+        // Cleanup se già inizializzato
+        if (isInitialized) {
+            cleanup();
+        }
+        
+        // Re-inizializza con configurazione salvata
+        if (currentConfig) {
+            initializeFormListeners(currentConfig);
+        }
+        
+        // Inizializza validazione date
+        initializeDateValidation();
+        
+        // Inizializza sezione GETRA
+        initializeGetraSection();
+        
+        // Marca campi richiesti
+        markRequiredFields();
+        
+        isInitialized = true;
+        console.log('[TalonAttivitaForms] Modulo SPA inizializzato');
+    }
+
+    /**
+     * Cleanup completo del modulo
+     */
+    function cleanup() {
+        console.log('[TalonAttivitaForms] Cleanup modulo...');
+        
+        // Cleanup form listeners
+        if (currentConfig && currentConfig.tipologiaSelectId) {
+            cleanupFormListeners(currentConfig.tipologiaSelectId);
+        }
+        
+        // Cleanup date validation
+        cleanupDateValidation();
+        
+        // Cleanup GETRA
+        cleanupGetraListeners();
+        
+        isInitialized = false;
+    }
+
+    // ========================================
+    // INTEGRAZIONE SPA
+    // ========================================
+    
+    // Listener per eventi SPA
+    if (window.TalonApp) {
+        // Usa eventi TalonApp se disponibile
+        window.TalonApp.on('content:loaded', initialize);
+        window.TalonApp.on('navigation:start', cleanup);
+    } else {
+        // Fallback su eventi custom
+        document.addEventListener('spa:content-loaded', initialize);
+        document.addEventListener('spa:navigation-start', cleanup);
+    }
+    
+    // Auto-inizializzazione per primo caricamento
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+        // Inizializza con delay per assicurare che DOM sia pronto
+        setTimeout(initialize, 100);
     }
 
     // ========================================
@@ -385,13 +539,20 @@
         validateDateRange,
         initializeDateValidation,
         
+        // SPA methods
+        initialize,
+        cleanup,
+        
         // Costanti
         FORM_SECTIONS,
         
         // Versione
-        version: '1.0.0'
+        version: '2.0.0',
+        
+        // Status
+        isInitialized: () => isInitialized
     };
 
-    console.log('[TalonAttivitaForms] Modulo caricato v' + window.TalonAttivitaForms.version);
+    console.log('[TalonAttivitaForms] Modulo caricato v' + window.TalonAttivitaForms.version + ' (SPA Ready)');
 
 })(window, document);

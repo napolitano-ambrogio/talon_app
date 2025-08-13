@@ -1,0 +1,198 @@
+{# 
+    File: templates/attivita/includes/_vettori_getra.html
+    
+    Lista completa vettori GETRA per form attività
+    Può essere inclusa con: {% include 'attivita/includes/_vettori_getra.html' %}
+    
+    Struttura codici: [S/U][SERVIZIO][OPERAZIONE][NUMERO]
+    - S = Sourced (Pianificata)
+    - U = Unsourced (Non pianificata)
+    - Servizio: AF, CC, CP, CS, CT, CTR, A, N, USAF, NATO
+    - Operazione: OPS, CER, PK, HA, EXE
+#}
+
+<!-- VETTORI SOURCED (Missioni Pianificate) -->
+<optgroup label="📅 SOURCED - Missioni Pianificate">
+    <!-- Air Force -->
+    <optgroup label="✈️ Air Force">
+        <option value="SAFOPS">SAFOPS - Sourced Air Force Operations</option>
+        <option value="SAFCER">SAFCER - Sourced Air Force Ceremony</option>
+        <option value="SAFPK">SAFPK - Sourced Air Force Peace Keeping</option>
+        <option value="SAFHA">SAFHA - Sourced Air Force Humanitarian Aid</option>
+        <option value="SAFEXE">SAFEXE - Sourced Air Force Exercises</option>
+    </optgroup>
+    
+    <!-- Commercial Cargo -->
+    <optgroup label="📦 Commercial Cargo">
+        <option value="SCCOPS">SCCOPS - Sourced Commercial Cargo Operations</option>
+        <option value="SCCCER">SCCCER - Sourced Commercial Cargo Ceremony</option>
+        <option value="SCCPK">SCCPK - Sourced Commercial Cargo Peace Keeping</option>
+        <option value="SCCHA">SCCHA - Sourced Commercial Cargo Humanitarian Aid</option>
+        <option value="SCCEXE">SCCEXE - Sourced Commercial Cargo Exercises</option>
+    </optgroup>
+    
+    <!-- Commercial Pax -->
+    <optgroup label="👥 Commercial Pax">
+        <option value="SCPOPS">SCPOPS - Sourced Commercial Pax Operations</option>
+        <option value="SCPCER">SCPCER - Sourced Commercial Pax Ceremony</option>
+        <option value="SCPPK">SCPPK - Sourced Commercial Pax Peace Keeping</option>
+        <option value="SCPHA">SCPHA - Sourced Commercial Pax Humanitarian Aid</option>
+        <option value="SCPEXE">SCPEXE - Sourced Commercial Pax Exercises</option>
+    </optgroup>
+    
+    <!-- Commercial Ship -->
+    <optgroup label="🚢 Commercial Ship">
+        <option value="SCSOPS">SCSOPS - Sourced Commercial Ship Operations</option>
+        <option value="SCSCER">SCSCER - Sourced Commercial Ship Ceremony</option>
+        <option value="SCSPK">SCSPK - Sourced Commercial Ship Peace Keeping</option>
+        <option value="SCSHA">SCSHA - Sourced Commercial Ship Humanitarian Aid</option>
+        <option value="SCSEXE">SCSEXE - Sourced Commercial Ship Exercises</option>
+    </optgroup>
+    
+    <!-- Commercial Train -->
+    <optgroup label="🚂 Commercial Train">
+        <option value="SCTOPS">SCTOPS - Sourced Commercial Train Operations</option>
+        <option value="SCTCER">SCTCER - Sourced Commercial Train Ceremony</option>
+        <option value="SCTPK">SCTPK - Sourced Commercial Train Peace Keeping</option>
+        <option value="SCTHA">SCTHA - Sourced Commercial Train Humanitarian Aid</option>
+        <option value="SCTEXE">SCTEXE - Sourced Commercial Train Exercises</option>
+    </optgroup>
+    
+    <!-- Commercial Truck -->
+    <optgroup label="🚚 Commercial Truck">
+        <option value="SCTROPS">SCTROPS - Sourced Commercial Truck Operations</option>
+        <option value="SCTRCER">SCTRCER - Sourced Commercial Truck Ceremony</option>
+        <option value="SCTRPK">SCTRPK - Sourced Commercial Truck Peace Keeping</option>
+        <option value="SCTRHA">SCTRHA - Sourced Commercial Truck Humanitarian Aid</option>
+        <option value="SCTREXE">SCTREXE - Sourced Commercial Truck Exercises</option>
+    </optgroup>
+    
+    <!-- Army -->
+    <optgroup label="🪖 Army">
+        <option value="SAOPS">SAOPS - Sourced Army Operations</option>
+        <option value="SACER">SACER - Sourced Army Ceremony</option>
+        <option value="SAPK">SAPK - Sourced Army Peace Keeping</option>
+        <option value="SAHA">SAHA - Sourced Army Humanitarian Aid</option>
+        <option value="SAEXE">SAEXE - Sourced Army Exercises</option>
+    </optgroup>
+    
+    <!-- Navy -->
+    <optgroup label="⚓ Navy">
+        <option value="SNOPS">SNOPS - Sourced Navy Operations</option>
+        <option value="SNCER">SNCER - Sourced Navy Ceremony</option>
+        <option value="SNPK">SNPK - Sourced Navy Peace Keeping</option>
+        <option value="SNHA">SNHA - Sourced Navy Humanitarian Aid</option>
+        <option value="SNEXE">SNEXE - Sourced Navy Exercises</option>
+    </optgroup>
+    
+    <!-- USAF -->
+    <optgroup label="🇺🇸 USAF">
+        <option value="SUSAFOPS">SUSAFOPS - Sourced USAF Operations</option>
+        <option value="SUSAFCER">SUSAFCER - Sourced USAF Ceremony</option>
+        <option value="SUSAFPK">SUSAFPK - Sourced USAF Peace Keeping</option>
+        <option value="SUSAFHA">SUSAFHA - Sourced USAF Humanitarian Aid</option>
+        <option value="SUSAFEXE">SUSAFEXE - Sourced USAF Exercises</option>
+    </optgroup>
+    
+    <!-- NATO -->
+    <optgroup label="🌐 NATO">
+        <option value="SNATOOPS">SNATOOPS - Sourced NATO Operations</option>
+        <option value="SNATOCER">SNATOCER - Sourced NATO Ceremony</option>
+        <option value="SNATOPK">SNATOPK - Sourced NATO Peace Keeping</option>
+        <option value="SNATOHA">SNATOHA - Sourced NATO Humanitarian Aid</option>
+        <option value="SNATOEXE">SNATOEXE - Sourced NATO Exercises</option>
+    </optgroup>
+</optgroup>
+
+<!-- VETTORI UNSOURCED (Missioni Non Pianificate) -->
+<optgroup label="⚡ UNSOURCED - Missioni Non Pianificate">
+    <!-- Air Force -->
+    <optgroup label="✈️ Air Force">
+        <option value="UAFOPS">UAFOPS - Unsourced Air Force Operations</option>
+        <option value="UAFCER">UAFCER - Unsourced Air Force Ceremony</option>
+        <option value="UAFPK">UAFPK - Unsourced Air Force Peace Keeping</option>
+        <option value="UAFHA">UAFHA - Unsourced Air Force Humanitarian Aid</option>
+        <option value="UAFEXE">UAFEXE - Unsourced Air Force Exercises</option>
+    </optgroup>
+    
+    <!-- Commercial Cargo -->
+    <optgroup label="📦 Commercial Cargo">
+        <option value="UCCOPS">UCCOPS - Unsourced Commercial Cargo Operations</option>
+        <option value="UCCCER">UCCCER - Unsourced Commercial Cargo Ceremony</option>
+        <option value="UCCPK">UCCPK - Unsourced Commercial Cargo Peace Keeping</option>
+        <option value="UCCHA">UCCHA - Unsourced Commercial Cargo Humanitarian Aid</option>
+        <option value="UCCEXE">UCCEXE - Unsourced Commercial Cargo Exercises</option>
+    </optgroup>
+    
+    <!-- Commercial Pax -->
+    <optgroup label="👥 Commercial Pax">
+        <option value="UCPOPS">UCPOPS - Unsourced Commercial Pax Operations</option>
+        <option value="UCPCER">UCPCER - Unsourced Commercial Pax Ceremony</option>
+        <option value="UCPPK">UCPPK - Unsourced Commercial Pax Peace Keeping</option>
+        <option value="UCPHA">UCPHA - Unsourced Commercial Pax Humanitarian Aid</option>
+        <option value="UCPEXE">UCPEXE - Unsourced Commercial Pax Exercises</option>
+    </optgroup>
+    
+    <!-- Commercial Ship -->
+    <optgroup label="🚢 Commercial Ship">
+        <option value="UCSOPS">UCSOPS - Unsourced Commercial Ship Operations</option>
+        <option value="UCSCER">UCSCER - Unsourced Commercial Ship Ceremony</option>
+        <option value="UCSPK">UCSPK - Unsourced Commercial Ship Peace Keeping</option>
+        <option value="UCSHA">UCSHA - Unsourced Commercial Ship Humanitarian Aid</option>
+        <option value="UCSEXE">UCSEXE - Unsourced Commercial Ship Exercises</option>
+    </optgroup>
+    
+    <!-- Commercial Train -->
+    <optgroup label="🚂 Commercial Train">
+        <option value="UCTOPS">UCTOPS - Unsourced Commercial Train Operations</option>
+        <option value="UCTCER">UCTCER - Unsourced Commercial Train Ceremony</option>
+        <option value="UCTPK">UCTPK - Unsourced Commercial Train Peace Keeping</option>
+        <option value="UCTHA">UCTHA - Unsourced Commercial Train Humanitarian Aid</option>
+        <option value="UCTEXE">UCTEXE - Unsourced Commercial Train Exercises</option>
+    </optgroup>
+    
+    <!-- Commercial Truck -->
+    <optgroup label="🚚 Commercial Truck">
+        <option value="UCTROPS">UCTROPS - Unsourced Commercial Truck Operations</option>
+        <option value="UCTRCER">UCTRCER - Unsourced Commercial Truck Ceremony</option>
+        <option value="UCTRPK">UCTRPK - Unsourced Commercial Truck Peace Keeping</option>
+        <option value="UCTRHA">UCTRHA - Unsourced Commercial Truck Humanitarian Aid</option>
+        <option value="UCTREXE">UCTREXE - Unsourced Commercial Truck Exercises</option>
+    </optgroup>
+    
+    <!-- Army -->
+    <optgroup label="🪖 Army">
+        <option value="UAOPS">UAOPS - Unsourced Army Operations</option>
+        <option value="UACER">UACER - Unsourced Army Ceremony</option>
+        <option value="UAPK">UAPK - Unsourced Army Peace Keeping</option>
+        <option value="UAHA">UAHA - Unsourced Army Humanitarian Aid</option>
+        <option value="UAEXE">UAEXE - Unsourced Army Exercises</option>
+    </optgroup>
+    
+    <!-- Navy -->
+    <optgroup label="⚓ Navy">
+        <option value="UNOPS">UNOPS - Unsourced Navy Operations</option>
+        <option value="UNCER">UNCER - Unsourced Navy Ceremony</option>
+        <option value="UNPK">UNPK - Unsourced Navy Peace Keeping</option>
+        <option value="UNHA">UNHA - Unsourced Navy Humanitarian Aid</option>
+        <option value="UNEXE">UNEXE - Unsourced Navy Exercises</option>
+    </optgroup>
+    
+    <!-- USAF -->
+    <optgroup label="🇺🇸 USAF">
+        <option value="UUSAFOPS">UUSAFOPS - Unsourced USAF Operations</option>
+        <option value="UUSAFCER">UUSAFCER - Unsourced USAF Ceremony</option>
+        <option value="UUSAFPK">UUSAFPK - Unsourced USAF Peace Keeping</option>
+        <option value="UUSAFHA">UUSAFHA - Unsourced USAF Humanitarian Aid</option>
+        <option value="UUSAFEXE">UUSAFEXE - Unsourced USAF Exercises</option>
+    </optgroup>
+    
+    <!-- NATO -->
+    <optgroup label="🌐 NATO">
+        <option value="UNATOOPS">UNATOOPS - Unsourced NATO Operations</option>
+        <option value="UNATOCER">UNATOCER - Unsourced NATO Ceremony</option>
+        <option value="UNATOPK">UNATOPK - Unsourced NATO Peace Keeping</option>
+        <option value="UNATOHA">UNATOHA - Unsourced NATO Humanitarian Aid</option>
+        <option value="UNATOEXE">UNATOEXE - Unsourced NATO Exercises</option>
+    </optgroup>
+</optgroup>

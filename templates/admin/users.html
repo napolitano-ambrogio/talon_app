@@ -1,0 +1,233 @@
+{% extends "_base.html" %}
+
+{% block title %}Gestione Utenti - TALON{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="{{ url_for('main.dashboard_admin') }}" data-spa-link>Dashboard Admin</a>
+</li>
+<li class="breadcrumb-item">
+    <a href="{{ url_for('main.impostazioni') }}" data-spa-link>Impostazioni</a>
+</li>
+<li class="breadcrumb-item active">Gestione Utenti</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-users"></i> Gestione Utenti</h2>
+                <div>
+                    <a href="{{ url_for('main.dashboard_admin') }}" class="btn btn-outline-primary me-2" data-spa-link data-spa-force="true" data-spa-no-cache="true">
+                        <i class="fas fa-arrow-left"></i> Torna al Sistema
+                    </a>
+                    <button class="btn btn-outline-secondary me-2" onclick="refreshUserList()">
+                        <i class="fas fa-sync-alt"></i> Aggiorna
+                    </button>
+                    <button class="btn btn-success" onclick="showComingSoon()">
+                        <i class="fas fa-plus"></i> Nuovo Utente
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">{{ users|length }}</h5>
+                    <p class="card-text">Utenti Totali</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-danger">{{ users|selectattr('ruolo_nome', 'equalto', 'ADMIN')|list|length }}</h5>
+                    <p class="card-text">Amministratori</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">{{ users|selectattr('ruolo_nome', 'equalto', 'OPERATORE')|list|length }}</h5>
+                    <p class="card-text">Operatori</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-info">{{ users|selectattr('ruolo_nome', 'equalto', 'VISUALIZZATORE')|list|length }}</h5>
+                    <p class="card-text">Visualizzatori</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-table"></i> Lista Utenti</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="usersTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nome</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Ruolo</th>
+                                    <th>Ente</th>
+                                    <th>Ultimo Accesso</th>
+                                    <th>Stato</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>{{ user.id }}</td>
+                                    <td>
+                                        <strong>{{ user.nome }} {{ user.cognome }}</strong>
+                                        {% if user.id == session.get('user_id') %}
+                                        <span class="badge bg-primary ms-1">Tu</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <code>{{ user.username }}</code>
+                                    </td>
+                                    <td>{{ user.email or '-' }}</td>
+                                    <td>
+                                        {% set role_colors = {
+                                            'ADMIN': 'danger',
+                                            'OPERATORE': 'warning',
+                                            'VISUALIZZATORE': 'info'
+                                        } %}
+                                        <span class="badge bg-{{ role_colors.get(user.ruolo_nome, 'secondary') }}">
+                                            {{ user.ruolo_nome }}
+                                        </span>
+                                        <small class="text-muted d-block">Livello: {{ user.livello_accesso }}</small>
+                                    </td>
+                                    <td>{{ user.ente_nome or 'Nessun ente' }}</td>
+                                    <td>
+                                        {% if user.ultimo_accesso %}
+                                            <small>{{ user.ultimo_accesso.strftime('%d/%m/%Y %H:%M') }}</small>
+                                        {% else %}
+                                            <span class="text-muted">Mai connesso</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.attivo %}
+                                            <span class="badge bg-success">Attivo</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Disabilitato</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button class="btn btn-outline-primary" onclick="showUserDetails({{ user.id }})" title="Visualizza dettagli">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-warning" onclick="editUser({{ user.id }})" title="Modifica utente">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            {% if user.id != session.get('user_id') %}
+                                            <button class="btn btn-outline-danger" onclick="toggleUserStatus({{ user.id }}, {{ user.attivo|lower }})" title="{% if user.attivo %}Disabilita{% else %}Abilita{% endif %} utente">
+                                                <i class="fas fa-{% if user.attivo %}ban{% else %}check{% endif %}"></i>
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// User management functions
+function refreshUserList() {
+    window.location.reload();
+}
+
+// Force reload when navigating to dashboard_admin
+document.addEventListener('DOMContentLoaded', function() {
+    const tornaSistemaBtn = document.querySelector('a[href*="dashboard_admin"]');
+    if (tornaSistemaBtn) {
+        tornaSistemaBtn.addEventListener('click', function(e) {
+            console.log('[Users Page] Navigating to dashboard_admin, forcing full reload');
+            // Set a flag to force dashboard reload
+            if (window.TalonSPA) {
+                window.TalonSPA.clearCache();
+            }
+        });
+    }
+});
+
+function showUserDetails(userId) {
+    // TODO: Implement user details modal
+    showComingSoon();
+}
+
+function editUser(userId) {
+    // TODO: Implement user edit functionality
+    showComingSoon();
+}
+
+function toggleUserStatus(userId, currentStatus) {
+    // TODO: Implement user status toggle
+    showComingSoon();
+}
+
+function showComingSoon() {
+    if (window.TalonApp && window.TalonApp.showToast) {
+        window.TalonApp.showToast('Funzionalità in fase di sviluppo', 'info');
+    } else {
+        alert('Funzionalità in fase di sviluppo');
+    }
+}
+
+// Initialize table sorting/filtering if needed
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Users management page loaded');
+});
+</script>
+
+<style>
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.table td {
+    vertical-align: middle;
+    font-size: 0.9rem;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+code {
+    background-color: #f8f9fa;
+    color: #e83e8c;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+}
+</style>
+{% endblock %}

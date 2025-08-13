@@ -337,16 +337,48 @@ function selectContent(type, id, title) {
 // GESTIONE GRAFICI
 // ==========================================
 function addNewChart() {
-    if (!supersetAuthenticated) {
-        if (sessionStorage.getItem('superset_authenticated') === 'true') {
-            supersetAuthenticated = true;
-            openContentModal();
-        } else {
-            openSupersetLogin(true);
+    console.log('[Dashboard] addNewChart called on main dashboard');
+    
+    // Check user role for permissions - same logic as dashboard_admin.js
+    const userRole = window.FLASK_USER_ROLE || window.userRole || 'VISUALIZZATORE';
+    const userLevel = getRoleLevel(userRole);
+    
+    console.log(`[Dashboard] User role: ${userRole} (level: ${userLevel})`);
+    
+    // Role-based functionality
+    if (userLevel >= 50) { // OPERATORE or ADMIN
+        console.log('[Dashboard] User has sufficient permissions, checking Superset auth...');
+        
+        if (!supersetAuthenticated) {
+            if (sessionStorage.getItem('superset_authenticated') === 'true') {
+                supersetAuthenticated = true;
+                openContentModal();
+            } else {
+                openSupersetLogin(true);
+            }
+            return;
         }
-        return;
+        openContentModal();
+    } else {
+        // VISUALIZZATORE - Read only
+        console.log('[Dashboard] Insufficient permissions for chart creation');
+        if (window.TalonApp && window.TalonApp.showToast) {
+            window.TalonApp.showToast('Solo Operatori e Amministratori possono aggiungere grafici', 'warning');
+        } else {
+            alert('Solo Operatori e Amministratori possono aggiungere grafici');
+        }
     }
-    openContentModal();
+}
+
+// Helper function for role levels (same as dashboard_admin.js)
+function getRoleLevel(role) {
+    const roleLevels = {
+        'ADMIN': 100,
+        'OPERATORE': 50,
+        'VISUALIZZATORE': 10,
+        'GUEST': 0
+    };
+    return roleLevels[role] || 0;
 }
 // debug auth
 function resetSupersetAuth() {
@@ -721,6 +753,6 @@ console.log('TALON Dashboard v2.0 - Salvataggio automatico attivo');
 </script>
 
 <!-- Carica interact.js per resize -->
-<script src="{{ url_for('static', filename='js/libs/interact.min.js') }}" defer></script>
+<script src="/external/libs/interact.min.js" defer></script>
 
 {% endblock %}

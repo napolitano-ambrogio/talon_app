@@ -1,0 +1,399 @@
+{% extends "_base.html" %}
+
+{% block title %}Nuova Attività - TALON{% endblock %}
+
+{% block head %}
+<!-- CSS specifico per form attività -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/form_attivita.css') }}?v={{ cache_buster }}">
+{% endblock %}
+
+{% block content %}
+<div class="form-container attivita-form-container" id="inserimento-attivita-container">
+    <div class="form-header">
+        <h1>Nuova Attività</h1>
+        <div class="form-actions-top">
+            <a href="{{ url_for('attivita.lista_attivita') }}" class="btn btn-secondary" data-spa-link="true">
+                <i class="fas fa-arrow-left"></i> Torna all'elenco
+            </a>
+        </div>
+    </div>
+    
+    <form action="{{ url_for('attivita.salva_attivita') }}" method="POST" id="form-inserimento-attivita" class="attivita-form">
+        
+        <!-- Sezione Dati Principali -->
+        <div class="form-section">
+            <h3 class="section-title">Dati Principali</h3>
+            
+            <div class="form-group">
+                <label for="ente_svolgimento_id">Ente che svolge l'attività <span class="required">*</span></label>
+                <div class="searchable-select" data-select-id="ente_svolgimento_id"></div>
+                <select name="ente_svolgimento_id" id="ente_svolgimento_id" style="display: none;" required>
+                    <option value="" disabled selected>-- Seleziona un ente --</option>
+                    {% for ente in enti_militari %}
+                        <option value="{{ ente.id }}"
+                                data-codice="{{ ente.codice or '' }}"
+                                data-indirizzo="{{ ente.indirizzo or '' }}"
+                                data-civico="{{ ente.civico or '' }}"
+                                data-citta="{{ ente.citta or '' }}"
+                                data-provincia="{{ ente.provincia or '' }}"
+                                data-cap="{{ ente.cap or '' }}"
+                                data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})">
+                            {{ ente.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="tipologia_id">Tipo di Attività <span class="required">*</span></label>
+                <div class="searchable-select" data-select-id="tipologia_id"></div>
+                <select name="tipologia_id" id="tipologia_id" style="display: none;" required>
+                    <option value="" disabled selected>-- Seleziona una tipologia --</option>
+                    {% for categoria, sottocategorie in tipologie.items() %}
+                        <optgroup label="{{ categoria }}">
+                            {% for sub in sottocategorie %}
+                                <option value="{{ sub.id }}">{{ sub.nome }}</option>
+                            {% endfor %}
+                        </optgroup>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="operazione_id">Operazione</label>
+                <div class="searchable-select" data-select-id="operazione_id"></div>
+                <select name="operazione_id" id="operazione_id" style="display: none;">
+                    <option value="">-- Seleziona un'operazione (opzionale) --</option>
+                    {% for op in operazioni %}
+                        <option value="{{ op.id }}"
+                                data-nome-missione="{{ op.nome_missione }}"
+                                data-nome-breve="{{ op.nome_breve or '' }}"
+                                data-teatro-operativo="{{ op.teatro_operativo or '' }}"
+                                data-nazione="{{ op.nazione or '' }}"
+                                data-details="{% if op.nome_breve %}{{ op.nome_breve }} • {% endif %}{% if op.teatro_operativo %}{{ op.teatro_operativo }}{% endif %}{% if op.nazione %} • {{ op.nazione }}{% endif %}">
+                            {{ op.nome_missione }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="data_inizio">Data Inizio <span class="required">*</span></label>
+                    <input type="date" id="data_inizio" name="data_inizio" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="data_fine">Data Fine</label>
+                    <input type="date" id="data_fine" name="data_fine" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="descrizione">Descrizione <span class="required">*</span></label>
+                <textarea id="descrizione" name="descrizione" rows="3" class="form-control" required 
+                          placeholder="Inserire una descrizione dell'attività"></textarea>
+            </div>
+        </div>
+
+        <!-- SEZIONE DETTAGLI TRASPORTI (nascosta di default) -->
+        <div id="dettagli-trasporti" class="form-section detail-section" style="display: none;" data-active="false">
+            <h3 class="section-title">Dettagli Movimenti e Trasporti</h3>
+            
+            <div class="form-group">
+                <label for="tipologia_carico">Tipologia di Carico</label>
+                <input type="text" id="tipologia_carico" name="tipologia_carico" class="form-control">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group flex-grow">
+                    <label for="quantita">Quantità</label>
+                    <input type="number" step="any" id="quantita" name="quantita" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="unita_di_misura">Unità di Misura</label>
+                    <select id="unita_di_misura" name="unita_di_misura" class="form-control">
+                        <option value="">-- Seleziona --</option>
+                        <option value="UNITÀ">Unità</option>
+                        <option value="LITRI">Litri</option>
+                        <option value="KG">Kg</option>
+                        <option value="M3">m³</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="mezzo_impiegato">Mezzo Impiegato (Targa/Matricola)</label>
+                <input type="text" id="mezzo_impiegato" name="mezzo_impiegato" class="form-control">
+            </div>
+        </div>
+
+        <!-- SEZIONE DETTAGLI MANTENIMENTO (nascosta di default) -->
+        <div id="dettagli-mantenimento" class="form-section detail-section" style="display: none;" data-active="false">
+            <h3 class="section-title">Dettagli Mantenimento e Squadre a Contatto</h3>
+            
+            <div class="form-group">
+                <label for="tipo_intervento">Tipo Intervento</label>
+                <select id="tipo_intervento" name="tipo_intervento" class="form-control">
+                    <option value="">-- Seleziona --</option>
+                    <option value="INTERVENTO PRESSO LA FASCIA LOGISTICA DEL SOSTEGNO">Intervento presso la fascia logistica del sostegno</option>
+                    <option value="SQUADRA A CONTATTO SUL TERRITORIO NAZIONALE">Squadra a contatto sul territorio nazionale</option>
+                    <option value="SQUADRA A CONTATTO IN TE.OP.">Squadra a contatto in TE.OP.</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="attivita_svolta">Attività Svolta</label>
+                <select id="attivita_svolta" name="attivita_svolta" class="form-control">
+                    <option value="">-- Seleziona --</option>
+                    <option value="CONTROLLI E VERIFICHE TECNICHE">Controlli e verifiche tecniche</option>
+                    <option value="MANUTENZIONE PREVENTIVA">Manutenzione preventiva</option>
+                    <option value="MANUTENZIONE CORRETTIVA">Manutenzione correttiva</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="piattaforma_materiale">Piattaforma/Sistema/Materiale</label>
+                <input type="text" id="piattaforma_materiale" name="piattaforma_materiale" class="form-control"
+                       placeholder="Su cui si è intervenuti">
+            </div>
+        </div>
+
+        <!-- SEZIONE DETTAGLI RIFORNIMENTI (nascosta di default) -->
+        <div id="dettagli-rifornimenti" class="form-section detail-section" style="display: none;" data-active="false">
+            <h3 class="section-title">Dettagli Rifornimenti</h3>
+            
+            <div class="form-group">
+                <label for="tipologia_rifornimento">Tipologia di Rifornimento</label>
+                <select id="tipologia_rifornimento" name="tipologia_rifornimento" class="form-control">
+                    <option value="">-- Seleziona --</option>
+                    <option value="CARBURANTE">Carburante</option>
+                    <option value="ASSEGNAZIONE MEZZI">Assegnazione mezzi</option>
+                    <option value="ASSEGNAZIONE MATERIALE">Assegnazione materiale</option>
+                    <option value="RAZIONI VIVERI DA COMBATTIMENTO">Razioni viveri da combattimento</option>
+                    <option value="ALTRO">Altro</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="dettaglio_materiale">Dettaglio Materiale</label>
+                <input type="text" id="dettaglio_materiale" name="dettaglio_materiale" class="form-control"
+                       placeholder="Tipo carburante, mezzo, materiale, altro">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group flex-grow">
+                    <label for="quantita_rifornimento">Quantità</label>
+                    <input type="number" step="any" id="quantita_rifornimento" name="quantita_rifornimento" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="unita_di_misura_rifornimento">Unità di Misura</label>
+                    <select id="unita_di_misura_rifornimento" name="unita_di_misura_rifornimento" class="form-control">
+                        <option value="">-- Seleziona --</option>
+                        <option value="UNITÀ">Unità</option>
+                        <option value="LITRI">Litri</option>
+                        <option value="KG">Kg</option>
+                        <option value="M3">m³</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SEZIONE DETTAGLI GETRA (nascosta di default) -->
+        <div id="dettagli-getra" class="form-section detail-section" style="display: none;" data-active="false">
+            <h3 class="section-title">Dettagli Gestione Transito (GETRA)</h3>
+
+            <div class="form-group">
+                <label for="tipo_vettore">Tipo Vettore</label>
+                <div class="searchable-select" data-select-id="tipo_vettore"></div>
+                <select id="tipo_vettore" name="tipo_vettore" style="display: none;">
+                    <option value="">-- Seleziona Vettore --</option>
+                    {% include 'attivita/includes/_vettori_getra.html' %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="seriale_vettore">Seriale / Targa / Nominativo</label>
+                <input type="text" id="seriale_vettore" name="seriale_vettore" class="form-control">
+            </div>
+
+            <div class="form-row getra-row">
+                <div class="form-group">
+                    <label for="numero_personale">Personale Movimentato</label>
+                    <input type="number" id="numero_personale" name="numero_personale" min="0" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="numero_mezzi">Mezzi Movimentati</label>
+                    <input type="number" id="numero_mezzi" name="numero_mezzi" min="0" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="volume">Quantità/Volume</label>
+                    <input type="number" id="volume" name="volume" min="0" step="any" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="unita_di_misura_getra">Unità di Misura</label>
+                    <select id="unita_di_misura_getra" name="unita_di_misura_getra" class="form-control">
+                        <option value="">--</option>
+                        <option value="KG">Kg</option>
+                        <option value="M_LIN">Metri lineari</option>
+                        <option value="M3">Metri cubi</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sezione Località -->
+        <div class="form-section">
+            <h3 class="section-title">Località</h3>
+            
+            <div class="form-group">
+                <label for="partenza_id">Luogo Partenza</label>
+                <div class="searchable-select" data-select-id="partenza_id"></div>
+                <select name="partenza_id" id="partenza_id" style="display: none;">
+                    <option value="">-- Seleziona (opzionale) --</option>
+                    <optgroup label="ENTI MILITARI">
+                        {% for ente in enti_militari %}
+                            <option value="militare-{{ ente.id }}"
+                                    data-tipo="militare"
+                                    data-codice="{{ ente.codice or '' }}"
+                                    data-indirizzo="{{ ente.indirizzo or '' }}"
+                                    data-civico="{{ ente.civico or '' }}"
+                                    data-cap="{{ ente.cap or '' }}"
+                                    data-citta="{{ ente.citta or '' }}"
+                                    data-provincia="{{ ente.provincia or '' }}"
+                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})">
+                                {{ ente.nome }}
+                            </option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="ENTI CIVILI">
+                        {% for ente in enti_civili %}
+                            <option value="civile-{{ ente.id }}"
+                                    data-tipo="civile"
+                                    data-indirizzo="{{ ente.indirizzo or '' }}"
+                                    data-civico="{{ ente.civico or '' }}"
+                                    data-cap="{{ ente.cap or '' }}"
+                                    data-citta="{{ ente.citta or '' }}"
+                                    data-provincia="{{ ente.provincia or '' }}"
+                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
+                                    data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}){% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}">
+                                {{ ente.nome }}
+                            </option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="destinazione_id">Luogo Destinazione</label>
+                <div class="searchable-select" data-select-id="destinazione_id"></div>
+                <select name="destinazione_id" id="destinazione_id" style="display: none;">
+                    <option value="">-- Seleziona (opzionale) --</option>
+                    <optgroup label="ENTI MILITARI">
+                        {% for ente in enti_militari %}
+                            <option value="militare-{{ ente.id }}"
+                                    data-tipo="militare"
+                                    data-codice="{{ ente.codice or '' }}"
+                                    data-indirizzo="{{ ente.indirizzo or '' }}"
+                                    data-civico="{{ ente.civico or '' }}"
+                                    data-cap="{{ ente.cap or '' }}"
+                                    data-citta="{{ ente.citta or '' }}"
+                                    data-provincia="{{ ente.provincia or '' }}"
+                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})">
+                                {{ ente.nome }}
+                            </option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="ENTI CIVILI">
+                        {% for ente in enti_civili %}
+                            <option value="civile-{{ ente.id }}"
+                                    data-tipo="civile"
+                                    data-indirizzo="{{ ente.indirizzo or '' }}"
+                                    data-civico="{{ ente.civico or '' }}"
+                                    data-cap="{{ ente.cap or '' }}"
+                                    data-citta="{{ ente.citta or '' }}"
+                                    data-provincia="{{ ente.provincia or '' }}"
+                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
+                                    data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}){% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}">
+                                {{ ente.nome }}
+                            </option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Sezione Risorse e Note -->
+        <div class="form-section">
+            <h3 class="section-title">Risorse e Note</h3>
+            
+            <div class="form-row personnel-row">
+                <div class="form-group">
+                    <label for="personale_ufficiali">Ufficiali</label>
+                    <input type="number" id="personale_ufficiali" name="personale_ufficiali" 
+                           value="0" min="0" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="personale_sottufficiali">Sottufficiali</label>
+                    <input type="number" id="personale_sottufficiali" name="personale_sottufficiali" 
+                           value="0" min="0" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="personale_graduati">Graduati/VFP</label>
+                    <input type="number" id="personale_graduati" name="personale_graduati" 
+                           value="0" min="0" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="personale_civili">Civili</label>
+                    <input type="number" id="personale_civili" name="personale_civili" 
+                           value="0" min="0" class="form-control">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="note">Note</label>
+                <textarea id="note" name="note" rows="3" class="form-control"
+                          placeholder="Eventuali annotazioni aggiuntive"></textarea>
+            </div>
+        </div>
+
+        <!-- Pulsanti azione -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Salva Attività
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-reset">
+                <i class="fas fa-undo"></i> Reset Form
+            </button>
+            <a href="{{ url_for('attivita.lista_attivita') }}" class="btn btn-outline-secondary" data-spa-link="true">
+                <i class="fas fa-times"></i> Annulla
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- I file JavaScript delle attività sono già caricati da _base.html:
+     - static/js/attivita/attivita_utils.js
+     - static/js/attivita/attivita_forms.js  
+     - static/js/attivita/inserimento_attivita.js
+     Quindi non serve includerli nuovamente -->
+
+<script>
+// Inizializzazione specifica per questa vista
+document.addEventListener('DOMContentLoaded', function() {
+    // Il modulo TalonInserimentoAttivita si auto-inizializza
+    console.log('[Inserimento Attività] Pagina pronta');
+});
+
+// Handler per navigazione SPA
+document.addEventListener('spa:content-loaded', function(e) {
+    if (e.detail && e.detail.page === 'inserimento-attivita') {
+        console.log('[Inserimento Attività] Contenuto SPA caricato');
+    }
+});
+</script>
+{% endblock %}

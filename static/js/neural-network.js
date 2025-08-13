@@ -1,11 +1,11 @@
 /**
  * ========================================
- * TALON SIMPLIFIED NEURAL NETWORK
+ * TALON NEURAL NETWORK - SPA VERSION
  * File: static/js/neural-network.js
  * 
- * Versione: 4.0 - Semplificata e configurabile
- * Funzionalità: Nodi che si muovono e si collegano/scollegano
- *               in base alla distanza, senza effetti pulsanti
+ * Versione: 5.0.0 - Full SPA Integration
+ * Descrizione: Neural network visuale con gestione
+ *              completa del ciclo di vita SPA
  * ========================================
  */
 
@@ -13,194 +13,217 @@
     'use strict';
 
     // ========================================
-    // 🎛️ CONFIGURAZIONE PRINCIPALE
-    // Modifica questi valori per personalizzare l'animazione
+    // CONFIGURAZIONE
     // ========================================
     
-    const USER_CONFIG = {
-        // 📊 NODI
-        NODE_COUNT: 50,                    // Numero di nodi (10-50)
-        NODE_SIZE_MIN: 1,                  // Dimensione minima nodi (2-8)
-        NODE_SIZE_MAX: 2,                  // Dimensione massima nodi (6-15)
+    const CONFIG = {
+        // Configurazione nodi
+        NODES: {
+            COUNT: 150,
+            SIZE_MIN: 1,
+            SIZE_MAX: 2,
+            COLOR: '#3b82f6',
+            OPACITY: 0.8,
+            SPEED: 0.2,
+            RANDOMNESS: 0.01
+        },
         
-        // 🎨 COLORI (formato esadecimale)
-        NODE_COLOR: '#3b82f6',             // Colore nodi (blu)
-        CONNECTION_COLOR: '#60a5fa',       // Colore connessioni (blu chiaro)
+        // Configurazione connessioni
+        CONNECTIONS: {
+            COLOR: '#60a5fa',
+            OPACITY: 0.7,
+            LINE_WIDTH: 1,
+            DISTANCE: 150,
+            SEPARATION_DISTANCE: 180,
+            FADE_SPEED: 0.95
+        },
         
-        // 🌫️ OPACITÀ (0.0 = trasparente, 1.0 = opaco)
-        NODE_OPACITY: 0.8,                 // Opacità nodi (0.3-1.0)
-        CONNECTION_OPACITY: 0.7,           // Opacità connessioni (0.2-1.0)
+        // Performance
+        PERFORMANCE: {
+            FPS_TARGET: 60,
+            AUTO_PAUSE: true,
+            VISIBILITY_CHECK: true,
+            CANVAS_RESOLUTION: window.devicePixelRatio || 1
+        },
         
-        // 📏 DISTANZE
-        CONNECTION_DISTANCE: 400,          // Distanza massima per collegare nodi (100-300)
-        SEPARATION_DISTANCE: 800,          // Distanza massima prima di separare (CONNECTION_DISTANCE + 30)
-        
-        // 🏃 MOVIMENTO
-        NODE_SPEED: 0.2,                   // Velocità movimento nodi (0.1-2.0)
-        MOVEMENT_RANDOMNESS: 0.01,         // Casualità movimento (0.005-0.05)
-        
-        // 📐 CONNESSIONI
-        CONNECTION_LINE_WIDTH: 2,          // Spessore linee connessione (1-4)
-        CONNECTION_FADE_SPEED: 0.95,       // Velocità dissolvenza (0.9-0.99)
-        
-        // 🎯 PERFORMANCE
-        FPS_TARGET: 60,                    // FPS target (30-60)
-        ENABLE_DEBUG: false                // Mostra info debug
+        // SPA Settings
+        SPA: {
+            CLEANUP_ON_NAVIGATION: true,
+            PAUSE_ON_HIDDEN: true,
+            REINIT_ON_RESIZE: true,
+            DEBUG: false
+        }
     };
 
     // ========================================
-    // CLASSE NODE (NODO SEMPLICE)
+    // CLASSE NODE
     // ========================================
     
-    class SimpleNode {
+    class Node {
         constructor(x, y, canvas) {
+            this.id = `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             this.x = x;
             this.y = y;
             this.canvas = canvas;
             
-            // Dimensione fissa (no pulsazioni)
-            this.size = USER_CONFIG.NODE_SIZE_MIN + 
-                       Math.random() * (USER_CONFIG.NODE_SIZE_MAX - USER_CONFIG.NODE_SIZE_MIN);
+            // Proprietà fisiche
+            this.size = CONFIG.NODES.SIZE_MIN + 
+                       Math.random() * (CONFIG.NODES.SIZE_MAX - CONFIG.NODES.SIZE_MIN);
+            this.vx = (Math.random() - 0.5) * CONFIG.NODES.SPEED;
+            this.vy = (Math.random() - 0.5) * CONFIG.NODES.SPEED;
             
-            // Movimento casuale
-            this.vx = (Math.random() - 0.5) * USER_CONFIG.NODE_SPEED;
-            this.vy = (Math.random() - 0.5) * USER_CONFIG.NODE_SPEED;
+            // Limiti velocità
+            this.maxSpeed = CONFIG.NODES.SPEED;
+            this.minSpeed = CONFIG.NODES.SPEED * 0.3;
             
-            // Limiti di velocità
-            this.maxSpeed = USER_CONFIG.NODE_SPEED;
-            this.minSpeed = USER_CONFIG.NODE_SPEED * 0.3;
-            
-            // Connessioni a questo nodo
-            this.connections = [];
-            
-            this.id = Math.random().toString(36).substr(2, 9);
+            // Stato
+            this.connections = new Set();
+            this.isActive = true;
         }
         
-        update() {
-            // Movimento base
-            this.x += this.vx;
-            this.y += this.vy;
+        update(deltaTime) {
+            if (!this.isActive) return;
             
-            // Aggiungi casualità al movimento
-            this.vx += (Math.random() - 0.5) * USER_CONFIG.MOVEMENT_RANDOMNESS;
-            this.vy += (Math.random() - 0.5) * USER_CONFIG.MOVEMENT_RANDOMNESS;
+            // Aggiorna posizione basata su deltaTime per FPS indipendente
+            const factor = deltaTime / 16.67; // Normalizza a 60 FPS
             
-            // Limita la velocità
-            const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-            if (speed > this.maxSpeed) {
-                this.vx = (this.vx / speed) * this.maxSpeed;
-                this.vy = (this.vy / speed) * this.maxSpeed;
-            } else if (speed < this.minSpeed) {
-                this.vx = (this.vx / speed) * this.minSpeed;
-                this.vy = (this.vy / speed) * this.minSpeed;
-            }
+            this.x += this.vx * factor;
+            this.y += this.vy * factor;
             
-            // Rimbalzi sui bordi
+            // Aggiungi casualità
+            this.vx += (Math.random() - 0.5) * CONFIG.NODES.RANDOMNESS * factor;
+            this.vy += (Math.random() - 0.5) * CONFIG.NODES.RANDOMNESS * factor;
+            
+            // Limita velocità
+            this.limitSpeed();
+            
+            // Gestisci bordi
             this.handleBoundaries();
         }
         
-        handleBoundaries() {
-            const margin = this.size + 20;
-            const width = this.canvas?.width / (window.devicePixelRatio || 1) || window.innerWidth;
-            const height = this.canvas?.height / (window.devicePixelRatio || 1) || window.innerHeight;
+        limitSpeed() {
+            const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
             
-            // Bordi orizzontali
-            if (this.x <= margin) {
-                this.x = margin;
-                this.vx = Math.abs(this.vx);
-            } else if (this.x >= width - margin) {
-                this.x = width - margin;
-                this.vx = -Math.abs(this.vx);
-            }
-            
-            // Bordi verticali
-            if (this.y <= margin) {
-                this.y = margin;
-                this.vy = Math.abs(this.vy);
-            } else if (this.y >= height - margin) {
-                this.y = height - margin;
-                this.vy = -Math.abs(this.vy);
+            if (speed > this.maxSpeed) {
+                const ratio = this.maxSpeed / speed;
+                this.vx *= ratio;
+                this.vy *= ratio;
+            } else if (speed < this.minSpeed && speed > 0) {
+                const ratio = this.minSpeed / speed;
+                this.vx *= ratio;
+                this.vy *= ratio;
             }
         }
         
-        getDistanceTo(otherNode) {
-            const dx = this.x - otherNode.x;
-            const dy = this.y - otherNode.y;
+        handleBoundaries() {
+            const margin = this.size + 10;
+            const width = this.canvas.width / CONFIG.PERFORMANCE.CANVAS_RESOLUTION;
+            const height = this.canvas.height / CONFIG.PERFORMANCE.CANVAS_RESOLUTION;
+            
+            if (this.x <= margin || this.x >= width - margin) {
+                this.vx = -this.vx;
+                this.x = Math.max(margin, Math.min(width - margin, this.x));
+            }
+            
+            if (this.y <= margin || this.y >= height - margin) {
+                this.vy = -this.vy;
+                this.y = Math.max(margin, Math.min(height - margin, this.y));
+            }
+        }
+        
+        distanceTo(other) {
+            const dx = this.x - other.x;
+            const dy = this.y - other.y;
             return Math.sqrt(dx * dx + dy * dy);
         }
         
         draw(ctx) {
-            // Nodo semplice senza effetti
-            const alpha = Math.floor(USER_CONFIG.NODE_OPACITY * 255).toString(16).padStart(2, '0');
+            if (!this.isActive) return;
             
-            ctx.fillStyle = USER_CONFIG.NODE_COLOR + alpha;
+            ctx.save();
+            
+            // Nodo principale
+            ctx.fillStyle = CONFIG.NODES.COLOR + Math.floor(CONFIG.NODES.OPACITY * 255).toString(16).padStart(2, '0');
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
             ctx.fill();
             
-            // Bordo sottile per definizione
-            ctx.strokeStyle = USER_CONFIG.NODE_COLOR + 'ff';
+            // Bordo sottile
+            ctx.strokeStyle = CONFIG.NODES.COLOR;
             ctx.lineWidth = 1;
             ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        destroy() {
+            this.isActive = false;
+            this.connections.clear();
         }
     }
 
     // ========================================
-    // CLASSE CONNECTION (CONNESSIONE SEMPLICE)
+    // CLASSE CONNECTION
     // ========================================
     
-    class SimpleConnection {
+    class Connection {
         constructor(nodeA, nodeB) {
+            this.id = `conn-${nodeA.id}-${nodeB.id}`;
             this.nodeA = nodeA;
             this.nodeB = nodeB;
-            this.opacity = 1.0;
+            this.opacity = 0;
+            this.targetOpacity = 1;
             this.isActive = true;
-            
-            this.id = Math.random().toString(36).substr(2, 9);
         }
         
-        update() {
-            const distance = this.getDistance();
+        update(deltaTime) {
+            if (!this.isActive) return false;
             
-            // Connessione attiva se entro la distanza di connessione
-            if (distance <= USER_CONFIG.CONNECTION_DISTANCE) {
-                this.isActive = true;
-                this.opacity = Math.min(1.0, this.opacity + 0.05);
-            }
-            // Inizia a dissolvere se supera la distanza di connessione
-            else if (distance > USER_CONFIG.CONNECTION_DISTANCE) {
-                this.opacity *= USER_CONFIG.CONNECTION_FADE_SPEED;
-                if (this.opacity < 0.1) {
-                    this.isActive = false;
-                }
+            const distance = this.nodeA.distanceTo(this.nodeB);
+            
+            // Calcola opacità target basata su distanza
+            if (distance <= CONFIG.CONNECTIONS.DISTANCE) {
+                this.targetOpacity = 1 - (distance / CONFIG.CONNECTIONS.DISTANCE) * 0.7;
+            } else if (distance <= CONFIG.CONNECTIONS.SEPARATION_DISTANCE) {
+                this.targetOpacity = (1 - (distance - CONFIG.CONNECTIONS.DISTANCE) / 
+                    (CONFIG.CONNECTIONS.SEPARATION_DISTANCE - CONFIG.CONNECTIONS.DISTANCE)) * 0.3;
+            } else {
+                this.targetOpacity = 0;
             }
             
-            // Rimuovi se troppo lontano
-            return distance <= USER_CONFIG.SEPARATION_DISTANCE && this.opacity > 0.05;
-        }
-        
-        getDistance() {
-            const dx = this.nodeA.x - this.nodeB.x;
-            const dy = this.nodeA.y - this.nodeB.y;
-            return Math.sqrt(dx * dx + dy * dy);
+            // Smooth opacity transition
+            const opacityDiff = this.targetOpacity - this.opacity;
+            this.opacity += opacityDiff * 0.1;
+            
+            // Rimuovi se troppo lontano o opacità troppo bassa
+            if (distance > CONFIG.CONNECTIONS.SEPARATION_DISTANCE || this.opacity < 0.01) {
+                this.isActive = false;
+                return false;
+            }
+            
+            return true;
         }
         
         draw(ctx) {
-            if (!this.isActive || this.opacity < 0.05) return;
+            if (!this.isActive || this.opacity < 0.01) return;
             
-            // Calcola opacità basata su distanza e configurazione utente
-            const distance = this.getDistance();
-            const distanceAlpha = Math.max(0, 1 - (distance / USER_CONFIG.CONNECTION_DISTANCE));
-            const finalAlpha = this.opacity * distanceAlpha * USER_CONFIG.CONNECTION_OPACITY;
+            ctx.save();
             
-            const alpha = Math.floor(finalAlpha * 255).toString(16).padStart(2, '0');
+            const alpha = Math.floor(this.opacity * CONFIG.CONNECTIONS.OPACITY * 255)
+                .toString(16).padStart(2, '0');
             
-            ctx.strokeStyle = USER_CONFIG.CONNECTION_COLOR + alpha;
-            ctx.lineWidth = USER_CONFIG.CONNECTION_LINE_WIDTH;
+            ctx.strokeStyle = CONFIG.CONNECTIONS.COLOR + alpha;
+            ctx.lineWidth = CONFIG.CONNECTIONS.LINE_WIDTH;
             ctx.beginPath();
             ctx.moveTo(this.nodeA.x, this.nodeA.y);
             ctx.lineTo(this.nodeB.x, this.nodeB.y);
             ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        destroy() {
+            this.isActive = false;
         }
     }
 
@@ -208,376 +231,623 @@
     // CLASSE PRINCIPALE NEURAL NETWORK
     // ========================================
     
-    class SimplifiedNeuralNetwork {
+    class NeuralNetwork {
         constructor(canvasId) {
             this.canvasId = canvasId;
-            this.canvas = document.getElementById(canvasId);
+            this.canvas = null;
             this.ctx = null;
             this.nodes = [];
-            this.connections = [];
-            this.animationId = null;
-            this.isRunning = false;
-            this.frameCount = 0;
-            this.lastTime = 0;
+            this.connections = new Map();
             
-            // Performance tracking
-            this.fpsData = {
-                fps: 0,
-                lastFpsUpdate: 0,
-                frameCount: 0
+            // Stato
+            this.state = {
+                initialized: false,
+                running: false,
+                visible: true,
+                paused: false
             };
             
-            if (!this.canvas) {
-                console.error(`[Simplified Neural Network] Canvas '${canvasId}' not found`);
-                return;
+            // Performance
+            this.performance = {
+                fps: 0,
+                frameCount: 0,
+                lastTime: 0,
+                lastFpsUpdate: 0,
+                deltaTime: 0
+            };
+            
+            // Animation
+            this.animationId = null;
+            this.resizeTimeout = null;
+            
+            // SPA event handlers
+            this.boundHandlers = {
+                resize: this.handleResize.bind(this),
+                visibilityChange: this.handleVisibilityChange.bind(this),
+                cleanup: this.handleSPACleanup.bind(this),
+                contentLoaded: this.handleSPAContentLoaded.bind(this)
+            };
+        }
+
+        // ========================================
+        // INIZIALIZZAZIONE
+        // ========================================
+        
+        async init() {
+            if (this.state.initialized) {
+                this.log('warn', 'Already initialized');
+                return false;
             }
             
-            this.init();
-        }
-        
-        init() {
-            console.log('[Simplified Neural Network] Initializing...');
+            this.log('info', 'Initializing Neural Network...');
             
             try {
+                // Trova canvas
+                this.canvas = document.getElementById(this.canvasId);
+                if (!this.canvas) {
+                    throw new Error(`Canvas '${this.canvasId}' not found`);
+                }
+                
+                // Setup canvas
                 this.setupCanvas();
+                
+                // Crea nodi
                 this.createNodes();
+                
+                // Setup event handlers
                 this.setupEventHandlers();
+                
+                // Start animation
                 this.start();
                 
-                console.log(`[Simplified Neural Network] ✅ Initialized with ${this.nodes.length} nodes`);
+                this.state.initialized = true;
+                this.log('success', `✅ Initialized with ${this.nodes.length} nodes`);
+                
+                return true;
+                
             } catch (error) {
-                console.error('[Simplified Neural Network] Init failed:', error);
+                this.log('error', 'Initialization failed:', error);
+                return false;
             }
         }
-        
+
         setupCanvas() {
-            this.ctx = this.canvas.getContext('2d');
+            this.ctx = this.canvas.getContext('2d', {
+                alpha: true,
+                desynchronized: true
+            });
+            
             this.resizeCanvas();
             
+            // Ottimizzazioni rendering
             this.ctx.imageSmoothingEnabled = true;
             this.ctx.imageSmoothingQuality = 'high';
         }
-        
+
         resizeCanvas() {
             const rect = this.canvas.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
+            const dpr = CONFIG.PERFORMANCE.CANVAS_RESOLUTION;
             
             const width = rect.width || window.innerWidth;
             const height = rect.height || window.innerHeight;
             
+            // Imposta dimensioni con device pixel ratio
             this.canvas.width = width * dpr;
             this.canvas.height = height * dpr;
             
-            if (this.ctx) {
-                this.ctx.scale(dpr, dpr);
-            }
+            // Scala il context
+            this.ctx.scale(dpr, dpr);
             
+            // Mantieni dimensioni CSS
             this.canvas.style.width = width + 'px';
             this.canvas.style.height = height + 'px';
+            
+            this.log('debug', `Canvas resized: ${width}x${height} (DPR: ${dpr})`);
         }
-        
+
         createNodes() {
             this.nodes = [];
             
-            const width = this.canvas.width / (window.devicePixelRatio || 1);
-            const height = this.canvas.height / (window.devicePixelRatio || 1);
+            const width = this.canvas.width / CONFIG.PERFORMANCE.CANVAS_RESOLUTION;
+            const height = this.canvas.height / CONFIG.PERFORMANCE.CANVAS_RESOLUTION;
+            const margin = 50;
             
-            for (let i = 0; i < USER_CONFIG.NODE_COUNT; i++) {
-                const margin = 60;
+            for (let i = 0; i < CONFIG.NODES.COUNT; i++) {
                 const x = margin + Math.random() * (width - margin * 2);
                 const y = margin + Math.random() * (height - margin * 2);
                 
-                this.nodes.push(new SimpleNode(x, y, this.canvas));
+                this.nodes.push(new Node(x, y, this.canvas));
             }
         }
+
+        // ========================================
+        // EVENT HANDLERS
+        // ========================================
         
         setupEventHandlers() {
-            // Resize con debounce
-            let resizeTimeout;
-            window.addEventListener('resize', () => {
-                clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(() => {
-                    this.resizeCanvas();
-                    this.repositionNodes();
-                }, 300);
-            });
+            // Window events
+            window.addEventListener('resize', this.boundHandlers.resize);
+            document.addEventListener('visibilitychange', this.boundHandlers.visibilityChange);
             
-            // Pausa quando non visibile
-            document.addEventListener('visibilitychange', () => {
-                if (document.hidden) {
-                    this.pause();
+            // SPA events
+            if (window.TalonApp) {
+                window.TalonApp.on('talon:cleanup', this.boundHandlers.cleanup);
+                window.TalonApp.on('talon:content:loaded', this.boundHandlers.contentLoaded);
+            } else {
+                // Fallback su custom events
+                document.addEventListener('spa:cleanup', this.boundHandlers.cleanup);
+                document.addEventListener('spa:content-loaded', this.boundHandlers.contentLoaded);
+            }
+        }
+
+        removeEventHandlers() {
+            window.removeEventListener('resize', this.boundHandlers.resize);
+            document.removeEventListener('visibilitychange', this.boundHandlers.visibilityChange);
+            
+            if (window.TalonApp) {
+                window.TalonApp.off('talon:cleanup', this.boundHandlers.cleanup);
+                window.TalonApp.off('talon:content:loaded', this.boundHandlers.contentLoaded);
+            } else {
+                document.removeEventListener('spa:cleanup', this.boundHandlers.cleanup);
+                document.removeEventListener('spa:content-loaded', this.boundHandlers.contentLoaded);
+            }
+        }
+
+        handleResize() {
+            clearTimeout(this.resizeTimeout);
+            
+            this.resizeTimeout = setTimeout(() => {
+                if (!this.state.initialized) return;
+                
+                this.resizeCanvas();
+                
+                if (CONFIG.SPA.REINIT_ON_RESIZE) {
+                    this.repositionNodes();
+                }
+            }, 300);
+        }
+
+        handleVisibilityChange() {
+            if (!CONFIG.SPA.PAUSE_ON_HIDDEN) return;
+            
+            if (document.hidden) {
+                this.pause();
+            } else {
+                this.resume();
+            }
+        }
+
+        handleSPACleanup() {
+            this.log('info', 'SPA cleanup triggered');
+            
+            if (CONFIG.SPA.CLEANUP_ON_NAVIGATION) {
+                this.pause();
+            }
+        }
+
+        handleSPAContentLoaded() {
+            this.log('info', 'SPA content loaded');
+            
+            // Verifica se il canvas esiste ancora
+            const canvas = document.getElementById(this.canvasId);
+            
+            if (canvas) {
+                if (!this.state.initialized) {
+                    // Re-inizializza se necessario
+                    this.canvas = canvas;
+                    this.init();
                 } else {
+                    // Resume se era in pausa
                     this.resume();
                 }
-            });
+            } else {
+                // Canvas non presente nella nuova pagina
+                if (this.state.initialized) {
+                    this.pause();
+                }
+            }
         }
-        
+
         repositionNodes() {
-            const width = this.canvas.width / (window.devicePixelRatio || 1);
-            const height = this.canvas.height / (window.devicePixelRatio || 1);
-            const margin = 60;
+            const width = this.canvas.width / CONFIG.PERFORMANCE.CANVAS_RESOLUTION;
+            const height = this.canvas.height / CONFIG.PERFORMANCE.CANVAS_RESOLUTION;
+            const margin = 50;
             
             this.nodes.forEach(node => {
-                if (node.x > width - margin) {
-                    node.x = width - margin;
-                }
-                if (node.y > height - margin) {
-                    node.y = height - margin;
-                }
+                node.x = Math.max(margin, Math.min(width - margin, node.x));
+                node.y = Math.max(margin, Math.min(height - margin, node.y));
             });
         }
-        
-        updateConnections() {
-            // Mappa delle connessioni esistenti per performance
-            const existingConnections = new Map();
-            this.connections.forEach(conn => {
-                const key = this.getConnectionKey(conn.nodeA, conn.nodeB);
-                existingConnections.set(key, conn);
-            });
-            
-            // Controlla tutte le possibili connessioni
-            const newConnections = [];
-            
-            for (let i = 0; i < this.nodes.length; i++) {
-                for (let j = i + 1; j < this.nodes.length; j++) {
-                    const nodeA = this.nodes[i];
-                    const nodeB = this.nodes[j];
-                    const distance = nodeA.getDistanceTo(nodeB);
-                    const key = this.getConnectionKey(nodeA, nodeB);
-                    
-                    // Se i nodi sono abbastanza vicini
-                    if (distance <= USER_CONFIG.SEPARATION_DISTANCE) {
-                        let connection = existingConnections.get(key);
-                        
-                        if (!connection) {
-                            // Crea nuova connessione
-                            connection = new SimpleConnection(nodeA, nodeB);
-                        }
-                        
-                        // Aggiorna la connessione
-                        if (connection.update()) {
-                            newConnections.push(connection);
-                        }
-                    }
-                }
-            }
-            
-            this.connections = newConnections;
-        }
-        
-        getConnectionKey(nodeA, nodeB) {
-            // Crea chiave univoca per la connessione (indipendente dall'ordine)
-            return nodeA.id < nodeB.id ? `${nodeA.id}-${nodeB.id}` : `${nodeB.id}-${nodeA.id}`;
-        }
-        
-        update(currentTime) {
-            const deltaTime = currentTime - this.lastTime;
-            this.lastTime = currentTime;
-            this.frameCount++;
-            
-            // FPS tracking
-            this.updateFPS(currentTime);
-            
-            // Aggiorna nodi
-            this.nodes.forEach(node => node.update());
-            
-            // Aggiorna connessioni
-            this.updateConnections();
-        }
-        
-        updateFPS(currentTime) {
-            this.fpsData.frameCount++;
-            if (currentTime - this.fpsData.lastFpsUpdate > 1000) {
-                this.fpsData.fps = this.fpsData.frameCount;
-                this.fpsData.frameCount = 0;
-                this.fpsData.lastFpsUpdate = currentTime;
-            }
-        }
-        
-        draw() {
-            // Pulisci canvas
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            
-            // Disegna connessioni prima dei nodi
-            this.connections.forEach(connection => connection.draw(this.ctx));
-            
-            // Disegna nodi
-            this.nodes.forEach(node => node.draw(this.ctx));
-            
-            // Debug info
-            if (USER_CONFIG.ENABLE_DEBUG) {
-                this.drawDebugInfo();
-            }
-        }
-        
-        drawDebugInfo() {
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            this.ctx.font = '14px monospace';
-            this.ctx.fillText(`FPS: ${this.fpsData.fps}`, 15, 25);
-            this.ctx.fillText(`Nodes: ${this.nodes.length}`, 15, 45);
-            this.ctx.fillText(`Connections: ${this.connections.length}`, 15, 65);
-            this.ctx.fillText(`Frame: ${this.frameCount}`, 15, 85);
-        }
-        
-        animate(currentTime) {
-            if (!this.isRunning) return;
-            
-            this.update(currentTime);
-            this.draw();
-            
-            this.animationId = requestAnimationFrame((time) => this.animate(time));
-        }
+
+        // ========================================
+        // ANIMATION LOOP
+        // ========================================
         
         start() {
-            if (this.isRunning) return;
+            if (this.state.running) return;
             
-            this.isRunning = true;
-            this.lastTime = performance.now();
-            this.animate(this.lastTime);
+            this.state.running = true;
+            this.state.paused = false;
+            this.performance.lastTime = performance.now();
             
-            console.log('[Simplified Neural Network] ✅ Animation started');
+            this.animate();
+            
+            this.log('info', '▶️ Animation started');
         }
-        
+
         stop() {
-            if (!this.isRunning) return;
+            if (!this.state.running) return;
             
-            this.isRunning = false;
+            this.state.running = false;
+            
             if (this.animationId) {
                 cancelAnimationFrame(this.animationId);
                 this.animationId = null;
             }
             
-            console.log('[Simplified Neural Network] Animation stopped');
+            this.log('info', '⏹️ Animation stopped');
         }
-        
+
         pause() {
-            if (this.isRunning) {
-                this.stop();
-                this._wasPausedBySystem = true;
-            }
+            if (!this.state.running || this.state.paused) return;
+            
+            this.state.paused = true;
+            this.log('info', '⏸️ Animation paused');
         }
-        
+
         resume() {
-            if (this._wasPausedBySystem) {
-                this.start();
-                this._wasPausedBySystem = false;
+            if (!this.state.running || !this.state.paused) return;
+            
+            this.state.paused = false;
+            this.performance.lastTime = performance.now();
+            this.animate();
+            
+            this.log('info', '▶️ Animation resumed');
+        }
+
+        animate(currentTime = performance.now()) {
+            if (!this.state.running || this.state.paused) return;
+            
+            // Calculate delta time
+            this.performance.deltaTime = currentTime - this.performance.lastTime;
+            this.performance.lastTime = currentTime;
+            
+            // Skip frame if delta is too large (tab was hidden)
+            if (this.performance.deltaTime > 100) {
+                this.performance.deltaTime = 16.67;
+            }
+            
+            // Update
+            this.update();
+            
+            // Draw
+            this.draw();
+            
+            // Update FPS
+            this.updateFPS(currentTime);
+            
+            // Next frame
+            this.animationId = requestAnimationFrame((time) => this.animate(time));
+        }
+
+        update() {
+            // Update nodes
+            this.nodes.forEach(node => {
+                node.update(this.performance.deltaTime);
+            });
+            
+            // Update connections
+            this.updateConnections();
+        }
+
+        updateConnections() {
+            // Crea mappa per lookup veloce
+            const connectionMap = new Map();
+            
+            // Check tutte le possibili connessioni
+            for (let i = 0; i < this.nodes.length; i++) {
+                for (let j = i + 1; j < this.nodes.length; j++) {
+                    const nodeA = this.nodes[i];
+                    const nodeB = this.nodes[j];
+                    const distance = nodeA.distanceTo(nodeB);
+                    
+                    if (distance <= CONFIG.CONNECTIONS.SEPARATION_DISTANCE) {
+                        const key = `${nodeA.id}-${nodeB.id}`;
+                        
+                        let connection = this.connections.get(key);
+                        
+                        if (!connection) {
+                            connection = new Connection(nodeA, nodeB);
+                            this.connections.set(key, connection);
+                        }
+                        
+                        if (connection.update(this.performance.deltaTime)) {
+                            connectionMap.set(key, connection);
+                        }
+                    }
+                }
+            }
+            
+            // Sostituisci vecchie connessioni con quelle aggiornate
+            this.connections = connectionMap;
+        }
+
+        draw() {
+            // Clear canvas
+            this.ctx.clearRect(0, 0, 
+                this.canvas.width / CONFIG.PERFORMANCE.CANVAS_RESOLUTION,
+                this.canvas.height / CONFIG.PERFORMANCE.CANVAS_RESOLUTION);
+            
+            // Draw connections first (behind nodes)
+            this.connections.forEach(connection => {
+                connection.draw(this.ctx);
+            });
+            
+            // Draw nodes
+            this.nodes.forEach(node => {
+                node.draw(this.ctx);
+            });
+            
+            // Draw debug info if enabled
+            if (CONFIG.SPA.DEBUG) {
+                this.drawDebugInfo();
             }
         }
+
+        drawDebugInfo() {
+            this.ctx.save();
+            
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(10, 10, 200, 80);
+            
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.font = '12px monospace';
+            this.ctx.fillText(`FPS: ${this.performance.fps}`, 20, 30);
+            this.ctx.fillText(`Nodes: ${this.nodes.length}`, 20, 45);
+            this.ctx.fillText(`Connections: ${this.connections.size}`, 20, 60);
+            this.ctx.fillText(`Delta: ${this.performance.deltaTime.toFixed(2)}ms`, 20, 75);
+            
+            this.ctx.restore();
+        }
+
+        updateFPS(currentTime) {
+            this.performance.frameCount++;
+            
+            if (currentTime - this.performance.lastFpsUpdate >= 1000) {
+                this.performance.fps = this.performance.frameCount;
+                this.performance.frameCount = 0;
+                this.performance.lastFpsUpdate = currentTime;
+            }
+        }
+
+        // ========================================
+        // PUBLIC API
+        // ========================================
         
         destroy() {
+            this.log('info', 'Destroying Neural Network...');
+            
+            // Stop animation
             this.stop();
+            
+            // Remove event handlers
+            this.removeEventHandlers();
+            
+            // Clear timeouts
+            clearTimeout(this.resizeTimeout);
+            
+            // Destroy nodes and connections
+            this.nodes.forEach(node => node.destroy());
+            this.connections.forEach(conn => conn.destroy());
+            
+            // Clear arrays
             this.nodes = [];
-            this.connections = [];
+            this.connections.clear();
+            
+            // Clear canvas
+            if (this.ctx) {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+            
+            // Reset state
+            this.state.initialized = false;
             this.canvas = null;
             this.ctx = null;
             
-            console.log('[Simplified Neural Network] Destroyed');
+            this.log('success', '✅ Neural Network destroyed');
         }
-        
-        // ========================================
-        // API PUBBLICA
-        // ========================================
-        
+
         updateConfig(newConfig) {
-            // Aggiorna configurazione
-            Object.assign(USER_CONFIG, newConfig);
+            Object.keys(newConfig).forEach(key => {
+                if (CONFIG.hasOwnProperty(key)) {
+                    Object.assign(CONFIG[key], newConfig[key]);
+                }
+            });
             
-            // Ricrea nodi se il numero è cambiato
-            if (newConfig.NODE_COUNT && newConfig.NODE_COUNT !== this.nodes.length) {
+            // Re-create nodes if count changed
+            if (newConfig.NODES && newConfig.NODES.COUNT) {
                 this.createNodes();
+                this.connections.clear();
             }
             
-            console.log('[Simplified Neural Network] Configuration updated:', newConfig);
+            this.log('info', 'Configuration updated');
         }
-        
+
         getStats() {
             return {
+                running: this.state.running,
+                paused: this.state.paused,
+                fps: this.performance.fps,
                 nodes: this.nodes.length,
-                connections: this.connections.length,
-                isRunning: this.isRunning,
-                fps: this.fpsData.fps,
-                frameCount: this.frameCount,
-                config: { ...USER_CONFIG }
+                connections: this.connections.size,
+                deltaTime: this.performance.deltaTime
             };
         }
-        
-        getConfig() {
-            return { ...USER_CONFIG };
+
+        setDebug(enabled) {
+            CONFIG.SPA.DEBUG = enabled;
+        }
+
+        log(level, ...args) {
+            if (!CONFIG.SPA.DEBUG && level === 'debug') return;
+            
+            const prefix = '[Neural Network]';
+            const methods = {
+                'debug': 'log',
+                'info': 'info',
+                'warn': 'warn',
+                'error': 'error',
+                'success': 'log'
+            };
+            
+            const method = methods[level] || 'log';
+            console[method](prefix, ...args);
         }
     }
 
     // ========================================
-    // INIZIALIZZAZIONE E API GLOBALE
+    // GESTIONE ISTANZA GLOBALE
     // ========================================
     
-    let networkInstance = null;
-    
-    function initializeSimplifiedNetwork() {
-        const canvas = document.getElementById('network-canvas');
-        if (!canvas) {
-            console.warn('[Simplified Neural Network] Canvas not found, will retry...');
-            return null;
+    class NeuralNetworkManager {
+        constructor() {
+            this.instances = new Map();
+            this.initialized = false;
+            
+            // Auto-init al DOM ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => this.init());
+            } else {
+                this.init();
+            }
         }
-        
-        try {
-            if (networkInstance) {
-                networkInstance.destroy();
+
+        async init() {
+            if (this.initialized) return;
+            
+            console.log('[Neural Network Manager] Initializing...');
+            
+            // Setup SPA event listeners
+            this.setupSPAListeners();
+            
+            // Cerca e inizializza canvas esistenti
+            await this.autoDetectCanvas();
+            
+            this.initialized = true;
+            console.log('[Neural Network Manager] ✅ Ready');
+        }
+
+        setupSPAListeners() {
+            if (window.TalonApp) {
+                window.TalonApp.on('talon:content:loaded', () => {
+                    this.autoDetectCanvas();
+                });
+            } else {
+                document.addEventListener('spa:content-loaded', () => {
+                    this.autoDetectCanvas();
+                });
+            }
+        }
+
+        async autoDetectCanvas() {
+            // Cerca canvas con ID standard
+            const canvasIds = ['network-canvas', 'neural-canvas', 'background-canvas'];
+            
+            for (const id of canvasIds) {
+                const canvas = document.getElementById(id);
+                if (canvas && !this.instances.has(id)) {
+                    await this.create(id);
+                }
+            }
+        }
+
+        async create(canvasId) {
+            // Distruggi istanza esistente se presente
+            if (this.instances.has(canvasId)) {
+                this.destroy(canvasId);
             }
             
-            networkInstance = new SimplifiedNeuralNetwork('network-canvas');
-            return networkInstance;
-        } catch (error) {
-            console.error('[Simplified Neural Network] Init failed:', error);
-            return null;
+            const network = new NeuralNetwork(canvasId);
+            const success = await network.init();
+            
+            if (success) {
+                this.instances.set(canvasId, network);
+                console.log(`[Neural Network Manager] Created instance: ${canvasId}`);
+            }
+            
+            return network;
+        }
+
+        get(canvasId) {
+            return this.instances.get(canvasId);
+        }
+
+        destroy(canvasId) {
+            const network = this.instances.get(canvasId);
+            if (network) {
+                network.destroy();
+                this.instances.delete(canvasId);
+                console.log(`[Neural Network Manager] Destroyed instance: ${canvasId}`);
+            }
+        }
+
+        destroyAll() {
+            this.instances.forEach(network => network.destroy());
+            this.instances.clear();
+        }
+
+        getAll() {
+            return Array.from(this.instances.values());
+        }
+
+        pauseAll() {
+            this.instances.forEach(network => network.pause());
+        }
+
+        resumeAll() {
+            this.instances.forEach(network => network.resume());
         }
     }
+
+    // ========================================
+    // EXPORT & INIZIALIZZAZIONE
+    // ========================================
     
-    // API globale semplificata
-    window.SimplifiedNeuralNetwork = SimplifiedNeuralNetwork;
-    window.TALON_NeuralNetwork = {
-        // Controllo base
-        init: initializeSimplifiedNetwork,
-        start: () => networkInstance?.start(),
-        stop: () => networkInstance?.stop(),
-        destroy: () => {
-            networkInstance?.destroy();
-            networkInstance = null;
+    // Crea manager singleton
+    const manager = new NeuralNetworkManager();
+    
+    // API Globale
+    window.TalonNeuralNetwork = {
+        // Manager methods
+        create: (canvasId) => manager.create(canvasId),
+        get: (canvasId) => manager.get(canvasId),
+        destroy: (canvasId) => manager.destroy(canvasId),
+        destroyAll: () => manager.destroyAll(),
+        getAll: () => manager.getAll(),
+        pauseAll: () => manager.pauseAll(),
+        resumeAll: () => manager.resumeAll(),
+        
+        // Direct class access
+        NeuralNetwork: NeuralNetwork,
+        Node: Node,
+        Connection: Connection,
+        
+        // Configuration
+        getConfig: () => ({ ...CONFIG }),
+        updateConfig: (newConfig) => {
+            Object.assign(CONFIG, newConfig);
+            manager.getAll().forEach(network => network.updateConfig(newConfig));
         },
         
-        // Configurazione
-        updateConfig: (config) => networkInstance?.updateConfig(config),
-        getConfig: () => networkInstance?.getConfig() || USER_CONFIG,
-        
-        // Informazioni
-        getStats: () => networkInstance?.getStats() || null,
-        isRunning: () => networkInstance?.isRunning || false,
-        getInstance: () => networkInstance,
-        
-        // Configurazione diretta
-        config: USER_CONFIG
+        // Info
+        version: '5.0.0',
+        isInitialized: () => manager.initialized
     };
     
-    // Auto-inizializzazione con retry
-    function attemptInit(attempts = 0) {
-        if (attempts >= 5) {
-            console.error('[Simplified Neural Network] Max init attempts reached');
-            return;
-        }
-        
-        const result = initializeSimplifiedNetwork();
-        if (!result && attempts < 5) {
-            setTimeout(() => attemptInit(attempts + 1), 100 * (attempts + 1));
-        }
-    }
+    // Alias for backward compatibility
+    window.TALON_NeuralNetwork = window.TalonNeuralNetwork;
     
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => attemptInit(), 100);
-        });
-    } else {
-        setTimeout(() => attemptInit(), 100);
-    }
-    
-    console.log('[Simplified Neural Network] 🧠 Module loaded - No pulses, just smooth connections');
+    console.log('%c🧠 Talon Neural Network v5.0.0 - SPA Ready', 
+        'color: #3b82f6; font-weight: bold; font-size: 14px;');
 
 })(window, document);

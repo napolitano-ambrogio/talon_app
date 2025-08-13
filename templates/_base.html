@@ -1,4 +1,4 @@
-<!-- _base.html - allineato ad app.py (debug_mode/is_debug, CSRF safe) -->
+<!-- _base.html - Versione SPA Completa con supporto Offline -->
 <!DOCTYPE html>
 <html lang="it" class="h-100">
 <head>
@@ -9,74 +9,229 @@
     <meta name="user-name" content="{{ session.get('username', 'Utente') }}">
     <title>{% block title %}{{ app_name or 'TALON System' }}{% endblock %}</title>
 
-    <!-- Bootstrap CSS (CDN). Per uso offline valuta una copia locale in /static/vendor/bootstrap/ -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Librerie Offline - Tutte le risorse sono locali per funzionamento su chiavetta USB -->
+    
+    <!-- Bootstrap CSS (locale) -->
+    <link href="/external/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- FontAwesome CSS (locale) -->
+    <link href="/external/fontawesome/css/all.min.css" rel="stylesheet">
 
-    <!-- CSS con cache busting -->
+    <!-- CSS Sistema con cache busting -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ cache_buster }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}?v={{ cache_buster }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-roles.css') }}?v={{ cache_buster }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/searchable_select.css') }}?v={{ cache_buster }}">
-
+    
+    <!-- CSS SPA Loader -->
+    <style>
+        /* SPA Loader Styles */
+        .spa-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9997;
+            backdrop-filter: blur(5px);
+        }
+        
+        .spa-loader.active {
+            display: flex;
+        }
+        
+        .spa-loader .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        
+        /* Transizioni contenuto SPA */
+        .main-content {
+            transition: opacity 0.3s ease;
+        }
+        
+        .main-content.loading {
+            opacity: 0.3;
+        }
+        
+        /* Indicatore navigazione SPA */
+        .spa-navigation-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #007bff 0%, #0056b3 50%, #007bff 100%);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+            z-index: 10001;
+        }
+        
+        .spa-navigation-indicator.active {
+            transform: scaleX(1);
+            animation: spa-loading 1s ease-in-out infinite;
+        }
+        
+        @keyframes spa-loading {
+            0% { transform: scaleX(0); transform-origin: left; }
+            50% { transform: scaleX(1); transform-origin: left; }
+            51% { transform-origin: right; }
+            100% { transform: scaleX(0); transform-origin: right; }
+        }
+    </style>
+    
+    <!-- Blocco per CSS aggiuntivi specifici per pagina -->
+    {% block additional_css %}{% endblock %}
+    
+    <!-- Blocco legacy per compatibilità -->
     {% block extra_css %}{% endblock %}
+    
+    <!-- Preload fonts per performance -->
+    <link rel="preload" href="/external/fontawesome/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/external/fontawesome/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
 </head>
 <body class="h-100 {% if session.get('ruolo_nome') %}role-{{ session.get('ruolo_nome').lower() }}{% endif %}"
       data-user-role="{{ session.get('ruolo_nome', 'GUEST') }}"
       data-user-name="{{ session.get('username', 'Utente') }}"
-      data-page="{{ request.endpoint }}">
+      data-page="{{ request.endpoint }}"
+      data-spa-enabled="true"
+      data-offline-mode="true">
+
+    <!-- Indicatore navigazione SPA -->
+    <div class="spa-navigation-indicator" id="spa-navigation-indicator"></div>
 
     <!-- Variabili globali JS dal backend -->
     <script>
-        // Dati utente
-        window.FLASK_USER_ROLE = "{{ session.get('ruolo_nome', 'GUEST') }}";
-        window.FLASK_USER_NAME = "{{ session.get('username', 'Utente') }}";
-        window.FLASK_USER_FULL_NAME = "{{ (session.get('nome','') ~ ' ' ~ session.get('cognome','')).strip() or session.get('username','Utente') }}";
-        window.FLASK_IS_LOGGED_IN = {{ 'true' if session.get('logged_in') else 'false' }};
-
-        // Flag debug (dai context processor app.py)
-        window.FLASK_DEBUG = {{ 'true' if debug_mode else 'false' }};
-        window.FLASK_IS_DEBUG = {{ 'true' if is_debug else 'false' }};
-
-        // Info applicazione
-        window.TALON_APP = {
-            name: "{{ app_name or 'TALON System' }}",
-            version: "{{ app_version or '2.0.0' }}",
-            year: {{ current_year or 2025 }},
-            ssoEnabled: {{ 'true' if sso_enabled else 'false' }}
+        // Configurazione Sistema
+        window.TALON_CONFIG = {
+            // Dati utente
+            user: {
+                id: {{ session.get('user_id', 'null') }},
+                role: "{{ session.get('ruolo_nome', 'GUEST') }}",
+                username: "{{ session.get('username', 'Utente') }}",
+                fullName: "{{ (session.get('nome','') ~ ' ' ~ session.get('cognome','')).strip() or session.get('username','Utente') }}",
+                email: "{{ session.get('email', '') }}",
+                isLoggedIn: {{ 'true' if session.get('logged_in') else 'false' }},
+                permissions: {{ session.get('permissions', [])|tojson|safe }}
+            },
+            // Info applicazione
+            app: {
+                name: "{{ app_name or 'TALON System' }}",
+                version: "{{ app_version or '2.0.0' }}",
+                year: {{ current_year or 2025 }},
+                ssoEnabled: {{ 'true' if sso_enabled else 'false' }},
+                offlineMode: true,
+                spaEnabled: true,
+                cacheBuster: "{{ cache_buster }}"
+            },
+            // Flag debug
+            debug: {
+                enabled: {{ 'true' if debug_mode else 'false' }},
+                isDebug: {{ 'true' if is_debug else 'false' }}
+            },
+            // URLs API e Routes
+            api: {
+                baseUrl: "{{ url_for('main.dashboard', _external=False) }}".replace('/dashboard', ''),
+                csrfToken: "{{ csrf_token() }}"
+            },
+            // Configurazione SPA
+            spa: {
+                enabled: true,
+                cache: {
+                    enabled: true,
+                    ttl: 300000 // 5 minuti
+                },
+                transitions: {
+                    fadeIn: 300,
+                    fadeOut: 200
+                }
+            }
         };
+        
+        // Retrocompatibilità con vecchie variabili
+        window.FLASK_USER_ROLE = window.TALON_CONFIG.user.role;
+        window.FLASK_USER_NAME = window.TALON_CONFIG.user.username;
+        window.FLASK_USER_FULL_NAME = window.TALON_CONFIG.user.fullName;
+        window.FLASK_IS_LOGGED_IN = window.TALON_CONFIG.user.isLoggedIn;
+        window.FLASK_DEBUG = window.TALON_CONFIG.debug.enabled;
+        window.FLASK_IS_DEBUG = window.TALON_CONFIG.debug.isDebug;
+        window.TALON_APP = window.TALON_CONFIG.app;
     </script>
 
     <!-- Hidden per compatibilità -->
     <input type="hidden" id="hidden-user-role" value="{{ session.get('ruolo_nome', 'GUEST') }}">
+
+    <!-- Indicatore Offline Mode -->
+    <div id="offline-indicator" class="position-fixed top-0 start-50 translate-middle-x bg-warning text-dark px-3 py-1 rounded-bottom shadow-sm" style="display: none; z-index: 10000;">
+        <i class="fas fa-wifi-slash"></i> Modalità Offline
+    </div>
+
+    <!-- SPA Loader -->
+    <div id="spa-loader" class="spa-loader">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Caricamento...</span>
+            </div>
+            <div class="text-primary mt-3">Caricamento in corso...</div>
+        </div>
+    </div>
 
     <div class="d-flex h-100">
         {% if session.get('logged_in') %}
             {% include 'components/sidebar.html' %}
         {% endif %}
 
-        <main class="flex-grow-1 d-flex flex-column {% if not session.get('logged_in') %}mx-auto{% endif %} page-wrapper">
+        <main class="flex-grow-1 d-flex flex-column {% if not session.get('logged_in') %}mx-auto{% endif %} page-wrapper" id="main-wrapper">
             {% if session.get('logged_in') %}
-            <header class="bg-light border-bottom py-2 px-3 page-header">
+            <header class="bg-light border-bottom py-2 px-3 page-header" id="page-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0">
+                        <ol class="breadcrumb mb-0" id="breadcrumb">
                             <li class="breadcrumb-item">
-                                <a href="{{ url_for('main.dashboard') }}">
+                                <a href="{{ url_for('main.dashboard') }}" data-spa-link>
                                     <i class="fas fa-home"></i> Dashboard
                                 </a>
                             </li>
                             {% block breadcrumb %}{% endblock %}
                         </ol>
                     </nav>
+                    
+                    <!-- Quick Actions nella header -->
+                    <div class="header-actions">
+                        <button class="btn btn-sm btn-outline-secondary me-2" id="fullscreen-btn" title="Schermo intero">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary me-2" id="refresh-btn" title="Ricarica pagina">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary me-2" id="clear-cache-btn" title="Pulisci cache">
+                            <i class="fas fa-broom"></i>
+                        </button>
+                        <span class="badge bg-info text-dark" id="connection-status">
+                            <i class="fas fa-circle"></i> Online
+                        </span>
+                    </div>
                 </div>
             </header>
             {% endif %}
 
+            <!-- Container per notifiche flash (gestite da SPA) -->
+            <div class="flash-messages p-3" id="flash-messages" style="display: none;">
+                <!-- Popolato dinamicamente da SPA -->
+            </div>
+
+            <!-- Flash messages iniziali (solo primo caricamento) -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
-                <div class="flash-messages p-3">
+                <div class="flash-messages p-3" id="initial-flash-messages">
                     {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show shadow-sm" role="alert">
+                        <i class="fas fa-{{ 'exclamation-circle' if category == 'error' else 'info-circle' if category == 'info' else 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i>
                         {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Chiudi"></button>
                     </div>
@@ -85,9 +240,11 @@
                 {% endif %}
             {% endwith %}
 
-            <div id="toast-container"></div>
+            <!-- Container per toast notifications -->
+            <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
 
-            <div class="flex-grow-1 p-3 main-content">
+            <!-- Main Content Area (gestito da SPA) -->
+            <div class="flex-grow-1 p-3 main-content" id="main-content">
                 {% block content %}
                 <div class="text-center text-muted">
                     <p>Contenuto non disponibile</p>
@@ -95,23 +252,29 @@
                 {% endblock %}
             </div>
 
-            <footer class="bg-light border-top py-2 px-3 mt-auto">
+            <footer class="bg-light border-top py-2 px-3 mt-auto" id="page-footer">
                 <div class="d-flex justify-content-between align-items-center">
                     <small class="text-muted">
                         {{ app_name or 'TALON System' }} v{{ app_version or '2.0.0' }}
                         {% if debug_mode or is_debug %}
-                        <span class="badge bg-warning text-dark ms-2">DEBUG - Cache Disabled</span>
+                        <span class="badge bg-warning text-dark ms-2">
+                            <i class="fas fa-bug"></i> DEBUG MODE
+                        </span>
                         {% endif %}
+                        <span class="badge bg-primary ms-2">
+                            <i class="fas fa-rocket"></i> SPA Mode
+                        </span>
+                        <span class="badge bg-secondary ms-2">
+                            <i class="fas fa-hard-drive"></i> Offline Ready
+                        </span>
                     </small>
 
                     {% if session.get('logged_in') %}
                     <small class="text-muted">
-                        Ultimo accesso:
-                        {% if session.get('login_time') %}
-                            {{ session.get('login_time')|datetime_format('%d/%m/%Y %H:%M') }}
-                        {% else %}
-                            N/A
-                        {% endif %}
+                        <i class="fas fa-user-circle"></i> {{ session.get('username', 'Utente') }}
+                        <span class="mx-2">|</span>
+                        <i class="fas fa-clock"></i> Sessione:
+                        <span id="session-timer">00:00</span>
                     </small>
                     {% endif %}
                 </div>
@@ -119,79 +282,374 @@
         </main>
     </div>
 
-    <!-- jQuery (CDN). Per offline, copia locale in /static/vendor/jquery/ -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <!-- Bootstrap Bundle JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- FontAwesome (valuta copia locale per uso offline) -->
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <!-- JavaScript Libraries - Tutte locali per funzionamento offline -->
+    
+    <!-- jQuery (locale) -->
+    <script src="/external/jquery/jquery-3.7.1.min.js"></script>
+    
+    <!-- Bootstrap Bundle JS (locale) -->
+    <script src="/external/bootstrap/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- FontAwesome JS (locale) -->
+    <script src="/external/fontawesome/js/all.min.js"></script>
+    
+    <!-- Chart.js (locale) - per grafici -->
+    <script src="/external/chartjs/chart.umd.min.js"></script>
 
+    <!-- ============================== -->
+    <!-- CORE SPA APPLICATION -->
+    <!-- ============================== -->
+    
+    <!-- Core Script (sempre caricato) -->
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_buster }}"></script>
+    
+    <!-- Login Script (solo se non loggato) -->
+    {% if not session.get('logged_in') %}
+    <script src="{{ url_for('static', filename='js/neural-network.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/login.js') }}?v={{ cache_buster }}"></script>
+    {% endif %}
+    
+    <!-- Scripts Sistema (caricati solo se loggato) -->
     {% if session.get('logged_in') %}
+    
+    <!-- SPA Core Engine -->
+    <script src="{{ url_for('static', filename='js/app.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/spa-navigation.js') }}?v={{ cache_buster }}"></script>
+    
+    <!-- Sistema Components -->
     <script src="{{ url_for('static', filename='js/sidebar.js') }}?v={{ cache_buster }}"></script>
     <script src="{{ url_for('static', filename='js/sidebar-role-manager.js') }}?v={{ cache_buster }}"></script>
-    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/fullscreen-manager.js') }}?v={{ cache_buster }}"></script>
     <script src="{{ url_for('static', filename='js/searchable_select.js') }}?v={{ cache_buster }}"></script>
+    
+    <!-- Moduli Dashboard -->
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ cache_buster }}"></script>
+    {% if session.get('ruolo_nome') == 'ADMIN' %}
+    <script src="{{ url_for('static', filename='js/dashboard_admin.js') }}?v={{ cache_buster }}"></script>
+    {% endif %}
+    
+    <!-- Moduli Principali -->
+    <script src="{{ url_for('static', filename='js/organigramma.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/enti-militari.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/enti-civili.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/operazioni.js') }}?v={{ cache_buster }}"></script>
+    
+    <!-- Modulo Attività con tutti i suoi componenti -->
+    <script src="{{ url_for('static', filename='js/attivita/attivita_utils.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/attivita/attivita_forms.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/attivita/attivita.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/attivita/inserimento_attivita.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/attivita/modifica_attivita.js') }}?v={{ cache_buster }}"></script>
+    
     {% endif %}
 
+    <!-- Script Inizializzazione SPA e Sistema -->
     <script>
-        // Permessi lato client dedotti dal ruolo in sessione
+        // ============================
+        // CONFIGURAZIONE SPA
+        // ============================
+        
+        // Aggiorna configurazione TalonApp con dati dal backend
+        if (window.TalonApp) {
+            TalonApp.config.debug = window.TALON_CONFIG.debug.enabled;
+            TalonApp.config.apiBaseUrl = window.TALON_CONFIG.api.baseUrl;
+            TalonApp.config.cache.enabled = window.TALON_CONFIG.spa.cache.enabled;
+            TalonApp.config.cache.ttl = window.TALON_CONFIG.spa.cache.ttl;
+            
+            // Registra i moduli nel namespace globale
+            TalonApp.modules = TalonApp.modules || {};
+            TalonApp.modules.core = {
+                script: true,
+                app: true,
+                spaNavigation: true
+            };
+            TalonApp.modules.components = {
+                sidebar: true,
+                sidebarRoleManager: true,
+                fullscreenManager: true,
+                searchableSelect: true
+            };
+            TalonApp.modules.pages = {
+                dashboard: true,
+                dashboardAdmin: window.TALON_CONFIG.user.role === 'ADMIN',
+                organigramma: true,
+                entiMilitari: true,
+                entiCivili: true,
+                operazioni: true
+            };
+            TalonApp.modules.attivita = {
+                loaded: true,
+                path: '/static/js/attivita/',
+                components: {
+                    utils: true,
+                    forms: true,
+                    main: true,
+                    inserimento: true,
+                    modifica: true
+                }
+            };
+        }
+        
+        // ============================
+        // SISTEMA PERMESSI
+        // ============================
+        
         (function () {
-            const role = '{{ session.get("ruolo_nome", "GUEST") }}'.toUpperCase();
-            const isAdmin = role === 'ADMIN';
-            const isOperatore = role === 'OPERATORE';
-            const isVisualizzatore = role === 'VISUALIZZATORE';
-
+            const config = window.TALON_CONFIG;
+            const role = config.user.role.toUpperCase();
+            
             window.TalonPermissions = {
                 userRole: role || 'GUEST',
-                canEdit: (isAdmin || isOperatore),
-                canDelete: isAdmin,
-                canCreate: (isAdmin || isOperatore),
-                isAdmin: isAdmin,
-                isOperatore: isOperatore,
-                isVisualizzatore: isVisualizzatore,
-                isLoggedIn: {{ 'true' if session.get('logged_in') else 'false' }}
+                canEdit: ['ADMIN', 'OPERATORE'].includes(role),
+                canDelete: role === 'ADMIN',
+                canCreate: ['ADMIN', 'OPERATORE'].includes(role),
+                canViewReports: ['ADMIN', 'OPERATORE', 'VISUALIZZATORE'].includes(role),
+                isAdmin: role === 'ADMIN',
+                isOperatore: role === 'OPERATORE',
+                isVisualizzatore: role === 'VISUALIZZATORE',
+                isLoggedIn: config.user.isLoggedIn
             };
         })();
 
-        // Fallback alert se non presente un'API UI nativa
-        window.showAlert = function(message, type = 'info') {
-            if (window.TALON_API && typeof window.TALON_API.showInfo === 'function') {
-                if (type === 'success') return window.TALON_API.showSuccess(message);
-                if (type === 'danger' || type === 'error') return window.TALON_API.showError(message);
-                return window.TALON_API.showInfo(message);
+        // ============================
+        // INTEGRAZIONI SPA
+        // ============================
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // Listener per eventi SPA
+            if (window.TalonApp) {
+                
+                // Indicatore navigazione
+                TalonApp.on('navigation:start', function() {
+                    document.getElementById('spa-navigation-indicator').classList.add('active');
+                });
+                
+                TalonApp.on('navigation:complete', function() {
+                    document.getElementById('spa-navigation-indicator').classList.remove('active');
+                    
+                    // Reinizializza componenti dopo navigazione
+                    initializePageComponents();
+                    
+                    // Reinizializza moduli specifici in base alla pagina
+                    const currentPath = window.location.pathname;
+                    
+                    if (currentPath.includes('/attivita')) {
+                        if (window.AttivitaManager && window.AttivitaManager.init) {
+                            window.AttivitaManager.init();
+                        }
+                    }
+                    
+                    if (currentPath.includes('/organigramma')) {
+                        if (window.OrganigrammaManager && window.OrganigrammaManager.init) {
+                            window.OrganigrammaManager.init();
+                        }
+                    }
+                });
+                
+                TalonApp.on('navigation:error', function(data) {
+                    document.getElementById('spa-navigation-indicator').classList.remove('active');
+                    console.error('Navigation error:', data.error);
+                });
+                
+                // Bottone refresh
+                const refreshBtn = document.getElementById('refresh-btn');
+                if (refreshBtn) {
+                    refreshBtn.addEventListener('click', function() {
+                        TalonApp.navigate(window.location.pathname, { force: true });
+                    });
+                }
+                
+                // Bottone clear cache
+                const clearCacheBtn = document.getElementById('clear-cache-btn');
+                if (clearCacheBtn) {
+                    clearCacheBtn.addEventListener('click', function() {
+                        TalonApp.cache.clear();
+                        TalonApp.showToast('Cache pulita con successo', 'success');
+                    });
+                }
+                
+                // Gestione fullscreen (se non gestito da fullscreen-manager.js)
+                if (!window.FullscreenManager) {
+                    const fullscreenBtn = document.getElementById('fullscreen-btn');
+                    if (fullscreenBtn) {
+                        fullscreenBtn.addEventListener('click', function() {
+                            if (!document.fullscreenElement) {
+                                document.documentElement.requestFullscreen();
+                                this.innerHTML = '<i class="fas fa-compress"></i>';
+                            } else {
+                                if (document.exitFullscreen) {
+                                    document.exitFullscreen();
+                                    this.innerHTML = '<i class="fas fa-expand"></i>';
+                                }
+                            }
+                        });
+                    }
+                }
+                
+                // Gestione logout (deve fare reload completo)
+                document.querySelectorAll('a[href*="logout"]').forEach(link => {
+                    link.setAttribute('data-spa-ignore', 'true');
+                });
             }
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
-            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-            alertDiv.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
-            document.body.appendChild(alertDiv);
-            setTimeout(() => { if (alertDiv.parentNode) alertDiv.remove(); }, 5000);
-        };
+            
+            // ============================
+            // GESTIONE STATO CONNESSIONE
+            // ============================
+            
+            function updateConnectionStatus() {
+                const statusBadge = document.getElementById('connection-status');
+                const offlineIndicator = document.getElementById('offline-indicator');
+                
+                if (!navigator.onLine) {
+                    if (statusBadge) {
+                        statusBadge.innerHTML = '<i class="fas fa-circle"></i> Offline';
+                        statusBadge.className = 'badge bg-secondary';
+                    }
+                    if (offlineIndicator) {
+                        offlineIndicator.style.display = 'block';
+                    }
+                    if (window.TalonApp && window.TalonApp.showToast) {
+                        TalonApp.showToast('Modalità offline attiva', 'warning');
+                    }
+                } else {
+                    if (statusBadge) {
+                        statusBadge.innerHTML = '<i class="fas fa-circle"></i> Online';
+                        statusBadge.className = 'badge bg-info text-dark';
+                    }
+                    if (offlineIndicator) {
+                        offlineIndicator.style.display = 'none';
+                    }
+                }
+            }
+            
+            window.addEventListener('online', updateConnectionStatus);
+            window.addEventListener('offline', updateConnectionStatus);
+            updateConnectionStatus();
+            
+            // ============================
+            // TIMER SESSIONE
+            // ============================
+            
+            if (window.TALON_CONFIG.user.isLoggedIn) {
+                const loginTime = "{{ session.get('login_time', '') }}";
+                
+                function updateSessionTimer() {
+                    const timerEl = document.getElementById('session-timer');
+                    if (!timerEl || !loginTime) return;
+                    
+                    const start = new Date(loginTime);
+                    const now = new Date();
+                    const diff = Math.floor((now - start) / 1000);
+                    
+                    const hours = Math.floor(diff / 3600);
+                    const minutes = Math.floor((diff % 3600) / 60);
+                    
+                    timerEl.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                }
+                
+                updateSessionTimer();
+                setInterval(updateSessionTimer, 60000); // Aggiorna ogni minuto
+            }
+            
+            // ============================
+            // INIZIALIZZAZIONE COMPONENTI
+            // ============================
+            
+            function initializePageComponents() {
+                // Reinizializza tooltip Bootstrap
+                const tooltipTriggerList = [].slice.call(
+                    document.querySelectorAll('[data-bs-toggle="tooltip"]')
+                );
+                tooltipTriggerList.map(function(tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+                
+                // Reinizializza popover Bootstrap
+                const popoverTriggerList = [].slice.call(
+                    document.querySelectorAll('[data-bs-toggle="popover"]')
+                );
+                popoverTriggerList.map(function(popoverTriggerEl) {
+                    return new bootstrap.Popover(popoverTriggerEl);
+                });
+                
+                // Reinizializza searchable select se presente
+                if (window.initializeSearchableSelects) {
+                    window.initializeSearchableSelects();
+                }
+                
+                // Log componenti caricati per debug
+                if (window.TALON_CONFIG.debug.enabled) {
+                    console.log('Page components initialized');
+                    
+                    const currentPath = window.location.pathname;
+                    if (currentPath.includes('/attivita')) {
+                        console.log('Attività module components:', {
+                            utils: !!window.AttivitaUtils,
+                            forms: !!window.AttivitaForms,
+                            manager: !!window.AttivitaManager
+                        });
+                    }
+                }
+            }
+            
+            // Inizializza componenti al primo caricamento
+            initializePageComponents();
+            
+            // Auto-hide flash messages iniziali
+            setTimeout(function() {
+                const flashMessages = document.getElementById('initial-flash-messages');
+                if (flashMessages) {
+                    flashMessages.style.transition = 'opacity 0.5s';
+                    flashMessages.style.opacity = '0';
+                    setTimeout(() => flashMessages.remove(), 500);
+                }
+            }, 5000);
+        });
 
-        // Setup CSRF per AJAX - attivo solo se il token NON è vuoto
+        // ============================
+        // SETUP AJAX GLOBALE
+        // ============================
+        
         (function () {
-            const tokenMeta = document.querySelector('meta[name="csrf-token"]');
-            const csrfToken = tokenMeta ? (tokenMeta.getAttribute('content') || '').trim() : '';
-            if (csrfToken) {
+            const csrfToken = window.TALON_CONFIG.api.csrfToken;
+            if (csrfToken && window.jQuery) {
                 $.ajaxSetup({
                     beforeSend: function(xhr, settings) {
                         if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
                             xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                            xhr.setRequestHeader("X-SPA-Request", "true");
                         }
                     }
                 });
             }
         })();
 
-        // Log di debug (solo in debug)
+        // ============================
+        // DEBUG CONSOLE
+        // ============================
+        
         {% if debug_mode or is_debug %}
-        console.log('🔧 TALON System - Debug Mode ON');
-        console.log('💾 Cache Buster:', '{{ cache_buster }}');
-        console.log('👤 User:', window.FLASK_USER_FULL_NAME, '(' + window.FLASK_USER_ROLE + ')');
-        console.log('🔐 SSO enabled:', window.TALON_APP.ssoEnabled);
+        console.group('🚀 TALON System - SPA Debug Info');
+        console.log('📦 Version:', window.TALON_CONFIG.app.version);
+        console.log('👤 User:', window.TALON_CONFIG.user.fullName, '(' + window.TALON_CONFIG.user.role + ')');
+        console.log('💾 Cache Buster:', window.TALON_CONFIG.app.cacheBuster);
+        console.log('🔐 SSO:', window.TALON_CONFIG.app.ssoEnabled ? 'Enabled' : 'Disabled');
+        console.log('⚡ SPA:', window.TALON_CONFIG.app.spaEnabled ? 'Enabled' : 'Disabled');
+        console.log('🌐 Mode:', navigator.onLine ? 'Online' : 'Offline');
+        console.log('🔑 Permissions:', window.TalonPermissions);
+        console.log('🎯 TalonApp:', window.TalonApp ? 'Loaded' : 'Not loaded');
+        if (window.TalonApp && window.TalonApp.modules) {
+            console.log('📁 Modules:', window.TalonApp.modules);
+        }
+        console.groupEnd();
         {% endif %}
     </script>
 
+    <!-- Blocco per JavaScript aggiuntivi specifici per pagina -->
+    {% block additional_js %}{% endblock %}
+    
+    <!-- Blocco legacy per compatibilità -->
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,0 +1,119 @@
+{% extends "_base.html" %}
+
+{% block title %}Elenco Attività - TALON{% endblock %}
+
+{% block head %}
+<!-- CSS specifico per lista attività -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/lista_attivita.css') }}?v={{ cache_buster }}">
+{% endblock %}
+
+{% block content %}
+<div class="attivita-container" id="attivita-container">
+    <div class="detail-header">
+        <h3>Elenco Attività</h3>
+        <a href="{{ url_for('attivita.inserisci_attivita_form') }}" 
+           class="btn-modifica" 
+           data-spa-link="true">Nuova Attività</a>
+    </div>
+
+    <div class="list-container">
+        <!-- Barra di ricerca -->
+        <div class="search-bar">
+            <input type="search" 
+                   id="searchInput" 
+                   class="form-control search-input" 
+                   placeholder="CERCA PER TIPO, ENTE, OPERAZIONE O DESCRIZIONE..."
+                   aria-label="Cerca attività">
+        </div>
+
+        <!-- Tabella attività -->
+        <div class="table-responsive">
+            <table class="styled-table" id="attivitaTable">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-column="0" data-sort-type="date">
+                            <span class="th-label">Data Inizio</span>
+                            <span class="th-arrow" data-arrow="">▲▼</span>
+                        </th>
+                        <th class="sortable" data-column="1" data-sort-type="text">
+                            <span class="th-label">Tipo Attività</span>
+                            <span class="th-arrow" data-arrow="">▲▼</span>
+                        </th>
+                        <th class="sortable" data-column="2" data-sort-type="text">
+                            <span class="th-label">Ente Svolgimento</span>
+                            <span class="th-arrow" data-arrow="">▲▼</span>
+                        </th>
+                        <th class="sortable" data-column="3" data-sort-type="text">
+                            <span class="th-label">Operazione</span>
+                            <span class="th-arrow" data-arrow="">▲▼</span>
+                        </th>
+                        <th class="sortable" data-column="4" data-sort-type="text">
+                            <span class="th-label">Descrizione</span>
+                            <span class="th-arrow" data-arrow="">▲▼</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="attivitaTableBody" class="attivita-tbody">
+                    {% for attivita in attivita_list %}
+                    <tr class="clickable-row" 
+                        data-href="{{ url_for('attivita.visualizza_attivita', id=attivita.id) }}"
+                        data-attivita-id="{{ attivita.id }}"
+                        data-spa-link="true">
+                        <td data-sort="{{ attivita.data_inizio.isoformat() if attivita.data_inizio else '' }}">
+                            {{ attivita.data_inizio.strftime('%d/%m/%Y') if attivita.data_inizio else '' }}
+                        </td>
+                        <td>{{ attivita.tipologia_nome }}</td>
+                        <td>{{ attivita.ente_nome }}</td>
+                        <td>{{ attivita.operazione_nome or 'N/D' }}</td>
+                        <td title="{{ attivita.descrizione or 'Nessuna descrizione' }}">
+                            {{ (attivita.descrizione or 'Nessuna descrizione')[:80] }}{% if (attivita.descrizione or '')|length > 80 %}...{% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr class="no-data-row">
+                        <td colspan="5" style="text-align: center;">Nessuna attività inserita.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Riga no results (gestita da JavaScript) -->
+        <!-- Viene creata dinamicamente da attivita.js se necessario -->
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- I file JavaScript delle attività sono già caricati da _base.html nella sezione corretta:
+     - static/js/attivita/attivita_utils.js
+     - static/js/attivita/attivita_forms.js  
+     - static/js/attivita/attivita.js (contiene la logica della lista)
+     Quindi qui serve solo l'inizializzazione -->
+
+<script>
+// Inizializzazione specifica per vista lista
+document.addEventListener('DOMContentLoaded', function() {
+    // Il modulo TalonAttivita si auto-inizializza già dal file attivita.js
+    // ma possiamo forzare refresh se necessario
+    if (window.TalonAttivita && typeof window.TalonAttivita.init === 'function') {
+        console.log('[Lista Attività] Modulo attività disponibile');
+        // Il modulo si auto-inizializza, non serve chiamare init() manualmente
+    }
+});
+
+// Re-inizializzazione per navigazione SPA
+document.addEventListener('spa:content-loaded', function(e) {
+    // Per SPA, il modulo gestisce già la re-inizializzazione
+    console.log('[Lista Attività] Contenuto SPA caricato');
+});
+
+// Handler personalizzati per questa vista (se necessari)
+document.addEventListener('attivita:ready', function() {
+    console.log('[Lista Attività] Modulo attività pronto');
+    
+    // Qui possiamo aggiungere logica specifica per la lista
+    // se necessaria, ma il modulo attivita.js gestisce già tutto
+});
+</script>
+{% endblock %}
