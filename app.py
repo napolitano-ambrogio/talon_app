@@ -17,6 +17,8 @@ import hashlib
 import datetime
 from waitress import serve
 import logging
+import requests
+import urllib.parse
 
 # === DB: PostgreSQL ===
 import psycopg2
@@ -383,16 +385,29 @@ def create_app():
                     pass
     
     def verify_password(stored_hash: str, password: str, username: str = None) -> bool:
-        """Verifica password con fallback per admin di test"""
-        # Admin di test per sviluppo
-        if username == 'admin' and password == 'admin123':
-            return True
+        """Verifica password con Werkzeug e fallback per hash legacy"""
+        from werkzeug.security import check_password_hash
         
-        # Verifica hash MD5 (da migrare a bcrypt in produzione)
-        if stored_hash:
-            computed_hash = hashlib.md5(password.encode()).hexdigest()
-            return stored_hash == computed_hash
-        
+        if not stored_hash or not password:
+            return False
+            
+        try:
+            # Prova prima con Werkzeug (formato moderno)
+            if stored_hash.startswith('pbkdf2:') or stored_hash.startswith('scrypt:'):
+                return check_password_hash(stored_hash, password)
+            
+            # Fallback per hash MD5 legacy
+            if len(stored_hash) == 32 and stored_hash.isalnum():  # MD5 hash length
+                computed_hash = hashlib.md5(password.encode()).hexdigest()
+                return stored_hash == computed_hash
+            
+            # Fallback per admin di test per sviluppo
+            if username == 'admin' and password == 'admin123':
+                return True
+                
+        except Exception as e:
+            app.logger.error(f"Errore verifica password per {username}: {e}")
+            
         return False
     
     def create_api_session_token(user_data: dict) -> str:
@@ -478,6 +493,130 @@ def create_app():
         except Exception as e:
             app.logger.error(f"Errore serving external file {filename}: {e}")
             return Response(status=500)
+    
+    @app.route('/superset-proxy/<path:path>')
+    def superset_proxy(path):
+        """
+        Proxy per le richieste Superset che mantiene l'autenticazione
+        """
+        if not session.get('logged_in') or not session.get('superset_authenticated'):
+            return Response('Non autorizzato', status=401)
+        
+        SUPERSET_URL = "http://127.0.0.1:8088"
+        superset_cookies = session.get('superset_cookies', {})
+        
+        try:
+            # Forwarda la richiesta a Superset mantenendo i cookie di autenticazione
+            target_url = f"{SUPERSET_URL}/{path}"
+            
+            headers = {}
+            for key, value in request.headers.items():
+                if key.lower() not in ['host', 'content-length']:
+                    headers[key] = value
+            
+            response = requests.request(
+                method=request.method,
+                url=target_url,
+                headers=headers,
+                data=request.get_data(),
+                cookies=superset_cookies,
+                allow_redirects=False
+            )
+            
+            # Crea la risposta
+            flask_response = Response(
+                response.content,
+                status=response.status_code,
+                headers=dict(response.headers)
+            )
+            
+            return flask_response
+            
+        except Exception as e:
+            app.logger.error(f"Errore nel proxy Superset: {e}")
+            return Response('Errore del proxy', status=500)
+    
+    # ===========================================
+    # SUPERSET INTEGRATION
+    # ===========================================
+    
+    def authenticate_superset_user(username, password):
+        """
+        Autentica automaticamente l'utente su Superset usando le credenziali TALON
+        """
+        # Configurazione Superset - modificare in base alla configurazione
+        SUPERSET_URL = "http://127.0.0.1:8088"  # URL del tuo Superset
+        
+        try:
+            app.logger.info(f"Tentativo di autenticazione Superset per utente: {username}")
+            
+            # Crea una sessione per mantenere i cookies
+            session_requests = requests.Session()
+            
+            # 1. Ottieni la pagina di login per prendere il CSRF token
+            login_page = session_requests.get(f"{SUPERSET_URL}/login/")
+            if login_page.status_code != 200:
+                app.logger.error(f"Impossibile accedere alla pagina di login Superset: {login_page.status_code}")
+                return False
+            
+            # 2. Cerca il CSRF token nella risposta (Superset usa Flask-WTF)
+            csrf_token = None
+            if 'csrf_token' in login_page.text:
+                import re
+                csrf_match = re.search(r'name="csrf_token".*?value="([^"]+)"', login_page.text)
+                if csrf_match:
+                    csrf_token = csrf_match.group(1)
+            
+            # 3. Prepara i dati di login
+            login_data = {
+                'username': username,
+                'password': password
+            }
+            
+            if csrf_token:
+                login_data['csrf_token'] = csrf_token
+            
+            # 4. Effettua il login
+            headers = {
+                'Referer': f"{SUPERSET_URL}/login/",
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+            
+            login_response = session_requests.post(
+                f"{SUPERSET_URL}/login/",
+                data=login_data,
+                headers=headers,
+                allow_redirects=False
+            )
+            
+            # 5. Controlla se il login è riuscito
+            if login_response.status_code == 302:  # Redirect dopo login riuscito
+                redirect_location = login_response.headers.get('Location', '')
+                if '/login' not in redirect_location:  # Non reindirizza al login = successo
+                    app.logger.info(f"Autenticazione Superset riuscita per: {username}")
+                    
+                    # Opzionalmente, salva i cookie di sessione Superset per uso futuro
+                    # Potresti voler memorizzare i cookie nella sessione Flask per uso negli iframe
+                    superset_cookies = session_requests.cookies.get_dict()
+                    if superset_cookies:
+                        # Salva i cookie Superset nella sessione TALON per uso negli iframe
+                        session['superset_cookies'] = superset_cookies
+                        session['superset_authenticated'] = True
+                    
+                    return True
+                else:
+                    app.logger.warning(f"Login Superset fallito per {username}: redirect al login")
+                    return False
+            else:
+                app.logger.warning(f"Login Superset fallito per {username}: status code {login_response.status_code}")
+                return False
+                
+        except requests.exceptions.RequestException as e:
+            app.logger.error(f"Errore di connessione durante l'autenticazione Superset: {e}")
+            return False
+        except Exception as e:
+            app.logger.error(f"Errore imprevisto durante l'autenticazione Superset: {e}")
+            return False
     
     @app.route('/')
     def root():
@@ -592,6 +731,16 @@ def create_app():
             )
             
             app.logger.info(f"Login riuscito per utente: {username}")
+            
+            # Autentica automaticamente su Superset con le stesse credenziali
+            try:
+                superset_login_result = authenticate_superset_user(username, password)
+                if superset_login_result:
+                    app.logger.info(f"Autenticazione Superset riuscita per: {username}")
+                else:
+                    app.logger.warning(f"Autenticazione Superset fallita per: {username}")
+            except Exception as e:
+                app.logger.error(f"Errore durante l'autenticazione Superset per {username}: {e}")
             
             if is_api_request:
                 # Risposta API
@@ -785,6 +934,7 @@ def create_app():
                     FROM utenti u
                     LEFT JOIN ruoli r ON r.id = u.ruolo_id
                     LEFT JOIN enti_militari em ON em.id = u.ente_militare_id
+                    WHERE (u.eliminato IS NULL OR u.eliminato = FALSE)
                     ORDER BY u.cognome, u.nome
                     '''
                 )
@@ -1096,15 +1246,15 @@ def main():
     print("[NEW] FUNZIONALITÀ:")
     
     if SSO_AVAILABLE:
-        print("   ✓ SSO ATTIVO - Login unico TALON -> Superset")
+        print("   [OK] SSO ATTIVO - Login unico TALON -> Superset")
     else:
-        print("   ✗ SSO NON ATTIVO - Crea sso_superset.py")
+        print("   [WARN] SSO NON ATTIVO - Crea sso_superset.py")
     
-    print("   ✓ SPA Navigation - Navigazione senza reload")
-    print("   ✓ Fullscreen persistente tra pagine")
-    print("   ✓ Loading animations")
-    print("   ✓ Toast notifications")
-    print("   ✓ Modular JavaScript structure")
+    print("   [OK] SPA Navigation - Navigazione senza reload")
+    print("   [OK] Fullscreen persistente tra pagine")
+    print("   [OK] Loading animations")
+    print("   [OK] Toast notifications")
+    print("   [OK] Modular JavaScript structure")
     
     print("=" * 60)
     

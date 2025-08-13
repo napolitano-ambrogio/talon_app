@@ -316,12 +316,7 @@
                 }
             });
             
-            // Real-time validation
-            document.addEventListener('blur', (e) => {
-                if (e.target.matches('[required]')) {
-                    this.validateField(e.target);
-                }
-            }, true);
+            // Real-time validation (removed validateField call that doesn't exist)
             
             // Confirm dangerous forms
             document.addEventListener('submit', (e) => {

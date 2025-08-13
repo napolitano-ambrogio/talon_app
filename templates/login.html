@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TALON - Login</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link href="/external/fontawesome/css/all.min.css" rel="stylesheet">
 </head>
 <body>
     <!-- Canvas per l'animazione neural network -->
@@ -31,28 +32,36 @@
         <!-- Login Form -->
         <form method="POST" action="{{ url_for('process_login') }}" class="login-form" id="loginForm">
             <div class="form-group">
-                <label for="username">Username:</label>
+                <label for="email">Email Militare:</label>
                 <input 
-                    type="text" 
-                    id="username" 
+                    type="email" 
+                    id="email" 
                     name="username" 
                     required 
-                    placeholder="Inserisci username" 
-                    autocomplete="username"
+                    placeholder="nome.cognome@esercito.difesa.it" 
+                    autocomplete="email"
+                    pattern="^[a-zA-Z0-9][a-zA-Z0-9.\\_\\-]*@esercito\\.difesa\\.it$"
+                    title="Inserisci un indirizzo email militare valido che termina con @esercito.difesa.it"
                     autofocus
                 >
+                <div class="form-text">Deve terminare con @esercito.difesa.it</div>
             </div>
             
             <div class="form-group">
                 <label for="password">Password:</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password" 
-                    required 
-                    placeholder="Inserisci password" 
-                    autocomplete="current-password"
-                >
+                <div class="password-input-container">
+                    <input 
+                        type="password" 
+                        id="password" 
+                        name="password" 
+                        required 
+                        placeholder="Inserisci password" 
+                        autocomplete="current-password"
+                    >
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('password', 'passwordToggleIcon')" tabindex="-1">
+                        <i class="fas fa-eye-slash" id="passwordToggleIcon"></i>
+                    </button>
+                </div>
             </div>
             
             <button type="submit" class="login-btn" id="loginBtn">
@@ -60,6 +69,59 @@
             </button>
         </form>
     </div>
+
+    <!-- Stili specifici per email militare -->
+    <style>
+        .form-text {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+            margin-bottom: 0;
+        }
+        
+        input[type="email"] {
+            text-transform: lowercase;
+        }
+        
+        input[type="email"]:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .field-error {
+            font-size: 0.875rem;
+            color: #ef4444;
+            margin-top: 0.25rem;
+            display: block;
+        }
+        
+        input.is-invalid {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+        }
+        
+        /* Miglioramenti responsive per mobile */
+        @media (max-width: 480px) {
+            input[type="email"] {
+                font-size: 16px; /* Evita zoom su iOS */
+            }
+        }
+    </style>
+
+    <script>
+        // Password visibility toggle function
+        function togglePasswordVisibility(inputId, iconId) {
+            const passwordInput = document.getElementById(inputId);
+            const toggleIcon = document.getElementById(iconId);
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.className = 'fas fa-eye';
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.className = 'fas fa-eye-slash';
+            }
+        }
+    </script>
 
     <!-- Script per neural network (auto-inizializzazione) -->
     <script src="{{ url_for('static', filename='js/neural-network.js') }}"></script>

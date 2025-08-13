@@ -403,6 +403,17 @@ const TalonApp = (function() {
 
     const Router = {
         /**
+         * Helper per gestione cache key con parametri query
+         */
+        getCacheKey: function(pathname, search = '') {
+            const pagesWithQueryParams = ['/attivita-recenti', '/impostazioni/utenti', '/enti-militari', '/enti-civili'];
+            const needsQueryInCache = pagesWithQueryParams.includes(pathname);
+            return needsQueryInCache ? 
+                `page:${pathname}${search}` : 
+                `page:${pathname}`;
+        },
+
+        /**
          * Naviga a URL
          */
         navigate: async function(url, options = {}) {
@@ -428,15 +439,27 @@ const TalonApp = (function() {
                 Utils.log('🔄 [Router.navigate] FORCING FULL RELOAD FOR DASHBOARD_ADMIN');
                 options.force = true;
                 // Clear cache for dashboard
-                const cacheKey = `page:${urlData.pathname}`;
+                const cacheKey = this.getCacheKey(urlData.pathname, urlData.search || '');
                 State.cache.delete(cacheKey);
                 Utils.log(`Cache cleared for: ${cacheKey}`);
             }
             
+            // Pagine che necessitano confronto con parametri query (per paginazione, ecc.)
+            const pagesWithQueryParams = ['/attivita-recenti', '/impostazioni/utenti', '/enti-militari', '/enti-civili'];
+            const needsQueryComparison = pagesWithQueryParams.includes(urlData.pathname);
+            
+            // Costruisci URL completo da confrontare
+            const currentFullUrl = needsQueryComparison ? 
+                (State.currentRoute + (State.currentSearch || '')) : 
+                State.currentRoute;
+            const targetFullUrl = needsQueryComparison ? 
+                (urlData.pathname + (urlData.search || '')) : 
+                urlData.pathname;
+            
             // Se è lo stesso URL e non forziamo reload, reinizializza componenti invece di uscire
             // Ma forza sempre il reload se la pagina è stata refreshed
-            if (urlData.pathname === State.currentRoute && !options.force && !State.pageWasRefreshed) {
-                Utils.log('Same route detected, reinitializing page components...');
+            if (targetFullUrl === currentFullUrl && !options.force && !State.pageWasRefreshed) {
+                Utils.log(`Same route detected: "${currentFullUrl}" === "${targetFullUrl}", reinitializing page components...`);
                 // Reinizializza i componenti della pagina corrente
                 try {
                     if (window.TalonSPA && window.TalonSPA.reinitializeComponents) {
@@ -449,6 +472,14 @@ const TalonApp = (function() {
                 return;
             }
             
+            Utils.log(`Different route detected: "${currentFullUrl}" !== "${targetFullUrl}", proceeding with navigation...`);
+            
+            // Per pagine con parametri query, forza sempre il refresh per essere sicuri
+            if (needsQueryComparison && !options.force) {
+                Utils.log('🔄 Forcing refresh for page with query parameters');
+                options.force = true;
+            }
+            
             // Force reload if page was refreshed
             if (State.pageWasRefreshed) {
                 Utils.log('Page was refreshed, forcing content reload even for same route');
@@ -457,7 +488,9 @@ const TalonApp = (function() {
 
             State.isNavigating = true;
             State.previousRoute = State.currentRoute;
+            State.previousSearch = State.currentSearch;
             State.currentRoute = urlData.pathname;
+            State.currentSearch = urlData.search || '';
 
             Utils.log('Navigating to:', urlData.pathname);
 
@@ -468,24 +501,30 @@ const TalonApp = (function() {
                 // Mostra loader
                 UI.showLoader();
 
-                // Controlla cache
-                const cacheKey = `page:${urlData.pathname}`;
+                // Controlla cache - usa URL completo per pagine con parametri
+                const cacheKey = this.getCacheKey(urlData.pathname, urlData.search || '');
                 let data = Cache.get(cacheKey);
+                Utils.log(`Cache check for key: "${cacheKey}", found: ${!!data}`);
 
                 if (!data || options.force) {
-                    // Fetch nuovo contenuto
-                    data = await this.fetchPage(urlData.pathname);
+                    // Fetch nuovo contenuto - usa URL completo
+                    const fetchUrl = urlData.pathname + (urlData.search || '');
+                    Utils.log(`🔄 Fetching fresh content from: "${fetchUrl}" (force: ${options.force})`);
+                    data = await this.fetchPage(fetchUrl);
                     
                     if (data && data.success) {
                         Cache.set(cacheKey, data);
+                        Utils.log(`Content cached with key: "${cacheKey}"`);
                     }
+                } else {
+                    Utils.log(`Using cached content for: "${cacheKey}"`);
                 }
 
                 if (data && data.success) {
                     // Aggiorna URL browser
                     if (!options.silent) {
                         window.history.pushState(
-                            { path: urlData.pathname },
+                            { path: urlData.pathname + (urlData.search || '') },
                             data.title || '',
                             urlData.pathname + urlData.search
                         );
@@ -511,7 +550,7 @@ const TalonApp = (function() {
 
                     // Aggiorna storia
                     State.history.push({
-                        url: urlData.pathname,
+                        url: urlData.pathname + (urlData.search || ''),
                         timestamp: Date.now()
                     });
 
@@ -537,6 +576,7 @@ const TalonApp = (function() {
                 
                 // Ripristina route precedente
                 State.currentRoute = State.previousRoute;
+                State.currentSearch = State.previousSearch || '';
 
             } finally {
                 State.isNavigating = false;
@@ -600,9 +640,10 @@ const TalonApp = (function() {
          * Gestisci navigazione indietro/avanti browser
          */
         handlePopState: function(event) {
-            if (event.state && event.state.path) {
-                Router.navigate(event.state.path, { silent: true });
-            }
+            // Usa l'URL completo dal browser invece che solo path salvato nello state
+            const fullUrl = window.location.pathname + window.location.search;
+            Utils.log(`🔙 PopState navigation to: "${fullUrl}"`);
+            Router.navigate(fullUrl, { silent: true });
         },
 
         /**
@@ -725,88 +766,30 @@ const TalonApp = (function() {
     };
 
     // ============================================
-    // GESTIONE FULLSCREEN
+    // GESTIONE FULLSCREEN - LEGACY (DISABILITATO)
     // ============================================
-
+    
+    // NOTA: Questo sistema legacy è stato disabilitato per evitare conflitti
+    // con il nuovo TalonFullscreen manager. Il nuovo sistema gestisce tutto
+    // in fullscreen-manager.js e risolve i problemi di "user gesture"
+    
     const Fullscreen = {
-        /**
-         * Toggle fullscreen
-         */
-        toggle: function() {
-            if (!document.fullscreenElement) {
-                this.enter();
-            } else {
-                this.exit();
-            }
+        // Legacy methods disabled - using TalonFullscreen instead
+        toggle: function() { 
+            console.warn('[Legacy Fullscreen] Use TalonFullscreen.toggle() instead');
         },
-
-        /**
-         * Entra in fullscreen
-         */
-        enter: function() {
-            const elem = document.documentElement;
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen();
-            } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen();
-            } else if (elem.msRequestFullscreen) {
-                elem.msRequestFullscreen();
-            }
-            State.isFullscreen = true;
-            this.updateButton();
+        enter: function() { 
+            console.warn('[Legacy Fullscreen] Use TalonFullscreen.enter() instead'); 
         },
-
-        /**
-         * Esci da fullscreen
-         */
-        exit: function() {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
-            }
-            State.isFullscreen = false;
-            this.updateButton();
+        exit: function() { 
+            console.warn('[Legacy Fullscreen] Use TalonFullscreen.exit() instead'); 
         },
-
-        /**
-         * Aggiorna bottone fullscreen
-         */
-        updateButton: function() {
-            const btn = document.getElementById('fullscreen-btn');
-            if (btn) {
-                const icon = btn.querySelector('i');
-                if (icon) {
-                    if (State.isFullscreen) {
-                        icon.className = 'fas fa-compress';
-                    } else {
-                        icon.className = 'fas fa-expand';
-                    }
-                }
-            }
+        updateButton: function() { 
+            // Disabled - handled by TalonFullscreen
         },
-
-        /**
-         * Inizializza listener fullscreen
-         */
         init: function() {
-            // Listener per cambio stato fullscreen
-            document.addEventListener('fullscreenchange', () => {
-                State.isFullscreen = !!document.fullscreenElement;
-                this.updateButton();
-                Events.emit('fullscreen:change', State.isFullscreen);
-            });
-
-            // Listener per bottone fullscreen
-            const btn = document.getElementById('fullscreen-btn');
-            if (btn) {
-                btn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    this.toggle();
-                });
-            }
+            // COMPLETELY DISABLED to prevent conflicts
+            console.warn('[Legacy Fullscreen] Init disabled - using TalonFullscreen manager');
         }
     };
 
@@ -910,18 +893,21 @@ const TalonApp = (function() {
         Router.interceptForms();
         window.addEventListener('popstate', Router.handlePopState);
 
-        // Inizializza fullscreen
-        Fullscreen.init();
+        // Inizializza fullscreen (nuovo sistema)
+        if (window.TalonFullscreen && window.TalonFullscreen.init) {
+            window.TalonFullscreen.init();
+        }
 
         // Inizializza UI
         UI.reinitializeComponents();
 
         // Imposta route iniziale
         State.currentRoute = window.location.pathname;
+        State.currentSearch = window.location.search || '';
 
         // Salva stato iniziale nella history
         window.history.replaceState(
-            { path: window.location.pathname },
+            { path: window.location.pathname + window.location.search },
             document.title,
             window.location.href
         );
@@ -957,8 +943,8 @@ const TalonApp = (function() {
         // Cache
         cache: Cache,
         
-        // Fullscreen
-        fullscreen: Fullscreen,
+        // Fullscreen (legacy disabled - use TalonFullscreen instead)
+        fullscreen: null,
         
         // Stato (read-only)
         getState: function() {

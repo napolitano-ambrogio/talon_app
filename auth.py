@@ -86,7 +86,8 @@ def get_user_by_id(user_id: int) -> Optional[Dict]:
         LEFT JOIN ruoli r ON r.id = u.ruolo_id
         LEFT JOIN enti_militari em ON em.id = u.ente_militare_id
         WHERE u.id = %s
-          AND (u.attivo IS NULL OR u.attivo = TRUE OR u.attivo = TRUE)
+          AND (u.attivo IS NULL OR u.attivo = TRUE)
+          AND (u.eliminato IS NULL OR u.eliminato = FALSE)
     '''
     try:
         conn = get_auth_db_connection()
@@ -116,7 +117,8 @@ def get_user_by_username(username: str) -> Optional[Dict]:
         LEFT JOIN ruoli r ON r.id = u.ruolo_id
         LEFT JOIN enti_militari em ON em.id = u.ente_militare_id
         WHERE u.username = %s
-          AND (u.attivo IS NULL OR u.attivo = TRUE OR u.attivo = TRUE)
+          AND (u.attivo IS NULL OR u.attivo = TRUE)
+          AND (u.eliminato IS NULL OR u.eliminato = FALSE)
     '''
     try:
         conn = get_auth_db_connection()

@@ -2,6 +2,10 @@
 
 {% block title %}Gestione Utenti - TALON{% endblock %}
 
+{% block extra_head %}
+<!-- FontAwesome icons are already loaded via _base.html -->
+{% endblock %}
+
 {% block breadcrumb %}
 <li class="breadcrumb-item">
     <a href="{{ url_for('main.dashboard_admin') }}" data-spa-link>Dashboard Admin</a>
@@ -22,10 +26,7 @@
                     <a href="{{ url_for('main.dashboard_admin') }}" class="btn btn-outline-primary me-2" data-spa-link data-spa-force="true" data-spa-no-cache="true">
                         <i class="fas fa-arrow-left"></i> Torna al Sistema
                     </a>
-                    <button class="btn btn-outline-secondary me-2" onclick="refreshUserList()">
-                        <i class="fas fa-sync-alt"></i> Aggiorna
-                    </button>
-                    <button class="btn btn-success" onclick="showComingSoon()">
+                    <button class="btn btn-success" onclick="showCreateUserModal()">
                         <i class="fas fa-plus"></i> Nuovo Utente
                     </button>
                 </div>
@@ -74,27 +75,88 @@
         <div class="col-12">
             <div class="card shadow">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-table"></i> Lista Utenti</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-table"></i> Lista Utenti</h5>
+                        <div class="d-flex align-items-center gap-3">
+                            <!-- Toggle per utenti disabilitati -->
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="showDisabledUsers" onchange="toggleDisabledUsers()">
+                                <label class="form-check-label" for="showDisabledUsers">
+                                    Mostra utenti disabilitati
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
+                    <!-- Filtri di ricerca -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="searchFilter" placeholder="🔍 Cerca per nome, email, ruolo, ente..." onkeyup="filterTable()">
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" id="roleFilter" onchange="filterTable()">
+                                <option value="">Tutti i ruoli</option>
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="OPERATORE">OPERATORE</option>
+                                <option value="VISUALIZZATORE">VISUALIZZATORE</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" id="statusFilter" onchange="filterTable()">
+                                <option value="">Tutti gli stati</option>
+                                <option value="Attivo">Attivo</option>
+                                <option value="Disabilitato">Disabilitato</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                                <i class="fas fa-times"></i> Pulisci filtri
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <span class="badge bg-info" id="resultCount">{{ users|length }} utenti</span>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-hover" id="usersTable">
                             <thead class="table-dark">
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Nome</th>
-                                    <th>Username</th>
-                                    <th>Email</th>
-                                    <th>Ruolo</th>
-                                    <th>Ente</th>
-                                    <th>Ultimo Accesso</th>
-                                    <th>Stato</th>
+                                    <th class="sortable" data-column="0" onclick="sortTable(0)">
+                                        ID <i class="fas fa-sort sort-icon"></i>
+                                    </th>
+                                    <th class="sortable" data-column="1" onclick="sortTable(1)">
+                                        Nome <i class="fas fa-sort sort-icon"></i>
+                                    </th>
+                                    <th class="sortable" data-column="2" onclick="sortTable(2)">
+                                        Email Militare <i class="fas fa-sort sort-icon"></i>
+                                    </th>
+                                    <th class="sortable" data-column="3" onclick="sortTable(3)">
+                                        Ruolo <i class="fas fa-sort sort-icon"></i>
+                                    </th>
+                                    <th class="sortable" data-column="4" onclick="sortTable(4)">
+                                        Ente <i class="fas fa-sort sort-icon"></i>
+                                    </th>
+                                    <th class="sortable" data-column="5" onclick="sortTable(5)">
+                                        Ultimo Accesso <i class="fas fa-sort sort-icon"></i>
+                                    </th>
+                                    <th class="sortable" data-column="6" onclick="sortTable(6)">
+                                        Stato <i class="fas fa-sort sort-icon"></i>
+                                    </th>
                                     <th>Azioni</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for user in users %}
-                                <tr>
+                                <tr class="user-row{% if not user.attivo %} disabled-user{% endif %}" 
+                                    data-user-id="{{ user.id }}"
+                                    data-nome="{{ user.nome }} {{ user.cognome }}"
+                                    data-email="{{ user.username }}"
+                                    data-ruolo="{{ user.ruolo_nome }}"
+                                    data-ente="{{ user.ente_nome or 'Nessun ente' }}"
+                                    data-ultimo-accesso="{{ user.ultimo_accesso.strftime('%d/%m/%Y %H:%M') if user.ultimo_accesso else 'Mai connesso' }}"
+                                    data-stato="{{ 'Attivo' if user.attivo else 'Disabilitato' }}"
+                                    {% if not user.attivo %}style="display: none;"{% endif %}>
                                     <td>{{ user.id }}</td>
                                     <td>
                                         <strong>{{ user.nome }} {{ user.cognome }}</strong>
@@ -105,7 +167,6 @@
                                     <td>
                                         <code>{{ user.username }}</code>
                                     </td>
-                                    <td>{{ user.email or '-' }}</td>
                                     <td>
                                         {% set role_colors = {
                                             'ADMIN': 'danger',
@@ -158,11 +219,130 @@
     </div>
 </div>
 
+<!-- User Create/Edit Modal -->
+<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalLabel">Nuovo Utente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Email Militare *</label>
+                                <input type="email" class="form-control" id="username" name="username" required placeholder="nome.cognome@esercito.difesa.it" autocomplete="email">
+                                <div class="form-text">Deve terminare con @esercito.difesa.it</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="nome" class="form-label">Nome *</label>
+                                <input type="text" class="form-control" id="nome" name="nome" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="cognome" class="form-label">Cognome *</label>
+                                <input type="text" class="form-control" id="cognome" name="cognome" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="ruolo_id" class="form-label">Ruolo *</label>
+                                <select class="form-select" id="ruolo_id" name="ruolo_id" required>
+                                    <option value="">Seleziona ruolo...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="ente_militare_id" class="form-label">Ente Militare</label>
+                                <select class="form-select" id="ente_militare_id" name="ente_militare_id">
+                                    <option value="">Nessun ente...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="passwordModal" class="form-label">Password *</label>
+                                <div class="password-input-container">
+                                    <input type="password" class="form-control" id="passwordModal" name="password" required autocomplete="new-password">
+                                    <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('passwordModal', 'passwordToggleIconModal')" tabindex="-1">
+                                        <i class="fas fa-eye-slash" id="passwordToggleIconModal"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">Minimo 8 caratteri</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <!-- Spazio per allineamento colonne -->
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="accesso_globale" name="accesso_globale">
+                                <label class="form-check-label" for="accesso_globale">
+                                    Accesso Globale
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="attivo" name="attivo" checked>
+                                <label class="form-check-label" for="attivo">
+                                    Utente Attivo
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" id="saveUserBtn">Salva Utente</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Details Modal -->
+<div class="modal fade" id="userDetailsModal" tabindex="-1" aria-labelledby="userDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userDetailsModalLabel">Dettagli Utente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="userDetailsContent">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // User management functions
-function refreshUserList() {
-    window.location.reload();
-}
+
+// Global variables
+let currentUserId = null;
+let isEditMode = false;
+let dropdownData = null;
 
 // Force reload when navigating to dashboard_admin
 document.addEventListener('DOMContentLoaded', function() {
@@ -176,34 +356,551 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // Load dropdown data on page load
+    loadDropdownData();
+    
+    // Setup save button handler
+    document.getElementById('saveUserBtn').addEventListener('click', saveUser);
+    
+    // Setup email domain validation
+    document.getElementById('username').addEventListener('blur', validateEmailDomain);
+    
+    // Listen for custom event from sidebar
+    document.addEventListener('openCreateUserModal', function() {
+        window.showCreateUserModal();
+    });
 });
 
-function showUserDetails(userId) {
-    // TODO: Implement user details modal
-    showComingSoon();
-}
-
-function editUser(userId) {
-    // TODO: Implement user edit functionality
-    showComingSoon();
-}
-
-function toggleUserStatus(userId, currentStatus) {
-    // TODO: Implement user status toggle
-    showComingSoon();
-}
-
-function showComingSoon() {
-    if (window.TalonApp && window.TalonApp.showToast) {
-        window.TalonApp.showToast('Funzionalità in fase di sviluppo', 'info');
+// Validate email domain
+function validateEmailDomain() {
+    const emailInput = document.getElementById('username');
+    const email = emailInput.value.toLowerCase().trim();
+    
+    if (email) {
+        // Regex che corrisponde a quella del backend
+        const emailRegex = /^[a-zA-Z0-9][a-zA-Z0-9._%-]*@esercito\.difesa\.it$/;
+        
+        if (!emailRegex.test(email)) {
+            emailInput.setCustomValidity('Email non valida: deve iniziare con lettera/numero e terminare con @esercito.difesa.it');
+            emailInput.classList.add('is-invalid');
+            emailInput.classList.remove('is-valid');
+        } else {
+            emailInput.setCustomValidity('');
+            emailInput.classList.remove('is-invalid');
+            emailInput.classList.add('is-valid');
+        }
     } else {
-        alert('Funzionalità in fase di sviluppo');
+        emailInput.setCustomValidity('');
+        emailInput.classList.remove('is-invalid', 'is-valid');
     }
 }
 
-// Initialize table sorting/filtering if needed
+// Load dropdown data for roles and enti militari
+async function loadDropdownData() {
+    try {
+        console.log('Loading dropdown data...');
+        const response = await fetch('/api/dropdown-data');
+        const data = await response.json();
+        
+        console.log('Dropdown data response:', data);
+        
+        if (data.success) {
+            dropdownData = data;
+            console.log('Roles loaded:', data.roles);
+            console.log('Enti militari loaded:', data.enti_militari);
+            populateDropdowns();
+        } else {
+            console.error('Dropdown data error:', data.error);
+            showToast('Errore nel caricamento dati dropdown: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error loading dropdown data:', error);
+        showToast('Errore nel caricamento dati dropdown', 'error');
+    }
+}
+
+function populateDropdowns() {
+    if (!dropdownData) return;
+    
+    // Populate roles dropdown
+    const roleSelect = document.getElementById('ruolo_id');
+    roleSelect.innerHTML = '<option value="">Seleziona ruolo...</option>';
+    dropdownData.roles.forEach(role => {
+        const option = document.createElement('option');
+        option.value = role.id;
+        option.textContent = `${role.nome} (Livello ${role.livello_accesso})`;
+        roleSelect.appendChild(option);
+    });
+    
+    // Populate enti militari dropdown
+    const enteSelect = document.getElementById('ente_militare_id');
+    enteSelect.innerHTML = '<option value="">Nessun ente...</option>';
+    dropdownData.enti_militari.forEach(ente => {
+        const option = document.createElement('option');
+        option.value = ente.id;
+        option.textContent = ente.nome + (ente.codice ? ` (${ente.codice})` : '');
+        enteSelect.appendChild(option);
+    });
+}
+
+// Define globally accessible functions
+window.showCreateUserModal = function() {
+    isEditMode = false;
+    currentUserId = null;
+    
+    // Reset form
+    document.getElementById('userForm').reset();
+    document.getElementById('attivo').checked = true;
+    
+    // Clear email field and validation
+    const emailInput = document.getElementById('username');
+    emailInput.value = '';
+    emailInput.setCustomValidity('');
+    emailInput.classList.remove('is-invalid', 'is-valid');
+    
+    // Reset password field and visibility icon
+    document.getElementById('passwordModal').type = 'password';
+    const passwordIcon = document.getElementById('passwordToggleIconModal');
+    if (passwordIcon) {
+        passwordIcon.className = 'fas fa-eye-slash';
+    }
+    
+    // Update modal title and button
+    document.getElementById('userModalLabel').textContent = 'Nuovo Utente';
+    document.getElementById('saveUserBtn').textContent = 'Crea Utente';
+    
+    // Show password field as required for new users
+    document.getElementById('passwordModal').required = true;
+    document.querySelector('label[for="passwordModal"]').innerHTML = 'Password *';
+    
+    // Show modal
+    new bootstrap.Modal(document.getElementById('userModal')).show();
+};
+
+window.showUserDetails = async function(userId) {
+    try {
+        const response = await fetch(`/api/users/${userId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const user = data.user;
+            
+            const content = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Informazioni Base</h6>
+                        <table class="table table-sm">
+                            <tr><td><strong>ID:</strong></td><td>${user.id}</td></tr>
+                            <tr><td><strong>Email Militare:</strong></td><td>${user.username}</td></tr>
+                            <tr><td><strong>Nome Completo:</strong></td><td>${user.nome} ${user.cognome}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Ruolo e Permessi</h6>
+                        <table class="table table-sm">
+                            <tr><td><strong>Ruolo:</strong></td><td><span class="badge bg-primary">${user.ruolo_nome}</span></td></tr>
+                            <tr><td><strong>Livello Accesso:</strong></td><td>${user.livello_accesso}</td></tr>
+                            <tr><td><strong>Ente Militare:</strong></td><td>${user.ente_nome || 'Nessun ente'}</td></tr>
+                            <tr><td><strong>Accesso Globale:</strong></td><td>${user.accesso_globale ? 'Sì' : 'No'}</td></tr>
+                            <tr><td><strong>Stato:</strong></td><td><span class="badge ${user.attivo ? 'bg-success' : 'bg-danger'}">${user.attivo ? 'Attivo' : 'Disattivato'}</span></td></tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Informazioni Audit</h6>
+                        <table class="table table-sm">
+                            <tr><td><strong>Ultimo Accesso:</strong></td><td>${user.ultimo_accesso ? new Date(user.ultimo_accesso).toLocaleString('it-IT') : 'Mai connesso'}</td></tr>
+                            <tr><td><strong>Primo Accesso:</strong></td><td>${user.primo_accesso ? 'Sì' : 'No'}</td></tr>
+                            <tr><td><strong>Data Creazione:</strong></td><td>${user.data_creazione ? new Date(user.data_creazione).toLocaleString('it-IT') : 'Non disponibile'}</td></tr>
+                            <tr><td><strong>Creato Da:</strong></td><td>${user.creato_da_username || 'Non disponibile'}</td></tr>
+                            <tr><td><strong>Data Ultima Modifica:</strong></td><td>${user.data_modifica ? new Date(user.data_modifica).toLocaleString('it-IT') : 'Mai modificato'}</td></tr>
+                            <tr><td><strong>Modificato Da:</strong></td><td>${user.modificato_da_username || 'Non disponibile'}</td></tr>
+                        </table>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('userDetailsContent').innerHTML = content;
+            new bootstrap.Modal(document.getElementById('userDetailsModal')).show();
+            
+        } else {
+            showToast('Errore nel caricamento dettagli utente: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error loading user details:', error);
+        showToast('Errore nel caricamento dettagli utente', 'error');
+    }
+}
+
+window.editUser = async function(userId) {
+    try {
+        const response = await fetch(`/api/users/${userId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const user = data.user;
+            isEditMode = true;
+            currentUserId = userId;
+            
+            // Populate form with user data
+            document.getElementById('username').value = user.username;
+            document.getElementById('nome').value = user.nome || '';
+            document.getElementById('cognome').value = user.cognome || '';
+            document.getElementById('ruolo_id').value = user.ruolo_id;
+            document.getElementById('ente_militare_id').value = user.ente_militare_id || '';
+            document.getElementById('accesso_globale').checked = user.accesso_globale;
+            document.getElementById('attivo').checked = user.attivo;
+            
+            // Clear password field and make it optional for editing
+            document.getElementById('passwordModal').value = '';
+            document.getElementById('passwordModal').type = 'password'; // Reset to password type
+            document.getElementById('passwordModal').required = false;
+            document.querySelector('label[for="passwordModal"]').innerHTML = 'Password <small>(lascia vuoto per mantenere)</small>';
+            
+            // Reset password visibility icon
+            const passwordIcon = document.getElementById('passwordToggleIconModal');
+            if (passwordIcon) {
+                passwordIcon.className = 'fas fa-eye-slash';
+            }
+            
+            // Update modal title and button
+            document.getElementById('userModalLabel').textContent = 'Modifica Utente';
+            document.getElementById('saveUserBtn').textContent = 'Aggiorna Utente';
+            
+            // Show modal
+            new bootstrap.Modal(document.getElementById('userModal')).show();
+            
+        } else {
+            showToast('Errore nel caricamento dati utente: ' + data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error loading user data:', error);
+        showToast('Errore nel caricamento dati utente', 'error');
+    }
+}
+
+async function saveUser() {
+    const form = document.getElementById('userForm');
+    const formData = new FormData(form);
+    
+    // Convert FormData to JSON
+    const userData = {};
+    formData.forEach((value, key) => {
+        if (key === 'accesso_globale' || key === 'attivo') {
+            userData[key] = form.querySelector(`[name="${key}"]`).checked;
+        } else if (key === 'ruolo_id' || key === 'ente_militare_id') {
+            userData[key] = value ? parseInt(value) : null;
+        } else {
+            userData[key] = value || null;
+        }
+    });
+    
+    // Debug log
+    console.log('Form data being sent:', userData);
+    
+    // Validation
+    if (!userData.username || !userData.nome || !userData.cognome || !userData.ruolo_id) {
+        showToast('Compila tutti i campi obbligatori', 'error');
+        return;
+    }
+    
+    // Validate email format
+    const emailRegex = /^[a-zA-Z0-9][a-zA-Z0-9._%-]*@esercito\.difesa\.it$/;
+    if (!emailRegex.test(userData.username.toLowerCase())) {
+        showToast('Email non valida: deve iniziare con lettera/numero e terminare con @esercito.difesa.it', 'error');
+        return;
+    }
+    
+    if (!isEditMode && (!userData.password || userData.password.length < 8)) {
+        showToast('La password deve essere di almeno 8 caratteri', 'error');
+        return;
+    }
+    
+    try {
+        const url = isEditMode ? `/api/users/${currentUserId}` : '/api/users';
+        const method = isEditMode ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(userData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+            
+            // Reload page to show updated data
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showToast(data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error saving user:', error);
+        showToast('Errore nel salvataggio utente', 'error');
+    }
+}
+
+window.toggleUserStatus = async function(userId, currentStatus) {
+    const action = currentStatus ? 'disattivare' : 'attivare';
+    
+    if (!confirm(`Sei sicuro di voler ${action} questo utente?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/users/${userId}/toggle`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            
+            // Reload page to show updated status
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showToast(data.error, 'error');
+        }
+    } catch (error) {
+        console.error('Error toggling user status:', error);
+        showToast('Errore nel cambio stato utente', 'error');
+    }
+}
+
+function showToast(message, type = 'info') {
+    if (window.TalonApp && window.TalonApp.showToast) {
+        window.TalonApp.showToast(message, type);
+    } else {
+        // Fallback for simple alert
+        alert(message);
+    }
+}
+
+// Password visibility toggle function (reusable)
+function togglePasswordVisibility(inputId, iconId) {
+    const passwordInput = document.getElementById(inputId);
+    const toggleIcon = document.getElementById(iconId);
+    
+    if (passwordInput && toggleIcon) {
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            // Gestisce SVG (FontAwesome convertito) e elementi <i> normali
+            if (toggleIcon.tagName.toUpperCase() === 'SVG') {
+                const parent = toggleIcon.parentNode;
+                parent.innerHTML = '<i class="fas fa-eye" id="' + iconId + '"></i>';
+            } else {
+                toggleIcon.className = 'fas fa-eye';
+            }
+        } else {
+            passwordInput.type = 'password';
+            // Gestisce SVG (FontAwesome convertito) e elementi <i> normali
+            if (toggleIcon.tagName.toUpperCase() === 'SVG') {
+                const parent = toggleIcon.parentNode;
+                parent.innerHTML = '<i class="fas fa-eye-slash" id="' + iconId + '"></i>';
+            } else {
+                toggleIcon.className = 'fas fa-eye-slash';
+            }
+        }
+    }
+}
+
+// Variables for table functionality
+let currentSortColumn = -1;
+let currentSortDirection = 'asc';
+
+// Toggle disabled users visibility
+function toggleDisabledUsers() {
+    const showDisabled = document.getElementById('showDisabledUsers').checked;
+    const disabledRows = document.querySelectorAll('.disabled-user');
+    
+    disabledRows.forEach(row => {
+        row.style.display = showDisabled ? '' : 'none';
+    });
+    
+    updateResultCount();
+}
+
+// Filter table based on search criteria
+function filterTable() {
+    const searchText = document.getElementById('searchFilter').value.toLowerCase();
+    const roleFilter = document.getElementById('roleFilter').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+    
+    const rows = document.querySelectorAll('.user-row');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        const nome = row.dataset.nome.toLowerCase();
+        const email = row.dataset.email.toLowerCase();
+        const ruolo = row.dataset.ruolo;
+        const ente = row.dataset.ente.toLowerCase();
+        const ultimoAccesso = row.dataset.ultimoAccesso.toLowerCase();
+        const stato = row.dataset.stato;
+        
+        // Check search text (searches in name, email, role, entity, last access)
+        const matchesSearch = !searchText || 
+            nome.includes(searchText) || 
+            email.includes(searchText) || 
+            ruolo.toLowerCase().includes(searchText) || 
+            ente.includes(searchText) ||
+            ultimoAccesso.includes(searchText);
+        
+        // Check role filter
+        const matchesRole = !roleFilter || ruolo === roleFilter;
+        
+        // Check status filter
+        const matchesStatus = !statusFilter || stato === statusFilter;
+        
+        // Check if disabled users should be shown
+        const isDisabled = row.classList.contains('disabled-user');
+        const showDisabled = document.getElementById('showDisabledUsers').checked;
+        const shouldShowDisabled = !isDisabled || showDisabled;
+        
+        // Show row only if all conditions match
+        if (matchesSearch && matchesRole && matchesStatus && shouldShowDisabled) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    updateResultCount(visibleCount);
+}
+
+// Clear all filters
+function clearFilters() {
+    document.getElementById('searchFilter').value = '';
+    document.getElementById('roleFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('showDisabledUsers').checked = false;
+    
+    // Reset all rows visibility
+    const rows = document.querySelectorAll('.user-row');
+    rows.forEach(row => {
+        const isDisabled = row.classList.contains('disabled-user');
+        row.style.display = isDisabled ? 'none' : '';
+    });
+    
+    updateResultCount();
+}
+
+// Sort table by column
+function sortTable(columnIndex) {
+    const table = document.getElementById('usersTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('.user-row'));
+    
+    // Determine sort direction
+    if (currentSortColumn === columnIndex) {
+        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSortDirection = 'asc';
+        currentSortColumn = columnIndex;
+    }
+    
+    // Update sort icons
+    updateSortIcons(columnIndex, currentSortDirection);
+    
+    // Sort rows
+    rows.sort((a, b) => {
+        let aVal, bVal;
+        
+        switch(columnIndex) {
+            case 0: // ID
+                aVal = parseInt(a.dataset.userId);
+                bVal = parseInt(b.dataset.userId);
+                break;
+            case 1: // Nome
+                aVal = a.dataset.nome.toLowerCase();
+                bVal = b.dataset.nome.toLowerCase();
+                break;
+            case 2: // Email
+                aVal = a.dataset.email.toLowerCase();
+                bVal = b.dataset.email.toLowerCase();
+                break;
+            case 3: // Ruolo
+                aVal = a.dataset.ruolo;
+                bVal = b.dataset.ruolo;
+                break;
+            case 4: // Ente
+                aVal = a.dataset.ente.toLowerCase();
+                bVal = b.dataset.ente.toLowerCase();
+                break;
+            case 5: // Ultimo Accesso
+                aVal = a.dataset.ultimoAccesso;
+                bVal = b.dataset.ultimoAccesso;
+                // Handle "Mai connesso" case
+                if (aVal === 'mai connesso') aVal = '1900-01-01';
+                if (bVal === 'mai connesso') bVal = '1900-01-01';
+                break;
+            case 6: // Stato
+                aVal = a.dataset.stato;
+                bVal = b.dataset.stato;
+                break;
+            default:
+                return 0;
+        }
+        
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+            return currentSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+        } else {
+            return currentSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+    });
+    
+    // Reappend sorted rows
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+// Update sort icons
+function updateSortIcons(activeColumn, direction) {
+    const headers = document.querySelectorAll('.sortable .sort-icon');
+    
+    headers.forEach((icon, index) => {
+        if (index === activeColumn) {
+            icon.className = direction === 'asc' ? 'fas fa-sort-up sort-icon' : 'fas fa-sort-down sort-icon';
+        } else {
+            icon.className = 'fas fa-sort sort-icon';
+        }
+    });
+}
+
+// Update result count badge
+function updateResultCount(count = null) {
+    if (count === null) {
+        const visibleRows = document.querySelectorAll('.user-row:not([style*="display: none"])');
+        count = visibleRows.length;
+    }
+    
+    document.getElementById('resultCount').textContent = `${count} utenti`;
+}
+
+// Initialize table sorting/filtering
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Users management page loaded');
+    console.log('Users management page loaded with enhanced table functionality');
+    
+    // Set initial result count
+    updateResultCount();
+    
+    // Add event listeners for real-time filtering
+    document.getElementById('searchFilter').addEventListener('input', filterTable);
 });
 </script>
 
@@ -228,6 +925,112 @@ code {
     color: #e83e8c;
     padding: 0.2rem 0.4rem;
     border-radius: 0.25rem;
+}
+
+/* Sortable columns */
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+.sortable:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+.sort-icon {
+    margin-left: 0.5rem;
+    opacity: 0.6;
+    font-size: 0.8rem;
+}
+
+.sortable:hover .sort-icon {
+    opacity: 1;
+}
+
+/* Disabled users styling */
+.disabled-user {
+    opacity: 0.6;
+    background-color: #f8f9fa;
+}
+
+.disabled-user:hover {
+    background-color: #e9ecef;
+}
+
+/* Filter controls */
+.gap-3 {
+    gap: 1rem;
+}
+
+#resultCount {
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+}
+
+/* Search filter styling */
+#searchFilter {
+    border-radius: 0.375rem;
+}
+
+#searchFilter:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Password visibility toggle for modal forms */
+.password-input-container {
+    position: relative;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+    color: #6c757d;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.password-toggle-btn:hover {
+    color: #495057;
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.password-toggle-btn:focus {
+    outline: none;
+    color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+.password-toggle-btn i {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.password-input-container .form-control {
+    padding-right: 45px; /* Spazio per l'icona */
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .col-md-4, .col-md-2 {
+        margin-bottom: 0.5rem;
+    }
+    
+    .d-flex.gap-3 {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
 }
 </style>
 {% endblock %}

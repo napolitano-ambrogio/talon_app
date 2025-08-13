@@ -264,9 +264,9 @@
                     this.classList.remove('has-content');
                 }
                 
-                // Validazione username
+                // Validazione email militare
                 if (this.name === 'username') {
-                    validateUsername(this);
+                    validateEmail(this);
                 }
                 
                 // Rimuovi errori precedenti
@@ -277,14 +277,17 @@
         });
     }
 
-    function validateUsername(input) {
-        const isValid = /^[a-zA-Z0-9_.-]*$/.test(input.value);
+    function validateEmail(input) {
+        const emailRegex = /^[a-zA-Z0-9][a-zA-Z0-9._\-]*@esercito\.difesa\.it$/;
+        const isValid = emailRegex.test(input.value);
         
         if (!isValid && input.value.length > 0) {
             input.style.borderColor = '#ef4444';
-            showFieldError(input, 'Username può contenere solo lettere, numeri e ._-');
+            input.classList.add('is-invalid');
+            showFieldError(input, 'Email deve terminare con @esercito.difesa.it');
         } else {
             input.style.borderColor = '';
+            input.classList.remove('is-invalid');
             hideFieldError(input);
         }
         
@@ -360,9 +363,9 @@
             }
         });
         
-        // Validazione specifica username
-        const usernameInput = state.form.querySelector('input[name="username"]');
-        if (usernameInput && !validateUsername(usernameInput)) {
+        // Validazione specifica email militare
+        const emailInput = state.form.querySelector('input[name="username"]');
+        if (emailInput && !validateEmail(emailInput)) {
             isValid = false;
         }
         
@@ -516,10 +519,10 @@
             shakeForm: () => shakeElement(state.form),
             simulateSubmit: () => state.form?.requestSubmit(),
             fillTestData: () => {
-                const usernameInput = state.form?.querySelector('input[name="username"]');
+                const emailInput = state.form?.querySelector('input[name="username"]');
                 const passwordInput = state.form?.querySelector('input[name="password"]');
-                if (usernameInput) usernameInput.value = 'admin';
-                if (passwordInput) passwordInput.value = 'admin';
+                if (emailInput) emailInput.value = 'mario.rossi@esercito.difesa.it';
+                if (passwordInput) passwordInput.value = 'password123';
                 log('Test data inserted');
             },
             getState: () => ({ ...state }),

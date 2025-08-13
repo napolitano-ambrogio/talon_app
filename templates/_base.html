@@ -166,10 +166,6 @@
     <!-- Hidden per compatibilità -->
     <input type="hidden" id="hidden-user-role" value="{{ session.get('ruolo_nome', 'GUEST') }}">
 
-    <!-- Indicatore Offline Mode -->
-    <div id="offline-indicator" class="position-fixed top-0 start-50 translate-middle-x bg-warning text-dark px-3 py-1 rounded-bottom shadow-sm" style="display: none; z-index: 10000;">
-        <i class="fas fa-wifi-slash"></i> Modalità Offline
-    </div>
 
     <!-- SPA Loader -->
     <div id="spa-loader" class="spa-loader">
@@ -206,15 +202,6 @@
                         <button class="btn btn-sm btn-outline-secondary me-2" id="fullscreen-btn" title="Schermo intero">
                             <i class="fas fa-expand"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-secondary me-2" id="refresh-btn" title="Ricarica pagina">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary me-2" id="clear-cache-btn" title="Pulisci cache">
-                            <i class="fas fa-broom"></i>
-                        </button>
-                        <span class="badge bg-info text-dark" id="connection-status">
-                            <i class="fas fa-circle"></i> Online
-                        </span>
                     </div>
                 </div>
             </header>
@@ -264,14 +251,13 @@
                         <span class="badge bg-primary ms-2">
                             <i class="fas fa-rocket"></i> SPA Mode
                         </span>
-                        <span class="badge bg-secondary ms-2">
-                            <i class="fas fa-hard-drive"></i> Offline Ready
-                        </span>
                     </small>
 
                     {% if session.get('logged_in') %}
                     <small class="text-muted">
-                        <i class="fas fa-user-circle"></i> {{ session.get('username', 'Utente') }}
+                        <span id="user-role-status" class="text-success">
+                            <i class="fas fa-shield-alt"></i> {{ session.get('ruolo_nome', 'GUEST') }} (Online)
+                        </span>
                         <span class="mx-2">|</span>
                         <i class="fas fa-clock"></i> Sessione:
                         <span id="session-timer">00:00</span>
@@ -312,6 +298,9 @@
     <!-- Scripts Sistema (caricati solo se loggato) -->
     {% if session.get('logged_in') %}
     
+    <!-- UI Components (must load before SPA Core) -->
+    <script src="{{ url_for('static', filename='js/fullscreen-manager.js') }}?v={{ cache_buster }}"></script>
+    
     <!-- SPA Core Engine -->
     <script src="{{ url_for('static', filename='js/app.js') }}?v={{ cache_buster }}"></script>
     <script src="{{ url_for('static', filename='js/spa-navigation.js') }}?v={{ cache_buster }}"></script>
@@ -319,7 +308,6 @@
     <!-- Sistema Components -->
     <script src="{{ url_for('static', filename='js/sidebar.js') }}?v={{ cache_buster }}"></script>
     <script src="{{ url_for('static', filename='js/sidebar-role-manager.js') }}?v={{ cache_buster }}"></script>
-    <script src="{{ url_for('static', filename='js/fullscreen-manager.js') }}?v={{ cache_buster }}"></script>
     <script src="{{ url_for('static', filename='js/searchable_select.js') }}?v={{ cache_buster }}"></script>
     
     <!-- Moduli Dashboard -->
@@ -460,15 +448,6 @@
                     });
                 }
                 
-                // Bottone clear cache
-                const clearCacheBtn = document.getElementById('clear-cache-btn');
-                if (clearCacheBtn) {
-                    clearCacheBtn.addEventListener('click', function() {
-                        TalonApp.cache.clear();
-                        TalonApp.showToast('Cache pulita con successo', 'success');
-                    });
-                }
-                
                 // Gestione fullscreen (se non gestito da fullscreen-manager.js)
                 if (!window.FullscreenManager) {
                     const fullscreenBtn = document.getElementById('fullscreen-btn');
@@ -498,58 +477,76 @@
             // ============================
             
             function updateConnectionStatus() {
-                const statusBadge = document.getElementById('connection-status');
-                const offlineIndicator = document.getElementById('offline-indicator');
+                const userRoleStatus = document.getElementById('user-role-status');
+                const userRole = window.TALON_CONFIG ? window.TALON_CONFIG.user.role : 'GUEST';
                 
                 if (!navigator.onLine) {
-                    if (statusBadge) {
-                        statusBadge.innerHTML = '<i class="fas fa-circle"></i> Offline';
-                        statusBadge.className = 'badge bg-secondary';
-                    }
-                    if (offlineIndicator) {
-                        offlineIndicator.style.display = 'block';
+                    if (userRoleStatus) {
+                        userRoleStatus.innerHTML = `<i class="fas fa-shield-alt"></i> ${userRole} (Offline)`;
+                        userRoleStatus.className = 'text-danger';
                     }
                     if (window.TalonApp && window.TalonApp.showToast) {
                         TalonApp.showToast('Modalità offline attiva', 'warning');
                     }
                 } else {
-                    if (statusBadge) {
-                        statusBadge.innerHTML = '<i class="fas fa-circle"></i> Online';
-                        statusBadge.className = 'badge bg-info text-dark';
-                    }
-                    if (offlineIndicator) {
-                        offlineIndicator.style.display = 'none';
+                    if (userRoleStatus) {
+                        userRoleStatus.innerHTML = `<i class="fas fa-shield-alt"></i> ${userRole} (Online)`;
+                        userRoleStatus.className = 'text-success';
                     }
                 }
             }
             
             window.addEventListener('online', updateConnectionStatus);
             window.addEventListener('offline', updateConnectionStatus);
-            updateConnectionStatus();
+            
+            // Initial update with a small delay to ensure DOM is ready
+            setTimeout(() => {
+                updateConnectionStatus();
+            }, 100);
             
             // ============================
             // TIMER SESSIONE
             // ============================
             
             if (window.TALON_CONFIG.user.isLoggedIn) {
-                const loginTime = "{{ session.get('login_time', '') }}";
+                // Usa il tempo di caricamento della pagina come fallback se login_time non è disponibile
+                const loginTime = "{{ session.get('login_time', '') }}" || new Date().toISOString();
+                let sessionStartTime = null;
+                
+                // Prova a parsare il tempo di login dal backend
+                try {
+                    sessionStartTime = new Date(loginTime);
+                    // Se la data non è valida, usa il tempo corrente
+                    if (isNaN(sessionStartTime.getTime())) {
+                        sessionStartTime = new Date();
+                    }
+                } catch (e) {
+                    // Se il parsing fallisce, usa il tempo corrente
+                    sessionStartTime = new Date();
+                }
                 
                 function updateSessionTimer() {
                     const timerEl = document.getElementById('session-timer');
-                    if (!timerEl || !loginTime) return;
+                    if (!timerEl) return;
                     
-                    const start = new Date(loginTime);
                     const now = new Date();
-                    const diff = Math.floor((now - start) / 1000);
+                    const diff = Math.floor((now - sessionStartTime) / 1000);
                     
                     const hours = Math.floor(diff / 3600);
                     const minutes = Math.floor((diff % 3600) / 60);
+                    const seconds = diff % 60;
                     
-                    timerEl.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                    // Mostra ore:minuti:secondi se la sessione è più di 1 ora, altrimenti minuti:secondi
+                    if (hours > 0) {
+                        timerEl.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                    } else {
+                        timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                    }
                 }
                 
+                // Aggiorna immediatamente e poi ogni secondo
                 updateSessionTimer();
-                setInterval(updateSessionTimer, 60000); // Aggiorna ogni minuto
+                setInterval(updateSessionTimer, 1000); // Aggiorna ogni secondo
             }
             
             // ============================

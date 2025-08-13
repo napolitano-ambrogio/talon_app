@@ -20,7 +20,7 @@
         // SPA Settings
         SPA: {
             ENABLED: true,
-            DEBUG: false,  // Disable debug logs - system working
+            DEBUG: true,  // Enable debug logs to debug dashboard_admin rendering issue
             PREFETCH: true,
             PREFETCH_DELAY: 200,
             CACHE_ENABLED: true,
@@ -656,6 +656,16 @@
                 this.displayFlashMessagesArray(content.flash_messages);
             }
             
+            // Load additional CSS files (for page-specific styles like dashboard_admin.css)
+            if (content.additional_css && content.additional_css.length > 0) {
+                await this.loadPageSpecificCSS(content.additional_css);
+            }
+            
+            // Load additional JS files (for Chart.js, DataTables, etc.)
+            if (content.additional_js && content.additional_js.length > 0) {
+                await this.loadPageSpecificJS(content.additional_js);
+            }
+            
             // Load scripts
             if (content.scripts && content.scripts.length > 0) {
                 await this.loadScripts(content.scripts);
@@ -663,6 +673,23 @@
             
             // Transition in
             await this.transitionIn();
+            
+            // Fallback: ensure content is visible (in case transitions fail)
+            setTimeout(() => {
+                const mainContent = document.querySelector(CONFIG.SELECTORS.mainContent);
+                if (mainContent) {
+                    const currentOpacity = window.getComputedStyle(mainContent).opacity;
+                    this.log('debug', '[Page Update] Post-transition opacity check:', currentOpacity);
+                    
+                    if (currentOpacity === '0' || currentOpacity === '') {
+                        this.log('warn', '[Page Update] Content still hidden after transition, forcing visibility');
+                        mainContent.style.opacity = '1';
+                        mainContent.style.display = 'block';
+                        mainContent.style.visibility = 'visible';
+                        mainContent.style.transition = '';
+                    }
+                }
+            }, CONFIG.NAVIGATION.ANIMATION_DURATION + 100);
             
             // Reinitialize components
             await this.reinitializeComponents(url);
@@ -736,8 +763,32 @@
             const mainContent = document.querySelector(CONFIG.SELECTORS.mainContent);
             const breadcrumb = document.querySelector(CONFIG.SELECTORS.breadcrumb);
             
+            this.log('debug', '[Update JSON Content] Updating content:', {
+                hasMainContent: !!mainContent,
+                hasContent: !!content.content,
+                contentLength: content.content?.length || 0,
+                breadcrumbExists: !!breadcrumb
+            });
+            
             if (mainContent && content.content) {
                 mainContent.innerHTML = content.content;
+                
+                // Ensure content is visible after update
+                mainContent.style.display = 'block';
+                mainContent.style.visibility = 'visible';
+                
+                // Force layout recalculation
+                mainContent.offsetHeight;
+                
+                this.log('debug', '[Update JSON Content] Content updated, element styles:', {
+                    display: mainContent.style.display,
+                    visibility: mainContent.style.visibility,
+                    opacity: mainContent.style.opacity,
+                    offsetHeight: mainContent.offsetHeight,
+                    scrollHeight: mainContent.scrollHeight
+                });
+            } else {
+                this.log('warn', '[Update JSON Content] Failed to update content - missing elements or content');
             }
             
             if (breadcrumb && content.breadcrumb) {
@@ -943,6 +994,12 @@
             this.prefetchTimers.forEach(timer => clearTimeout(timer));
             this.prefetchTimers.clear();
             
+            // Clean up page-specific CSS
+            this.cleanupPageSpecificCSS();
+            
+            // Clean up page-specific JS
+            this.cleanupPageSpecificJS();
+            
             // Destroy DataTables
             if (window.jQuery && $.fn.DataTable) {
                 try {
@@ -968,6 +1025,62 @@
             
             // Remove tooltips/popovers
             this.cleanupBootstrapComponents();
+        }
+        
+        cleanupPageSpecificCSS() {
+            this.log('debug', '[CSS Cleanup] Removing page-specific CSS...');
+            
+            // Remove SPA-loaded CSS files
+            const spaLoadedCSS = document.querySelectorAll('link[data-spa-css="true"]');
+            spaLoadedCSS.forEach(link => {
+                this.log('debug', '[CSS Cleanup] Removing SPA CSS:', link.href);
+                link.remove();
+            });
+            
+            // Also remove known page-specific CSS files (fallback)
+            const pageSpecificCSS = [
+                'dashboard_admin.css',
+                'enti_militari.css', 
+                'enti_civili.css',
+                'operazioni.css',
+                'attivita.css'
+            ];
+            
+            pageSpecificCSS.forEach(cssFile => {
+                const links = document.querySelectorAll(`link[href*="${cssFile}"]`);
+                links.forEach(link => {
+                    if (!link.hasAttribute('data-spa-css')) { // Don't double-remove
+                        this.log('debug', '[CSS Cleanup] Removing fallback CSS:', link.href);
+                        link.remove();
+                    }
+                });
+            });
+        }
+        
+        cleanupPageSpecificJS() {
+            this.log('debug', '[JS Cleanup] Removing page-specific JavaScript...');
+            
+            // Remove SPA-loaded JS files
+            const spaLoadedJS = document.querySelectorAll('script[data-spa-js="true"]');
+            spaLoadedJS.forEach(script => {
+                this.log('debug', '[JS Cleanup] Removing SPA JavaScript:', script.src);
+                script.remove();
+            });
+            
+            // Clear Chart.js global if it was loaded dynamically
+            if (window.Chart && document.querySelector('script[src*="chart.js"][data-spa-js="true"]')) {
+                try {
+                    // Destroy all chart instances
+                    Object.keys(Chart.instances || {}).forEach(key => {
+                        if (Chart.instances[key]) {
+                            Chart.instances[key].destroy();
+                        }
+                    });
+                    this.log('debug', '[JS Cleanup] Chart.js instances cleaned up');
+                } catch (e) {
+                    this.log('debug', '[JS Cleanup] Error cleaning Chart.js:', e);
+                }
+            }
         }
 
         cleanupBootstrapComponents() {
@@ -1009,6 +1122,11 @@
             
             // Global components
             this.initializeGlobalComponents();
+            
+            // Emit page-specific events after initialization
+            if (path.includes('/dashboard_admin')) {
+                this.emit('spa:dashboard-admin-ready');
+            }
         }
 
         async initializePageSpecific(path) {
@@ -1094,7 +1212,15 @@
         }
 
         async initializeDashboardAdmin() {
-            this.log('warn', '🎯 [Dashboard Admin Init] Starting initialization...');
+            this.log('warn', '🎯 [Dashboard Admin Init] Starting SPA initialization...');
+            
+            // Check if already initializing or initialized to prevent multiple calls
+            if (window.TalonDashboardAdmin && 
+                (window.TalonDashboardAdmin._spaInitializing || 
+                 window.TalonDashboardAdmin._spaInitialized)) {
+                this.log('info', '✅ [Dashboard Admin Init] Already initializing/initialized, skipping');
+                return;
+            }
             
             // Check if the script is loaded
             if (!window.TalonDashboardAdmin) {
@@ -1108,6 +1234,7 @@
                 script.onload = () => {
                     this.log('info', 'dashboard_admin.js reloaded, retrying initialization...');
                     if (window.TalonDashboardAdmin) {
+                        window.TalonDashboardAdmin._spaInitializing = true;
                         window.TalonDashboardAdmin.initialize();
                     }
                 };
@@ -1117,22 +1244,89 @@
             
             this.log('info', '✅ [Dashboard Admin Init] TalonDashboardAdmin found, calling initialize...');
             try {
-                window.TalonDashboardAdmin.initialize();
-                this.log('success', '✅ [Dashboard Admin Init] TalonDashboardAdmin.initialize completed');
+                // Mark as initializing to prevent multiple calls
+                window.TalonDashboardAdmin._spaInitializing = true;
                 
-                // Double check that charts are initialized
-                setTimeout(() => {
-                    const hasChart = !!document.querySelector('#activityChart');
-                    const hasCounters = !!document.querySelector('.counter');
-                    this.log('info', '[Dashboard Admin Init] Post-init check:', {
-                        hasChart,
-                        hasCounters,
-                        chartCanvas: document.querySelector('#activityChart')
-                    });
-                }, 500);
+                await new Promise((resolve) => {
+                    window.TalonDashboardAdmin.initialize();
+                    
+                    // Wait for initialization to complete
+                    const checkInitialized = () => {
+                        // Check if DOM elements are present and chart is initialized
+                        const hasChart = !!document.querySelector('#activityChart');
+                        const hasCounters = !!document.querySelector('.counter');
+                        const container = !!document.querySelector('.dashboard-container');
+                        const mainContent = document.querySelector('.main-content');
+                        
+                        // Check CSS loading status
+                        const dashboardContainer = document.querySelector('.dashboard-container');
+                        const hasCSS = dashboardContainer ? 
+                            window.getComputedStyle(dashboardContainer).background !== 'rgba(0, 0, 0, 0)' : false;
+                        
+                        // Check if Chart.js is available
+                        const hasChartJS = typeof Chart !== 'undefined';
+                        
+                        this.log('debug', '[Dashboard Admin Init] Checking elements:', {
+                            hasChart,
+                            hasCounters, 
+                            container,
+                            hasCSS,
+                            hasChartJS,
+                            mainContentVisible: mainContent ? window.getComputedStyle(mainContent).opacity : 'N/A',
+                            mainContentDisplay: mainContent ? window.getComputedStyle(mainContent).display : 'N/A',
+                            containerBackground: dashboardContainer ? window.getComputedStyle(dashboardContainer).background : 'N/A'
+                        });
+                        
+                        if (hasChart && hasCounters && container && hasCSS && hasChartJS) {
+                            // Also ensure main content is visible
+                            if (mainContent) {
+                                mainContent.style.opacity = '1';
+                                mainContent.style.display = 'block';
+                                mainContent.style.visibility = 'visible';
+                            }
+                            
+                            window.TalonDashboardAdmin._spaInitialized = true;
+                            window.TalonDashboardAdmin._spaInitializing = false;
+                            this.log('success', '✅ [Dashboard Admin Init] Initialization completed successfully with CSS and Chart.js');
+                            
+                            // Add fallback counter trigger after a short delay
+                            setTimeout(() => {
+                                if (window.TalonDashboardAdmin && window.TalonDashboardAdmin.retriggerCounters) {
+                                    this.log('debug', '[Dashboard Admin Init] Fallback: Retriggering counters...');
+                                    window.TalonDashboardAdmin.retriggerCounters();
+                                }
+                            }, 500);
+                            
+                            resolve();
+                        } else {
+                            // Keep checking for up to 8 seconds (increased timeout)
+                            if (Date.now() - startTime < 8000) {
+                                setTimeout(checkInitialized, 200);
+                            } else {
+                                this.log('warn', '⚠️ [Dashboard Admin Init] Initialization timeout, forcing visibility and proceeding');
+                                
+                                // Force visibility
+                                if (mainContent) {
+                                    mainContent.style.opacity = '1';
+                                    mainContent.style.display = 'block';
+                                    mainContent.style.visibility = 'visible';
+                                    mainContent.style.transition = '';
+                                }
+                                
+                                window.TalonDashboardAdmin._spaInitialized = true;
+                                window.TalonDashboardAdmin._spaInitializing = false;
+                                resolve();
+                            }
+                        }
+                    };
+                    
+                    const startTime = Date.now();
+                    setTimeout(checkInitialized, 300); // Initial delay
+                });
                 
             } catch (error) {
                 this.log('error', '❌ [Dashboard Admin Init] Error initializing TalonDashboardAdmin:', error);
+                window.TalonDashboardAdmin._spaInitializing = false;
             }
         }
 
@@ -1213,6 +1407,108 @@
                         pageLength: 25
                     });
                 }
+            });
+        }
+
+        // ========================================
+        // CSS LOADING
+        // ========================================
+        
+        async loadPageSpecificCSS(cssUrls) {
+            this.log('debug', '[CSS Loading] Loading page-specific CSS:', cssUrls);
+            
+            const promises = cssUrls.map(url => this.loadCSSFile(url));
+            await Promise.all(promises);
+            
+            this.log('info', '[CSS Loading] All page-specific CSS loaded successfully');
+        }
+        
+        loadCSSFile(url) {
+            return new Promise((resolve, reject) => {
+                // Extract base URL without cache buster for comparison
+                const baseUrl = url.split('?')[0];
+                
+                // Check if CSS is already loaded (ignoring cache buster)
+                const existingLink = document.querySelector(`link[href*="${baseUrl.split('/').pop()}"]`);
+                if (existingLink) {
+                    this.log('debug', '[CSS Loading] CSS already loaded:', url);
+                    resolve();
+                    return;
+                }
+                
+                // Create and load CSS link
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = url;
+                link.setAttribute('data-spa-css', 'true'); // Mark as SPA-loaded CSS
+                
+                link.onload = () => {
+                    this.log('debug', '[CSS Loading] CSS loaded successfully:', url);
+                    // Force style recalculation
+                    document.body.offsetHeight;
+                    resolve();
+                };
+                link.onerror = () => {
+                    this.log('error', '[CSS Loading] Failed to load CSS:', url);
+                    reject(new Error(`Failed to load CSS: ${url}`));
+                };
+                
+                document.head.appendChild(link);
+            });
+        }
+
+        // ========================================
+        // JAVASCRIPT LOADING
+        // ========================================
+        
+        async loadPageSpecificJS(jsUrls) {
+            this.log('debug', '[JS Loading] Loading page-specific JavaScript:', jsUrls);
+            
+            const promises = jsUrls.map(url => this.loadJSFile(url));
+            await Promise.all(promises);
+            
+            this.log('info', '[JS Loading] All page-specific JavaScript loaded successfully');
+        }
+        
+        loadJSFile(url) {
+            return new Promise((resolve, reject) => {
+                // Extract base URL without cache buster for comparison
+                const baseUrl = url.split('?')[0];
+                
+                // Check if JS is already loaded (ignoring cache buster)
+                const existingScript = document.querySelector(`script[src*="${baseUrl.split('/').pop()}"]`);
+                if (existingScript) {
+                    this.log('debug', '[JS Loading] JavaScript already loaded:', url);
+                    resolve();
+                    return;
+                }
+                
+                // Create and load script
+                const script = document.createElement('script');
+                script.src = url;
+                script.setAttribute('data-spa-js', 'true'); // Mark as SPA-loaded JS
+                
+                script.onload = () => {
+                    this.log('debug', '[JS Loading] JavaScript loaded successfully:', url);
+                    
+                    // Special handling for Chart.js
+                    if (url.includes('chart.js') || url.includes('chartjs')) {
+                        // Wait a bit for Chart.js to be fully initialized
+                        setTimeout(() => {
+                            if (typeof Chart !== 'undefined') {
+                                this.log('info', '[JS Loading] Chart.js is now available globally');
+                            }
+                        }, 100);
+                    }
+                    
+                    resolve();
+                };
+                script.onerror = () => {
+                    this.log('error', '[JS Loading] Failed to load JavaScript:', url);
+                    reject(new Error(`Failed to load JavaScript: ${url}`));
+                };
+                
+                document.head.appendChild(script);
             });
         }
 
@@ -1361,22 +1657,46 @@
         
         async transitionOut() {
             const mainContent = document.querySelector(CONFIG.SELECTORS.mainContent);
-            if (!mainContent) return;
+            if (!mainContent) {
+                this.log('warn', '[Transition Out] Main content element not found');
+                return;
+            }
             
+            this.log('debug', '[Transition Out] Starting transition out');
             mainContent.style.opacity = '0';
             mainContent.style.transition = `opacity ${CONFIG.NAVIGATION.ANIMATION_DURATION}ms ease-out`;
             
             await this.delay(CONFIG.NAVIGATION.ANIMATION_DURATION);
+            this.log('debug', '[Transition Out] Transition out completed');
         }
 
         async transitionIn() {
             const mainContent = document.querySelector(CONFIG.SELECTORS.mainContent);
-            if (!mainContent) return;
+            if (!mainContent) {
+                this.log('warn', '[Transition In] Main content element not found');
+                return;
+            }
+            
+            this.log('debug', '[Transition In] Starting transition in');
+            
+            // Ensure content is visible before starting transition
+            mainContent.style.display = 'block';
+            mainContent.style.visibility = 'visible';
+            
+            // Force reflow before applying opacity
+            mainContent.offsetHeight;
             
             mainContent.style.opacity = '1';
             mainContent.style.transition = `opacity ${CONFIG.NAVIGATION.ANIMATION_DURATION}ms ease-in`;
             
             await this.delay(CONFIG.NAVIGATION.ANIMATION_DURATION);
+            
+            // Clean up transition styles
+            setTimeout(() => {
+                mainContent.style.transition = '';
+            }, CONFIG.NAVIGATION.ANIMATION_DURATION + 50);
+            
+            this.log('debug', '[Transition In] Transition in completed, opacity:', mainContent.style.opacity);
         }
 
         // ========================================

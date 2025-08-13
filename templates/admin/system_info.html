@@ -22,9 +22,6 @@
                     <a href="{{ url_for('main.dashboard_admin') }}" class="btn btn-outline-primary me-2" data-spa-link data-spa-force="true" data-spa-no-cache="true">
                         <i class="fas fa-arrow-left"></i> Torna al Sistema
                     </a>
-                    <button class="btn btn-outline-secondary" onclick="refreshSystemInfo()">
-                        <i class="fas fa-sync-alt"></i> Aggiorna
-                    </button>
                 </div>
             </div>
         </div>
@@ -234,13 +231,6 @@
 </div>
 
 <script>
-function refreshSystemInfo() {
-    if (window.TalonApp && window.TalonApp.navigate) {
-        window.TalonApp.navigate(window.location.pathname, { force: true });
-    } else {
-        window.location.reload();
-    }
-}
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('System info page loaded');

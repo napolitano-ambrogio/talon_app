@@ -26,15 +26,17 @@
     
     const state = {
         initialized: false,
+        initializing: false,  // Prevent multiple concurrent initializations
         chart: null,
         intervals: [],
         eventHandlers: new Map(),
         counters: [],
-        currentPeriod: 'week'
+        currentPeriod: 'week',
+        initializationCount: 0  // Debug counter
     };
 
     const config = {
-        debug: false,  // Disable debug logs - system working
+        debug: true,  // Enable debug logs temporarily to debug SPA navigation
         autoRefreshInterval: 30000, // 30 secondi
         counterSpeed: 200,
         chartUpdateDelay: 100
@@ -45,14 +47,54 @@
     // ========================================
     
     function initialize() {
-        log('🎯 Initializing Dashboard Admin (SPA Version)...');
+        state.initializationCount++;
+        log(`🎯 Initializing Dashboard Admin (SPA Version) - Call #${state.initializationCount}...`);
+        
+        // Check if SPA is calling us (coordination with SPA system)
+        const isSPACall = window.TalonDashboardAdmin && 
+                          (window.TalonDashboardAdmin._spaInitializing || window.TalonDashboardAdmin._spaInitialized);
+        
+        if (isSPACall && state.initialized) {
+            log('✅ SPA coordination: Dashboard Admin already initialized, skipping SPA call');
+            return;
+        }
+        
+        // Log call stack to trace source of multiple calls (only for non-SPA calls)
+        if (config.debug && state.initializationCount > 1 && !isSPACall) {
+            try {
+                throw new Error('Multiple initialization trace');
+            } catch (e) {
+                log('📋 Call stack for multiple initialization:', e.stack);
+            }
+        }
+        
+        // Prevent multiple concurrent initializations
+        if (state.initializing) {
+            log('❌ Dashboard Admin initialization already in progress, skipping call #' + state.initializationCount);
+            return;
+        }
+        
+        // For SPA navigation, always reset if we're navigating back to the page
+        if (isSPACall && state.initialized) {
+            log('🔄 SPA navigation: Force reinitializing dashboard admin');
+            cleanup();
+            state.initialized = false;
+        }
+        
+        // Check if already initialized and not forcing reinitialization
+        if (state.initialized && !isSPACall) {
+            log('✅ Dashboard Admin already initialized, skipping');
+            return;
+        }
+        
+        state.initializing = true;
         
         // Check if this is a page refresh - force reinitialization
         const navigationEntries = performance.getEntriesByType('navigation');
         const wasPageRefreshed = navigationEntries.length > 0 && 
             (navigationEntries[0].type === 'reload');
         
-        // Cleanup precedente se necessario o se la pagina è stata refreshed
+        // ALWAYS cleanup before reinitializing during SPA navigation
         if (state.initialized || wasPageRefreshed) {
             log('Cleaning up before reinitializing (page refresh detected: ' + wasPageRefreshed + ')');
             cleanup();
@@ -62,26 +104,132 @@
         // Verifica se siamo nella pagina dashboard admin
         if (!isDashboardAdminPage()) {
             log('Not on admin dashboard page, skipping init');
+            state.initializing = false;
             return;
         }
         
         log('✅ Admin dashboard detected, initializing components...');
         
-        // Inizializza con delay per assicurare rendering DOM
-        setTimeout(() => {
+        // For SPA navigation, add extra checks and delays
+        const isSPANavigation = !wasPageRefreshed && window.TalonSPA;
+        if (isSPANavigation) {
+            log('🔄 SPA navigation detected, using enhanced initialization...');
+            
+            // Wait for DOM to be fully rendered with multiple attempts
+            let attempts = 0;
+            const maxAttempts = 10;
+            
+            const initWithChecks = () => {
+                attempts++;
+                
+                // Check if essential elements exist
+                const requiredElements = {
+                    chart: document.getElementById('activityChart'),
+                    counters: document.querySelectorAll('.counter'),
+                    container: document.querySelector('.dashboard-container'),
+                    refreshBtn: document.getElementById('refreshDashboard')
+                };
+                
+                log(`Checking required elements (attempt ${attempts}/${maxAttempts}):`, {
+                    hasChart: !!requiredElements.chart,
+                    hasCounters: requiredElements.counters.length > 0,
+                    hasContainer: !!requiredElements.container,
+                    hasRefreshBtn: !!requiredElements.refreshBtn,
+                    allButtons: document.querySelectorAll('button').length,
+                    domReady: document.readyState
+                });
+                
+                // Critical elements: chart, counters, container
+                const criticalElementsMissing = !requiredElements.chart || 
+                    requiredElements.counters.length === 0 || 
+                    !requiredElements.container;
+                
+                if (criticalElementsMissing && attempts < maxAttempts) {
+                    log(`⏳ Critical elements not ready yet, retrying in ${200 * attempts}ms... (attempt ${attempts}/${maxAttempts})`);
+                    setTimeout(initWithChecks, 200 * attempts); // Progressive delay
+                    return;
+                }
+                
+                if (criticalElementsMissing) {
+                    log('❌ Critical elements still missing after max attempts, proceeding anyway');
+                }
+                
+                performInitialization();
+            };
+            
+            // Use MutationObserver to detect when DOM changes are complete
+            if (window.MutationObserver) {
+                let mutationTimer;
+                const observer = new MutationObserver(() => {
+                    // Reset timer on each mutation
+                    clearTimeout(mutationTimer);
+                    mutationTimer = setTimeout(() => {
+                        observer.disconnect();
+                        log('🔍 DOM mutations settled, starting initialization...');
+                        initWithChecks();
+                    }, 150); // Wait 150ms after last mutation
+                });
+                
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true
+                });
+                
+                // Fallback: disconnect observer after 3 seconds
+                setTimeout(() => {
+                    observer.disconnect();
+                    clearTimeout(mutationTimer);
+                    if (!state.initialized && !state.initializing) {
+                        log('🕐 MutationObserver timeout, starting initialization...');
+                        initWithChecks();
+                    }
+                }, 3000);
+            } else {
+                // Fallback for browsers without MutationObserver
+                setTimeout(initWithChecks, 300);
+            }
+            
+        } else {
+            // Direct page load or refresh - use standard delay
+            setTimeout(() => {
+                performInitialization();
+            }, config.chartUpdateDelay);
+        }
+    }
+    
+    function performInitialization() {
+        log('🚀 Performing actual initialization...');
+        
+        try {
             initCounters();
+            initOnlineUsersProgressBar();
             initChart();
-            initRefreshButton();
             initPeriodButtons();
             updateLastUpdateTime();
             setupAutoRefresh();
             
             state.initialized = true;
+            state.initializing = false;  // Release lock
             log('✅ Dashboard Admin initialized successfully');
             
             // Emetti evento personalizzato
             emitEvent('dashboard-admin:ready');
-        }, config.chartUpdateDelay);
+            
+        } catch (error) {
+            console.error('❌ Error during dashboard admin initialization:', error);
+            log('Initialization failed, will retry once...');
+            
+            // Single retry after 1 second
+            setTimeout(() => {
+                try {
+                    performInitialization();
+                } catch (retryError) {
+                    console.error('❌ Retry initialization also failed:', retryError);
+                    state.initializing = false;  // Release lock even on failure
+                }
+            }, 1000);
+        }
     }
 
     // ========================================
@@ -115,7 +263,14 @@
         
         // Reset stato
         state.initialized = false;
+        state.initializing = false;
         state.counters = [];
+        
+        // Reset SPA coordination flags
+        if (window.TalonDashboardAdmin) {
+            window.TalonDashboardAdmin._spaInitialized = false;
+            window.TalonDashboardAdmin._spaInitializing = false;
+        }
         
         log('✅ Cleanup completed');
     }
@@ -146,7 +301,12 @@
         const hasCounters = !!document.querySelector('.counter');
         const hasAdminBreadcrumb = !!document.querySelector('.breadcrumb [href*="dashboard_admin"]');
         const titleElement = document.querySelector('h1, h2, h3');
-        const hasAdminTitle = titleElement ? titleElement.textContent.includes('Admin') : false;
+        const hasAdminTitle = titleElement ? (titleElement.textContent.includes('Admin') || titleElement.textContent.includes('Sistema')) : false;
+        
+        // Additional checks for admin dashboard content
+        const hasStatsRow = !!document.querySelector('.stats-row');
+        const hasSystemInfo = !!document.querySelector('.system-info');
+        const hasQuickActions = !!document.querySelector('.quick-actions');
         
         // Log per debug
         log('Checking if dashboard admin page:', {
@@ -157,21 +317,30 @@
             hasChart: hasChart,
             hasCounters: hasCounters,
             hasAdminBreadcrumb: hasAdminBreadcrumb,
-            hasAdminTitle: hasAdminTitle
+            hasAdminTitle: hasAdminTitle,
+            titleText: titleElement?.textContent,
+            hasStatsRow: hasStatsRow,
+            hasSystemInfo: hasSystemInfo,
+            hasQuickActions: hasQuickActions
         });
         
         // Per SPA, l'URL è l'indicatore più affidabile
         if (isDashboardAdminPath) {
+            log('✅ Confirmed dashboard admin page by URL');
             return true;
         }
         
         // If page was refreshed, trust DOM elements more
         if (wasPageRefreshed) {
-            return hasContainer || hasChart || hasCounters || hasAdminBreadcrumb;
+            const isAdminByDOM = hasContainer || hasChart || hasCounters || hasAdminBreadcrumb || hasStatsRow;
+            log(wasPageRefreshed ? '✅ Confirmed dashboard admin page by DOM elements after refresh' : '❌ Not dashboard admin page by DOM elements');
+            return isAdminByDOM;
         }
         
-        // Fallback sui selettori DOM (per compatibilità)
-        return hasContainer || hasChart || hasCounters;
+        // For SPA navigation, check multiple indicators
+        const isAdminPage = hasContainer && (hasChart || hasCounters || hasStatsRow || hasAdminTitle);
+        log(isAdminPage ? '✅ Confirmed dashboard admin page by combined indicators' : '❌ Not dashboard admin page');
+        return isAdminPage;
     }
 
     function emitEvent(eventName, detail = {}) {
@@ -205,19 +374,52 @@
         
         state.counters = Array.from(counters);
         
-        // Anima ogni contatore
-        state.counters.forEach(counter => {
-            animateCounter(counter);
-        });
+        log(`Found ${counters.length} counters, checking visibility and CSS...`);
+        
+        // Wait for CSS to be applied and elements to be visible
+        setTimeout(() => {
+            // Anima ogni contatore dopo che CSS è applicato
+            state.counters.forEach((counter, index) => {
+                // Ensure element is visible before animating
+                const isVisible = counter.offsetHeight > 0 && counter.offsetWidth > 0;
+                const computedStyle = window.getComputedStyle(counter);
+                const isDisplayed = computedStyle.display !== 'none' && computedStyle.visibility !== 'hidden';
+                
+                log(`Counter ${index + 1}: visible=${isVisible}, displayed=${isDisplayed}, target=${counter.getAttribute('data-target')}`);
+                
+                if (isVisible && isDisplayed) {
+                    animateCounter(counter);
+                } else {
+                    log(`Counter ${index + 1} not visible, retrying in 200ms...`);
+                    setTimeout(() => animateCounter(counter), 200);
+                }
+            });
+        }, 100); // Small delay to ensure CSS is applied
         
         log(`Initialized ${counters.length} counters`);
     }
 
     function animateCounter(counter) {
+        if (!counter) {
+            log('animateCounter called with null/undefined counter');
+            return;
+        }
+        
+        const target = +counter.getAttribute('data-target') || 0;
+        
+        log(`Animating counter to ${target}...`);
+        
+        // Ensure element is still visible
+        const isVisible = counter.offsetHeight > 0 && counter.offsetWidth > 0;
+        if (!isVisible) {
+            log('Counter not visible during animation, skipping');
+            counter.innerText = target; // Set final value directly
+            return;
+        }
+        
         // Reset del contatore
         counter.innerText = '0';
         
-        const target = +counter.getAttribute('data-target') || 0;
         const speed = config.counterSpeed;
         const increment = target / speed;
         
@@ -230,6 +432,7 @@
                 requestAnimationFrame(updateCounter);
             } else {
                 counter.innerText = target;
+                log(`Counter animation completed: ${target}`);
             }
         };
         
@@ -253,6 +456,53 @@
     }
 
     // ========================================
+    // PROGRESS BAR UTENTI ONLINE
+    // ========================================
+    
+    function initOnlineUsersProgressBar() {
+        log('Initializing online users progress bar...');
+        
+        try {
+            const progressBar = document.getElementById('online-progress-bar');
+            if (!progressBar) {
+                log('Online progress bar not found');
+                return;
+            }
+            
+            // Get total and online users from the cards
+            const totalUsersCard = document.querySelector('[data-stat="users"] .card-value');
+            const onlineUsersCard = document.querySelector('[data-stat="users-online"] .card-value');
+            
+            if (!totalUsersCard || !onlineUsersCard) {
+                log('User cards not found for progress calculation');
+                return;
+            }
+            
+            const totalUsers = parseInt(totalUsersCard.getAttribute('data-target') || '0');
+            const onlineUsers = parseInt(onlineUsersCard.getAttribute('data-target') || '0');
+            
+            log(`Calculating progress: ${onlineUsers}/${totalUsers} online`);
+            
+            // Calculate percentage (avoid division by zero)
+            const percentage = totalUsers > 0 ? Math.round((onlineUsers / totalUsers) * 100) : 0;
+            
+            // Animate progress bar
+            setTimeout(() => {
+                progressBar.style.transition = 'width 1.5s ease-in-out';
+                progressBar.style.width = `${percentage}%`;
+                
+                // Update progress bar title
+                progressBar.setAttribute('title', `${onlineUsers} di ${totalUsers} utenti online (${percentage}%)`);
+                
+                log(`Progress bar animated to ${percentage}%`);
+            }, 500); // Start animation after counter animation begins
+            
+        } catch (error) {
+            log('Error initializing online users progress bar:', error);
+        }
+    }
+
+    // ========================================
     // GESTIONE GRAFICO
     // ========================================
     
@@ -262,6 +512,13 @@
         const ctx = document.getElementById('activityChart');
         if (!ctx) {
             log('Chart canvas not found');
+            return;
+        }
+        
+        // Check if Chart.js is loaded
+        if (typeof Chart === 'undefined') {
+            log('Chart.js not loaded, attempting to load...');
+            loadChartJSAndInit();
             return;
         }
         
@@ -283,7 +540,47 @@
             log('Chart initialized successfully');
         } catch (e) {
             console.error('Error initializing chart:', e);
+            log('Chart.js might not be loaded or canvas not ready. Will retry...');
+            // Retry after a short delay
+            setTimeout(() => {
+                try {
+                    if (typeof Chart !== 'undefined' && document.getElementById('activityChart')) {
+                        state.chart = new Chart(ctx, getChartConfig());
+                        log('Chart initialized successfully on retry');
+                    }
+                } catch (retryError) {
+                    console.error('Chart initialization failed on retry:', retryError);
+                }
+            }, 1000);
         }
+    }
+    
+    function loadChartJSAndInit() {
+        log('Loading Chart.js dynamically...');
+        
+        // Check if script is already being loaded
+        if (document.querySelector('script[src*="chart.js"]')) {
+            log('Chart.js script tag exists, waiting for load...');
+            setTimeout(() => {
+                if (typeof Chart !== 'undefined') {
+                    initChart();
+                } else {
+                    log('Chart.js still not available after wait');
+                }
+            }, 2000);
+            return;
+        }
+        
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+        script.onload = () => {
+            log('Chart.js loaded dynamically, initializing chart...');
+            setTimeout(() => initChart(), 100);
+        };
+        script.onerror = () => {
+            log('Error loading Chart.js dynamically');
+        };
+        document.head.appendChild(script);
     }
 
     function getChartConfig() {
@@ -406,36 +703,7 @@
     // GESTIONE PULSANTI E CONTROLLI
     // ========================================
     
-    function initRefreshButton() {
-        log('Initializing refresh button...');
-        
-        const refreshBtn = document.getElementById('refreshDashboard');
-        if (!refreshBtn) {
-            log('Refresh button not found');
-            return;
-        }
-        
-        const handler = function(e) {
-            e.preventDefault();
-            
-            // Aggiungi classe loading
-            this.classList.add('loading');
-            this.disabled = true;
-            
-            // Simula refresh dei dati
-            setTimeout(() => {
-                refreshDashboardData();
-                this.classList.remove('loading');
-                this.disabled = false;
-                
-                // Mostra notifica
-                showNotification('Dashboard aggiornata con successo!', 'success');
-            }, 1000);
-        };
-        
-        saveEventHandler(refreshBtn, 'click', handler);
-        log('Refresh button initialized');
-    }
+    
 
     function initPeriodButtons() {
         log('Initializing period buttons...');
@@ -465,31 +733,6 @@
     // AGGIORNAMENTO DATI
     // ========================================
     
-    function refreshDashboardData() {
-        log('Refreshing dashboard data...');
-        
-        // Aggiorna contatori con valori casuali per demo
-        state.counters.forEach(counter => {
-            const currentValue = parseInt(counter.innerText);
-            const variation = Math.floor(Math.random() * 10) - 5;
-            const newValue = Math.max(0, currentValue + variation);
-            
-            animateValue(counter, currentValue, newValue, 500);
-        });
-        
-        // Aggiorna grafico
-        if (state.chart) {
-            state.chart.data.datasets.forEach(dataset => {
-                dataset.data = dataset.data.map(value => 
-                    Math.max(0, value + Math.floor(Math.random() * 20) - 10)
-                );
-            });
-            state.chart.update();
-        }
-        
-        updateLastUpdateTime();
-        log('Dashboard data refreshed');
-    }
 
     function updateLastUpdateTime() {
         const timeElement = document.getElementById('lastUpdateTime');
@@ -595,121 +838,47 @@
     // EXPORT TO GLOBAL NAMESPACE
     // ========================================
     
+    // Public method to re-trigger counter animations
+    function retriggerCounters() {
+        log('🔄 Retriggering counter animations...');
+        const counters = document.querySelectorAll('.counter');
+        if (counters.length === 0) {
+            log('No counters found for retrigger');
+            return;
+        }
+        
+        Array.from(counters).forEach((counter, index) => {
+            const target = +counter.getAttribute('data-target') || 0;
+            log(`Retriggering counter ${index + 1} to ${target}`);
+            animateCounter(counter);
+        });
+        
+        // Also retrigger the online users progress bar after counter animations
+        setTimeout(() => {
+            initOnlineUsersProgressBar();
+        }, 300);
+    }
+    
     // Export functions to window.TalonDashboardAdmin namespace
     window.TalonDashboardAdmin = Object.assign(window.TalonDashboardAdmin || {}, {
         initialize: initialize,
         cleanup: cleanup,
-        refresh: refreshDashboardData,
-        addNewChartAdmin: function() { return addNewChartAdmin(); }
+        showNotification: showNotification,
+        retriggerCounters: retriggerCounters
     });
 
-    // ========================================
-    // GLOBAL FUNCTIONS FOR DASHBOARD ADMIN
-    // ========================================
-    
-    // Make functions globally available for onclick handlers
-    function addNewChartAdmin() {
-        console.log('[Dashboard Admin] addNewChartAdmin called for admin dashboard');
-        
-        // This function is specifically for the admin dashboard page
-        const userRole = window.FLASK_USER_ROLE || window.userRole || 'VISUALIZZATORE';
-        const userLevel = getRoleLevel(userRole);
-        
-        console.log(`[Dashboard Admin] User role: ${userRole} (level: ${userLevel})`);
-        
-        // Role-based functionality
-        if (userLevel >= 50) { // OPERATORE or ADMIN
-            console.log('[Dashboard Admin] Opening chart creation modal...');
-            
-            // Check if Superset integration is available
-            if (window.supersetAuthenticated !== undefined) {
-                // Use existing Superset integration logic
-                if (!window.supersetAuthenticated) {
-                    if (sessionStorage.getItem('superset_authenticated') === 'true') {
-                        window.supersetAuthenticated = true;
-                        if (typeof openContentModal === 'function') {
-                            openContentModal();
-                        } else {
-                            showChartCreationFallback();
-                        }
-                    } else {
-                        if (typeof openSupersetLogin === 'function') {
-                            openSupersetLogin(true);
-                        } else {
-                            showAuthenticationRequired();
-                        }
-                    }
-                    return;
-                }
-                
-                if (typeof openContentModal === 'function') {
-                    openContentModal();
-                } else {
-                    showChartCreationFallback();
-                }
-            } else {
-                showChartCreationFallback();
+    // Make showComingSoon globally available for onclick handlers (used in dashboard_admin.html)
+    window.showComingSoon = showComingSoon;
+
+    // Listen for SPA events to retrigger counter animations
+    document.addEventListener('spa:dashboard-admin-ready', function() {
+        log('📡 Received spa:dashboard-admin-ready event');
+        setTimeout(() => {
+            if (window.TalonDashboardAdmin && window.TalonDashboardAdmin.retriggerCounters) {
+                window.TalonDashboardAdmin.retriggerCounters();
             }
-        } else {
-            // VISUALIZZATORE - Read only
-            showInsufficientPermissions();
-        }
-    };
-
-    // Helper functions for chart creation
-    function getRoleLevel(role) {
-        const roleLevels = {
-            'ADMIN': 100,
-            'OPERATORE': 50,
-            'VISUALIZZATORE': 10,
-            'GUEST': 0
-        };
-        return roleLevels[role] || 0;
-    }
-
-    function showChartCreationFallback() {
-        console.log('[Dashboard] Showing chart creation fallback');
-        if (window.TalonApp && window.TalonApp.showToast) {
-            window.TalonApp.showToast('Funzionalità di aggiunta grafico disponibile per Operatori e Amministratori', 'info');
-        } else {
-            alert('Funzionalità di aggiunta grafico disponibile per Operatori e Amministratori');
-        }
-    }
-
-    function showAuthenticationRequired() {
-        console.log('[Dashboard] Authentication required');
-        if (window.TalonApp && window.TalonApp.showToast) {
-            window.TalonApp.showToast('Autenticazione Superset richiesta per aggiungere grafici', 'warning');
-        } else {
-            alert('Autenticazione Superset richiesta per aggiungere grafici');
-        }
-    }
-
-    function showInsufficientPermissions() {
-        console.log('[Dashboard] Insufficient permissions for chart creation');
-        if (window.TalonApp && window.TalonApp.showToast) {
-            window.TalonApp.showToast('Solo Operatori e Amministratori possono aggiungere grafici', 'warning');
-        } else {
-            alert('Solo Operatori e Amministratori possono aggiungere grafici');
-        }
-    }
-
-    // Also make it available globally for onclick handlers
-    window.addNewChartAdmin = addNewChartAdmin;
-
-    window.addNewChartWithData = function(chartData) {
-        console.log('[Dashboard Admin] addNewChartWithData called with:', chartData);
-        
-        // Basic implementation - can be extended
-        if (chartData && chartData.id) {
-            console.log(`[Dashboard Admin] Adding chart with ID: ${chartData.id}`);
-        }
-        
-        // Placeholder implementation
-        if (window.TalonApp && window.TalonApp.showToast) {
-            window.TalonApp.showToast('Chart data received', 'success');
-        }
-    };
+        }, 100);
+    });
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {

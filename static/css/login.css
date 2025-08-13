@@ -196,6 +196,48 @@ body::before {
     color: #9ca3af;
 }
 
+/* Password visibility toggle */
+.password-input-container {
+    position: relative;
+}
+
+.password-input-container input {
+    padding-right: 45px; /* Spazio per l'icona */
+}
+
+.password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    color: #6b7280;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.password-toggle:hover {
+    color: #374151;
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.password-toggle:focus {
+    outline: none;
+    color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+.password-toggle i {
+    font-size: 20px;
+    line-height: 1;
+}
+
 /* Effetti di focus migliorati */
 .form-group.focused input {
     border-color: #3b82f6;

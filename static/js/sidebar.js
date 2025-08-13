@@ -620,7 +620,7 @@
         setupActionButtons() {
             const buttonActions = {
                 'Nuovo Utente': {
-                    action: () => this.navigateToRoute('/admin/users/new'),
+                    action: () => this.openCreateUserModal(),
                     minRole: 'ADMIN'
                 },
                 'Nuovo Ente Civile': {
@@ -815,6 +815,38 @@
                 window.TalonApp.navigate(route);
             } else {
                 window.location.href = route;
+            }
+        }
+
+        openCreateUserModal() {
+            this.log('Opening create user modal...');
+            // First navigate to users page if not already there
+            const currentPath = window.location.pathname;
+            if (!currentPath.includes('/admin/users')) {
+                // Navigate to users page first
+                this.navigateToRoute('/admin/users');
+                // Wait for page to load, then open modal
+                setTimeout(() => {
+                    this.triggerCreateUserModal();
+                }, 1000);
+            } else {
+                // Already on users page, open modal directly
+                this.triggerCreateUserModal();
+            }
+        }
+
+        triggerCreateUserModal() {
+            try {
+                // Try to call the global function from users page
+                if (typeof window.showCreateUserModal === 'function') {
+                    window.showCreateUserModal();
+                } else {
+                    // Fallback - dispatch custom event
+                    document.dispatchEvent(new CustomEvent('openCreateUserModal'));
+                }
+            } catch (error) {
+                this.log('Error opening create user modal:', error);
+                this.showToast('Errore nell\'apertura del modal utente', 'error');
             }
         }
 

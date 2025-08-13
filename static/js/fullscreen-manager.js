@@ -33,7 +33,8 @@
         button: null,
         eventHandlers: new Map(),
         documentHandlers: new Map(),
-        promptElement: null
+        promptElement: null,
+        lastToggleTime: 0  // Prevent rapid fire toggles
     };
     
     // ========================================
@@ -41,12 +42,13 @@
     // ========================================
     
     function init() {
-        log('🖥️ Initializing Fullscreen Manager (SPA Version)...');
-        
-        // Cleanup precedente se necessario
+        // Prevent multiple initializations - use singleton pattern
         if (state.isInitialized) {
-            cleanup();
+            log('🖥️ Fullscreen Manager already initialized, skipping');
+            return;
         }
+        
+        log('🖥️ Initializing Fullscreen Manager (SPA Version)...');
         
         // Trova il bottone fullscreen
         state.button = findFullscreenButton();
@@ -58,8 +60,8 @@
         // Bind eventi
         bindEvents();
         
-        // Controlla stato salvato
-        checkSavedState();
+        // Check saved state but DO NOT auto-enter fullscreen
+        checkSavedStateWithoutAutoEnter();
         
         // Aggiorna UI iniziale
         updateUI();
@@ -195,6 +197,14 @@
     // ========================================
     
     function toggle() {
+        // Prevent rapid toggles (debounce)
+        const now = Date.now();
+        if (now - state.lastToggleTime < 500) {  // 500ms debounce
+            log('Toggle blocked: too rapid (debounced)');
+            return;
+        }
+        state.lastToggleTime = now;
+        
         if (!isFullscreen()) {
             enter();
         } else {
@@ -203,9 +213,35 @@
     }
     
     function enter() {
+        // Get stack trace to see what called this function
+        const stack = new Error().stack;
+        log('enter() called from:', stack.split('\n')[2]?.trim() || 'unknown');
+        
         // Verifica che la chiamata provenga da un'interazione utente
-        if (!document.hasFocus() && !event) {
-            log('Fullscreen request blocked: no user interaction detected');
+        if (!document.hasFocus()) {
+            log('Fullscreen request blocked: document not focused');
+            return;
+        }
+        
+        // Additional check: prevent automatic calls during page load
+        if (!state.isInitialized) {
+            log('Fullscreen request blocked: manager not fully initialized');
+            return;
+        }
+        
+        // Prevent calls during SPA navigation
+        if (window.TalonApp && window.TalonApp.getState && window.TalonApp.getState().isNavigating) {
+            log('Fullscreen request blocked: SPA navigation in progress');
+            return;
+        }
+        
+        // Additional safety: check if this is a user-initiated call
+        const userInitiated = document.querySelector(':focus') || 
+                              document.activeElement?.tagName === 'BUTTON' ||
+                              window.event?.isTrusted;
+        
+        if (!userInitiated) {
+            log('Fullscreen request blocked: not user-initiated');
             return;
         }
         
@@ -284,6 +320,18 @@
         // Se era in fullscreen, aggiorna solo l'UI del bottone senza tentare di entrare
         if (savedState === 'true') {
             log('Previous fullscreen state detected, but not auto-restoring (requires user gesture)');
+        }
+    }
+    
+    function checkSavedStateWithoutAutoEnter() {
+        const savedState = localStorage.getItem(config.STORAGE_KEY);
+        log('Saved fullscreen state found:', savedState, '(will not auto-enter)');
+        
+        // Simply log the state without any action
+        if (savedState === 'true') {
+            log('Previous fullscreen state detected - user can manually enable if desired');
+            // Update button UI to indicate previous state
+            state.isActive = false; // Always start inactive
         }
     }
     
@@ -565,10 +613,13 @@
     
     // Auto-inizializzazione per primo caricamento
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', () => {
+            // Add extra delay to ensure all SPA components are loaded
+            setTimeout(init, 200);
+        });
     } else {
         // Inizializza con delay per assicurare che DOM sia pronto
-        setTimeout(init, 100);
+        setTimeout(init, 200);
     }
     
     log('Module loaded v' + window.TalonFullscreen.version + ' (SPA Ready)');

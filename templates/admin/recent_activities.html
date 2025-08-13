@@ -1,0 +1,267 @@
+{% extends "_base.html" %}
+
+{% block title %}Attività Recenti - TALON{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="{{ url_for('main.dashboard_admin') }}" data-spa-link>Dashboard Admin</a>
+</li>
+<li class="breadcrumb-item active">Attività Recenti</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-history"></i> Attività Recenti del Sistema</h2>
+                <div>
+                    <a href="{{ url_for('main.dashboard_admin') }}" class="btn btn-outline-primary" data-spa-link>
+                        <i class="fas fa-arrow-left"></i> Torna al Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Row -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-center bg-light">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">{{ total_activities }}</h5>
+                    <p class="card-text">Attività Totali</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center bg-light">
+                <div class="card-body">
+                    <h5 class="card-title text-info">{{ activities|length }}</h5>
+                    <p class="card-text">In Questa Pagina</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center bg-light">
+                <div class="card-body">
+                    <h5 class="card-title text-success">{{ current_page }}/{{ total_pages }}</h5>
+                    <p class="card-text">Pagina Corrente</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activities Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-table"></i> Log Attività Sistema</h5>
+                </div>
+                <div class="card-body">
+                    {% if activities %}
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="activitiesTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Data/Ora</th>
+                                        <th>Azione</th>
+                                        <th>Utente</th>
+                                        <th>Ruolo</th>
+                                        <th>Dettagli</th>
+                                        <th>Risorsa</th>
+                                        <th>IP</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for activity in activities %}
+                                    <tr>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ activity.timestamp.strftime('%d/%m/%Y') }}<br>
+                                                <strong>{{ activity.timestamp.strftime('%H:%M:%S') }}</strong>
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="activity-icon-small me-2" style="background: {{ get_activity_color(activity.action) }};">
+                                                    <i class="fas {{ get_activity_icon(activity.action) }}"></i>
+                                                </div>
+                                                <div>
+                                                    <strong>{{ get_activity_title(activity.action) }}</strong><br>
+                                                    <small class="text-muted">{{ activity.action }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ activity.user_name or 'Sistema' }}</strong><br>
+                                                {% if activity.user_email %}
+                                                <small class="text-muted">{{ activity.user_email }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if activity.user_role %}
+                                                {% set role_colors = {
+                                                    'ADMIN': 'danger',
+                                                    'OPERATORE': 'warning',
+                                                    'VISUALIZZATORE': 'info'
+                                                } %}
+                                                <span class="badge bg-{{ role_colors.get(activity.user_role, 'secondary') }}">
+                                                    {{ activity.user_role }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if activity.details %}
+                                                <div class="details-cell" title="{{ activity.details }}">
+                                                    {{ activity.details|truncate(60) }}
+                                                </div>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if activity.resource_type and activity.resource_id %}
+                                                <small class="text-muted">
+                                                    {{ activity.resource_type }}<br>
+                                                    <strong>ID: {{ activity.resource_id }}</strong>
+                                                </small>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if activity.ip_address %}
+                                                <small class="text-muted">{{ activity.ip_address }}</small>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if total_pages > 1 %}
+                        <nav aria-label="Navigazione attività" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if current_page > 1 %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('main.recent_activities', page=current_page-1) }}" data-spa-link>
+                                        <i class="fas fa-chevron-left"></i> Precedente
+                                    </a>
+                                </li>
+                                {% endif %}
+
+                                {% for page_num in range(1, total_pages + 1) %}
+                                    {% if page_num == current_page %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                    {% elif page_num <= 3 or page_num > total_pages - 3 or (page_num >= current_page - 2 and page_num <= current_page + 2) %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('main.recent_activities', page=page_num) }}" data-spa-link>{{ page_num }}</a>
+                                    </li>
+                                    {% elif page_num == 4 or page_num == total_pages - 3 %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if current_page < total_pages %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('main.recent_activities', page=current_page+1) }}" data-spa-link>
+                                        Successiva <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-info-circle fa-3x mb-3"></i>
+                            <h5>Nessuna attività disponibile</h5>
+                            <p>Non sono presenti attività recenti nel sistema.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.activity-icon-small {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.8rem;
+}
+
+.details-cell {
+    max-width: 200px;
+    cursor: help;
+}
+
+.table td {
+    vertical-align: middle;
+    font-size: 0.9rem;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.pagination .page-link {
+    border-radius: 0.375rem;
+    margin: 0 2px;
+    border: 1px solid #dee2e6;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Recent activities page loaded');
+    
+    // Add tooltip support for truncated details
+    const detailsCells = document.querySelectorAll('.details-cell');
+    detailsCells.forEach(cell => {
+        if (cell.textContent.length < cell.title.length) {
+            cell.style.cursor = 'help';
+            cell.addEventListener('click', function() {
+                alert(this.title);
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

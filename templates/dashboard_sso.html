@@ -101,9 +101,6 @@
                         <button class="btn btn-primary" onclick="loadDashboard()">
                             Carica Dashboard
                         </button>
-                        <button class="btn btn-secondary" onclick="refreshDashboard()">
-                            <i class="bi bi-arrow-clockwise"></i> Aggiorna
-                        </button>
                     </div>
                 </div>
             </div>
@@ -229,14 +226,6 @@
                 showLoading(false);
                 showNotification('Errore caricamento dashboard', 'error');
             };
-        }
-        
-        /**
-         * Aggiorna la dashboard corrente
-         */
-        async function refreshDashboard() {
-            showNotification('Aggiornamento dashboard...', 'info');
-            await loadDashboard(currentDashboardId);
         }
         
         /**
