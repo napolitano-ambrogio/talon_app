@@ -927,8 +927,5 @@
     // Alias for backward compatibility
     window.organigrammaAPI = window.TalonOrganigramma;
 
-    // Log initialization
-    console.log('%c🏛️ Talon Organigramma v2.0.0 - SPA Ready', 
-        'color: #10b981; font-weight: bold; font-size: 14px;');
 
 })(window, document);

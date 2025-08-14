@@ -12,7 +12,7 @@
     <div class="form-header">
         <h1>Nuova Attività</h1>
         <div class="form-actions-top">
-            <a href="{{ url_for('attivita.lista_attivita') }}" class="btn btn-secondary" data-spa-link="true">
+            <a href="{{ url_for('attivita.lista_attivita') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Torna all'elenco
             </a>
         </div>
@@ -367,7 +367,7 @@
             <button type="button" class="btn btn-secondary" id="btn-reset">
                 <i class="fas fa-undo"></i> Reset Form
             </button>
-            <a href="{{ url_for('attivita.lista_attivita') }}" class="btn btn-outline-secondary" data-spa-link="true">
+            <a href="{{ url_for('attivita.lista_attivita') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-times"></i> Annulla
             </a>
         </div>
@@ -389,11 +389,5 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('[Inserimento Attività] Pagina pronta');
 });
 
-// Handler per navigazione SPA
-document.addEventListener('spa:content-loaded', function(e) {
-    if (e.detail && e.detail.page === 'inserimento-attivita') {
-        console.log('[Inserimento Attività] Contenuto SPA caricato');
-    }
-});
 </script>
 {% endblock %}

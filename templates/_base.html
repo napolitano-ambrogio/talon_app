@@ -1,4 +1,4 @@
-<!-- _base.html - Versione SPA Completa con supporto Offline -->
+<!-- _base.html - TALON Application Template -->
 <!DOCTYPE html>
 <html lang="it" class="h-100">
 <head>
@@ -7,6 +7,12 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="user-role" content="{{ session.get('ruolo_nome', 'GUEST') }}">
     <meta name="user-name" content="{{ session.get('username', 'Utente') }}">
+    
+    <!-- FORZA NO CACHE PER RISOLVERE PROBLEMA F5 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
     <title>{% block title %}{{ app_name or 'TALON System' }}{% endblock %}</title>
 
     <!-- Librerie Offline - Tutte le risorse sono locali per funzionamento su chiavetta USB -->
@@ -17,45 +23,184 @@
     <!-- FontAwesome CSS (locale) -->
     <link href="/external/fontawesome/css/all.min.css" rel="stylesheet">
 
-    <!-- CSS Sistema con cache busting -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ cache_buster }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}?v={{ cache_buster }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-roles.css') }}?v={{ cache_buster }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/searchable_select.css') }}?v={{ cache_buster }}">
+    <!-- CSS Sistema con cache busting FORZATO -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ cache_buster }}&t={{ moment().unix() if moment else range(999999) | random }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}?v={{ cache_buster }}&t={{ moment().unix() if moment else range(999999) | random }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-roles.css') }}?v={{ cache_buster }}&t={{ moment().unix() if moment else range(999999) | random }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/searchable_select.css') }}?v={{ cache_buster }}&t={{ moment().unix() if moment else range(999999) | random }}">
     
-    <!-- CSS SPA Loader -->
+    <!-- CSS Application Styles -->
     <style>
-        /* SPA Loader Styles */
-        .spa-loader {
-            position: fixed;
+        /* Header TALON con animazione neural network */
+        .talon-header {
+            position: relative;
+            background: #ffffff;
+            padding: 20px 30px;
+            overflow: hidden;
+            border-bottom: 1px solid #e5e7eb !important;
+        }
+        
+        .header-neural-background {
+            position: absolute;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.95);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 9997;
-            backdrop-filter: blur(5px);
+            width: 100%;
+            height: 100%;
+            opacity: 0.5;
+            pointer-events: none;
         }
         
-        .spa-loader.active {
+        .header-content {
+            position: relative;
+            z-index: 2;
             display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
-        .spa-loader .spinner-border {
-            width: 3rem;
-            height: 3rem;
+        .talon-title-container {
+            color: #1e3c72;
         }
         
-        /* Transizioni contenuto SPA */
+        .talon-title {
+            font-size: 2rem;
+            font-weight: 700;  /* Grassetto forte */
+            margin: 0;
+            letter-spacing: 3px;
+            color: #0D1B2A;  /* Stesso colore della sidebar */
+        }
+        
+        .talon-subtitle {
+            font-size: 0.9rem;
+            margin: 0;
+            margin-top: 5px;
+            color: #6b7280;
+            letter-spacing: 1px;
+            font-weight: 300;
+        }
+        
+        .talon-header .header-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .talon-header .btn-light {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            color: #374151;
+        }
+        
+        .talon-header .btn-light:hover {
+            background: #f9fafb;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Responsive header */
+        @media (max-width: 768px) {
+            .talon-header {
+                padding: 15px 20px;
+            }
+            
+            .talon-title {
+                font-size: 1.5rem;
+            }
+            
+            .talon-subtitle {
+                font-size: 0.8rem;
+            }
+            
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+        
+        /* Application Loader Styles - Rope Animation */
+        .app-loader {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            display: none !important;
+            z-index: 9997 !important;
+            text-align: center !important;
+        }
+        
+        .app-loader.active {
+            display: block !important;
+        }
+        
+        /* Knot Loader - Lines that form and dissolve like a real knot */
+        .rope-spinner {
+            width: 60px;
+            aspect-ratio: 1;
+            margin: 20px auto;
+            --c: no-repeat linear-gradient(#0D1B2A 0 0);
+            background: var(--c), var(--c), var(--c), var(--c);
+            animation: 
+                l9-1 1.5s infinite,
+                l9-2 1.5s infinite;
+        }
+        
+        @keyframes l9-1 {
+            0%   { background-size: 0    4px, 4px 0; }
+            25%  { background-size: 40px 4px, 4px 0; }
+            45%,
+            55%  { background-size: 40px 4px, 4px 42px; }
+            75%  { background-size: 0    4px, 4px 42px; }
+            100% { background-size: 0    4px, 4px 0; }
+        }
+        
+        @keyframes l9-2 {
+            0%, 49.9% { 
+                background-position: 0 38px, 18px 18px, 100% 18px, right 18px bottom 18px; 
+            }
+            50%, 100% { 
+                background-position: right 20px bottom 18px, 18px 100%, 20px 18px, right 18px top 0; 
+            }
+        }
+        
+        .loader-text {
+            margin-top: 20px;
+            color: #333 !important;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8) !important;
+        }
+        
+        /* Overlay di sfondo per il loader */
+        .spa-loader-overlay {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(0, 0, 0, 0.3) !important;
+            backdrop-filter: blur(3px) !important;
+            display: none !important;
+            z-index: 9996 !important;
+        }
+        
+        .spa-loader-overlay.active {
+            display: block !important;
+        }
+        
+        /* Transizioni contenuto SPA - DISABILITATE per risolvere problema visibilità */
         .main-content {
-            transition: opacity 0.3s ease;
+            /* transition: opacity 0.3s ease; */
+            opacity: 1 !important;
+            display: block !important;
+            visibility: visible !important;
         }
         
         .main-content.loading {
-            opacity: 0.3;
+            /* opacity: 0.3; */
+            opacity: 1 !important;
         }
         
         /* Indicatore navigazione SPA */
@@ -99,11 +244,7 @@
       data-user-role="{{ session.get('ruolo_nome', 'GUEST') }}"
       data-user-name="{{ session.get('username', 'Utente') }}"
       data-page="{{ request.endpoint }}"
-      data-spa-enabled="true"
-      data-offline-mode="true">
 
-    <!-- Indicatore navigazione SPA -->
-    <div class="spa-navigation-indicator" id="spa-navigation-indicator"></div>
 
     <!-- Variabili globali JS dal backend -->
     <script>
@@ -139,18 +280,6 @@
                 baseUrl: "{{ url_for('main.dashboard', _external=False) }}".replace('/dashboard', ''),
                 csrfToken: "{{ csrf_token() }}"
             },
-            // Configurazione SPA
-            spa: {
-                enabled: true,
-                cache: {
-                    enabled: true,
-                    ttl: 300000 // 5 minuti
-                },
-                transitions: {
-                    fadeIn: 300,
-                    fadeOut: 200
-                }
-            }
         };
         
         // Retrocompatibilità con vecchie variabili
@@ -167,15 +296,6 @@
     <input type="hidden" id="hidden-user-role" value="{{ session.get('ruolo_nome', 'GUEST') }}">
 
 
-    <!-- SPA Loader -->
-    <div id="spa-loader" class="spa-loader">
-        <div class="text-center">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Caricamento...</span>
-            </div>
-            <div class="text-primary mt-3">Caricamento in corso...</div>
-        </div>
-    </div>
 
     <div class="d-flex h-100">
         {% if session.get('logged_in') %}
@@ -184,22 +304,17 @@
 
         <main class="flex-grow-1 d-flex flex-column {% if not session.get('logged_in') %}mx-auto{% endif %} page-wrapper" id="main-wrapper">
             {% if session.get('logged_in') %}
-            <header class="bg-light border-bottom py-2 px-3 page-header" id="page-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb mb-0" id="breadcrumb">
-                            <li class="breadcrumb-item">
-                                <a href="{{ url_for('main.dashboard') }}" data-spa-link>
-                                    <i class="fas fa-home"></i> Dashboard
-                                </a>
-                            </li>
-                            {% block breadcrumb %}{% endblock %}
-                        </ol>
-                    </nav>
+            <header class="talon-header border-bottom page-header" id="page-header">
+                <canvas id="header-neural-canvas" class="header-neural-background"></canvas>
+                <div class="header-content">
+                    <div class="talon-title-container">
+                        <h1 class="talon-title">TALON</h1>
+                        <p class="talon-subtitle">Task Analysis & Logistics Operations Node</p>
+                    </div>
                     
                     <!-- Quick Actions nella header -->
                     <div class="header-actions">
-                        <button class="btn btn-sm btn-outline-secondary me-2" id="fullscreen-btn" title="Schermo intero">
+                        <button class="btn btn-sm btn-light me-2" id="fullscreen-btn" title="Schermo intero">
                             <i class="fas fa-expand"></i>
                         </button>
                     </div>
@@ -207,10 +322,6 @@
             </header>
             {% endif %}
 
-            <!-- Container per notifiche flash (gestite da SPA) -->
-            <div class="flash-messages p-3" id="flash-messages" style="display: none;">
-                <!-- Popolato dinamicamente da SPA -->
-            </div>
 
             <!-- Flash messages iniziali (solo primo caricamento) -->
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -230,7 +341,7 @@
             <!-- Container per toast notifications -->
             <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
 
-            <!-- Main Content Area (gestito da SPA) -->
+            <!-- Main Content Area -->
             <div class="flex-grow-1 p-3 main-content" id="main-content">
                 {% block content %}
                 <div class="text-center text-muted">
@@ -248,9 +359,6 @@
                             <i class="fas fa-bug"></i> DEBUG MODE
                         </span>
                         {% endif %}
-                        <span class="badge bg-primary ms-2">
-                            <i class="fas fa-rocket"></i> SPA Mode
-                        </span>
                     </small>
 
                     {% if session.get('logged_in') %}
@@ -287,7 +395,7 @@
     <!-- ============================== -->
     
     <!-- Core Script (sempre caricato) -->
-    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_buster }}&t={{ moment().unix() if moment else range(999999) | random }}"></script>
     
     <!-- Login Script (solo se non loggato) -->
     {% if not session.get('logged_in') %}
@@ -298,12 +406,9 @@
     <!-- Scripts Sistema (caricati solo se loggato) -->
     {% if session.get('logged_in') %}
     
-    <!-- UI Components (must load before SPA Core) -->
+    <!-- UI Components -->
     <script src="{{ url_for('static', filename='js/fullscreen-manager.js') }}?v={{ cache_buster }}"></script>
     
-    <!-- SPA Core Engine -->
-    <script src="{{ url_for('static', filename='js/app.js') }}?v={{ cache_buster }}"></script>
-    <script src="{{ url_for('static', filename='js/spa-navigation.js') }}?v={{ cache_buster }}"></script>
     
     <!-- Sistema Components -->
     <script src="{{ url_for('static', filename='js/sidebar.js') }}?v={{ cache_buster }}"></script>
@@ -331,52 +436,8 @@
     
     {% endif %}
 
-    <!-- Script Inizializzazione SPA e Sistema -->
+    <!-- Script Inizializzazione Sistema -->
     <script>
-        // ============================
-        // CONFIGURAZIONE SPA
-        // ============================
-        
-        // Aggiorna configurazione TalonApp con dati dal backend
-        if (window.TalonApp) {
-            TalonApp.config.debug = window.TALON_CONFIG.debug.enabled;
-            TalonApp.config.apiBaseUrl = window.TALON_CONFIG.api.baseUrl;
-            TalonApp.config.cache.enabled = window.TALON_CONFIG.spa.cache.enabled;
-            TalonApp.config.cache.ttl = window.TALON_CONFIG.spa.cache.ttl;
-            
-            // Registra i moduli nel namespace globale
-            TalonApp.modules = TalonApp.modules || {};
-            TalonApp.modules.core = {
-                script: true,
-                app: true,
-                spaNavigation: true
-            };
-            TalonApp.modules.components = {
-                sidebar: true,
-                sidebarRoleManager: true,
-                fullscreenManager: true,
-                searchableSelect: true
-            };
-            TalonApp.modules.pages = {
-                dashboard: true,
-                dashboardAdmin: window.TALON_CONFIG.user.role === 'ADMIN',
-                organigramma: true,
-                entiMilitari: true,
-                entiCivili: true,
-                operazioni: true
-            };
-            TalonApp.modules.attivita = {
-                loaded: true,
-                path: '/static/js/attivita/',
-                components: {
-                    utils: true,
-                    forms: true,
-                    main: true,
-                    inserimento: true,
-                    modifica: true
-                }
-            };
-        }
         
         // ============================
         // SISTEMA PERMESSI
@@ -399,77 +460,82 @@
             };
         })();
 
-        // ============================
-        // INTEGRAZIONI SPA
-        // ============================
-        
         document.addEventListener('DOMContentLoaded', function() {
             
-            // Listener per eventi SPA
-            if (window.TalonApp) {
-                
-                // Indicatore navigazione
-                TalonApp.on('navigation:start', function() {
-                    document.getElementById('spa-navigation-indicator').classList.add('active');
-                });
-                
-                TalonApp.on('navigation:complete', function() {
-                    document.getElementById('spa-navigation-indicator').classList.remove('active');
+            // Gestione fullscreen con gestione errori e compatibilità browser
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            if (fullscreenBtn) {
+                fullscreenBtn.addEventListener('click', function(event) {
+                    // Assicurati che sia un click utente reale
+                    if (!event.isTrusted) {
+                        console.warn('Fullscreen richiede un gesto utente autentico');
+                        return;
+                    }
                     
-                    // Reinizializza componenti dopo navigazione
-                    initializePageComponents();
+                    const button = this;
                     
-                    // Reinizializza moduli specifici in base alla pagina
-                    const currentPath = window.location.pathname;
-                    
-                    if (currentPath.includes('/attivita')) {
-                        if (window.AttivitaManager && window.AttivitaManager.init) {
-                            window.AttivitaManager.init();
+                    if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+                        // Entra in modalità fullscreen
+                        const element = document.documentElement;
+                        
+                        if (element.requestFullscreen) {
+                            element.requestFullscreen()
+                                .then(() => {
+                                    button.innerHTML = '<i class="fas fa-compress"></i>';
+                                    button.title = 'Esci da schermo intero';
+                                })
+                                .catch(err => {
+                                    console.error('Errore entrando in fullscreen:', err.message);
+                                });
+                        } else if (element.webkitRequestFullscreen) { // Safari
+                            element.webkitRequestFullscreen();
+                            button.innerHTML = '<i class="fas fa-compress"></i>';
+                            button.title = 'Esci da schermo intero';
+                        } else if (element.msRequestFullscreen) { // IE11
+                            element.msRequestFullscreen();
+                            button.innerHTML = '<i class="fas fa-compress"></i>';
+                            button.title = 'Esci da schermo intero';
+                        }
+                    } else {
+                        // Esci dalla modalità fullscreen
+                        if (document.exitFullscreen) {
+                            document.exitFullscreen()
+                                .then(() => {
+                                    button.innerHTML = '<i class="fas fa-expand"></i>';
+                                    button.title = 'Schermo intero';
+                                })
+                                .catch(err => {
+                                    console.error('Errore uscendo da fullscreen:', err.message);
+                                });
+                        } else if (document.webkitExitFullscreen) { // Safari
+                            document.webkitExitFullscreen();
+                            button.innerHTML = '<i class="fas fa-expand"></i>';
+                            button.title = 'Schermo intero';
+                        } else if (document.msExitFullscreen) { // IE11
+                            document.msExitFullscreen();
+                            button.innerHTML = '<i class="fas fa-expand"></i>';
+                            button.title = 'Schermo intero';
                         }
                     }
+                });
+                
+                // Ascolta i cambiamenti di stato fullscreen
+                function handleFullscreenChange() {
+                    const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
                     
-                    if (currentPath.includes('/organigramma')) {
-                        if (window.OrganigrammaManager && window.OrganigrammaManager.init) {
-                            window.OrganigrammaManager.init();
-                        }
-                    }
-                });
-                
-                TalonApp.on('navigation:error', function(data) {
-                    document.getElementById('spa-navigation-indicator').classList.remove('active');
-                    console.error('Navigation error:', data.error);
-                });
-                
-                // Bottone refresh
-                const refreshBtn = document.getElementById('refresh-btn');
-                if (refreshBtn) {
-                    refreshBtn.addEventListener('click', function() {
-                        TalonApp.navigate(window.location.pathname, { force: true });
-                    });
-                }
-                
-                // Gestione fullscreen (se non gestito da fullscreen-manager.js)
-                if (!window.FullscreenManager) {
-                    const fullscreenBtn = document.getElementById('fullscreen-btn');
-                    if (fullscreenBtn) {
-                        fullscreenBtn.addEventListener('click', function() {
-                            if (!document.fullscreenElement) {
-                                document.documentElement.requestFullscreen();
-                                this.innerHTML = '<i class="fas fa-compress"></i>';
-                            } else {
-                                if (document.exitFullscreen) {
-                                    document.exitFullscreen();
-                                    this.innerHTML = '<i class="fas fa-expand"></i>';
-                                }
-                            }
-                        });
+                    if (isFullscreen) {
+                        fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
+                        fullscreenBtn.title = 'Esci da schermo intero';
+                    } else {
+                        fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
+                        fullscreenBtn.title = 'Schermo intero';
                     }
                 }
                 
-                // Gestione logout (deve fare reload completo)
-                document.querySelectorAll('a[href*="logout"]').forEach(link => {
-                    link.setAttribute('data-spa-ignore', 'true');
-                });
+                // Aggiungi listener per tutti i browser
+                document.addEventListener('fullscreenchange', handleFullscreenChange);
+                document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+                document.addEventListener('msfullscreenchange', handleFullscreenChange);
             }
             
             // ============================
@@ -503,6 +569,66 @@
             setTimeout(() => {
                 updateConnectionStatus();
             }, 100);
+            
+            // ============================
+            // SESSION KEEP-ALIVE
+            // ============================
+            
+            function setupSessionKeepAlive() {
+                if (!window.TALON_CONFIG || !window.TALON_CONFIG.user.isLoggedIn) {
+                    return;
+                }
+                
+                // Ping della sessione ogni 5 minuti per mantenerla attiva
+                const KEEP_ALIVE_INTERVAL = 5 * 60 * 1000; // 5 minuti
+                
+                function pingSession() {
+                    fetch('/api/ping-session', {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin'
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            if (response.status === 401) {
+                                // Sessione scaduta, reindirizza al login
+                                window.location.href = '/login?expired=true';
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        // Silent error handling
+                    });
+                }
+                
+                // Ping iniziale dopo 5 minuti
+                setTimeout(pingSession, KEEP_ALIVE_INTERVAL);
+                
+                // Poi ogni 5 minuti
+                setInterval(pingSession, KEEP_ALIVE_INTERVAL);
+                
+                // Ping anche quando l'utente interagisce con la pagina
+                let lastActivity = Date.now();
+                const ACTIVITY_THRESHOLD = 60 * 1000; // 1 minuto
+                
+                function handleUserActivity() {
+                    const now = Date.now();
+                    if (now - lastActivity > ACTIVITY_THRESHOLD) {
+                        lastActivity = now;
+                        pingSession();
+                    }
+                }
+                
+                // Monitora attività utente
+                document.addEventListener('click', handleUserActivity);
+                document.addEventListener('keypress', handleUserActivity);
+                document.addEventListener('scroll', handleUserActivity);
+            }
+            
+            // Inizializza keep-alive
+            setupSessionKeepAlive();
             
             // ============================
             // TIMER SESSIONE
@@ -550,10 +676,127 @@
             }
             
             // ============================
+            // NEURAL NETWORK HEADER ANIMATION
+            // ============================
+            
+            function initHeaderNeuralNetwork() {
+                const canvas = document.getElementById('header-neural-canvas');
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                let animationId;
+                let nodes = [];
+                
+                // Configurazione
+                const config = {
+                    nodeCount: 50,
+                    nodeSize: 2,
+                    nodeColor: 'rgba(13, 27, 42, 0.6)',  // Nodi più visibili
+                    connectionColor: 'rgba(13, 27, 42, 0.3)',  // Connessioni più visibili
+                    connectionDistance: 100,
+                    speed: 0.3
+                };
+                
+                // Ridimensiona canvas
+                function resizeCanvas() {
+                    const header = canvas.parentElement;
+                    canvas.width = header.offsetWidth;
+                    canvas.height = header.offsetHeight;
+                }
+                
+                // Inizializza nodi
+                function initNodes() {
+                    nodes = [];
+                    for (let i = 0; i < config.nodeCount; i++) {
+                        nodes.push({
+                            x: Math.random() * canvas.width,
+                            y: Math.random() * canvas.height,
+                            vx: (Math.random() - 0.5) * config.speed,
+                            vy: (Math.random() - 0.5) * config.speed,
+                            size: Math.random() * config.nodeSize + 0.5
+                        });
+                    }
+                }
+                
+                // Anima nodi
+                function animate() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Aggiorna posizioni
+                    nodes.forEach(node => {
+                        node.x += node.vx;
+                        node.y += node.vy;
+                        
+                        // Rimbalza ai bordi
+                        if (node.x < 0 || node.x > canvas.width) node.vx *= -1;
+                        if (node.y < 0 || node.y > canvas.height) node.vy *= -1;
+                        
+                        // Mantieni nei limiti
+                        node.x = Math.max(0, Math.min(canvas.width, node.x));
+                        node.y = Math.max(0, Math.min(canvas.height, node.y));
+                    });
+                    
+                    // Disegna connessioni
+                    ctx.strokeStyle = config.connectionColor;
+                    ctx.lineWidth = 0.5;
+                    
+                    for (let i = 0; i < nodes.length; i++) {
+                        for (let j = i + 1; j < nodes.length; j++) {
+                            const dx = nodes[i].x - nodes[j].x;
+                            const dy = nodes[i].y - nodes[j].y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            
+                            if (distance < config.connectionDistance) {
+                                ctx.beginPath();
+                                ctx.moveTo(nodes[i].x, nodes[i].y);
+                                ctx.lineTo(nodes[j].x, nodes[j].y);
+                                ctx.globalAlpha = 1 - (distance / config.connectionDistance);
+                                ctx.stroke();
+                            }
+                        }
+                    }
+                    
+                    // Disegna nodi
+                    ctx.fillStyle = config.nodeColor;
+                    ctx.globalAlpha = 1;
+                    
+                    nodes.forEach(node => {
+                        ctx.beginPath();
+                        ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    
+                    animationId = requestAnimationFrame(animate);
+                }
+                
+                // Inizializza
+                resizeCanvas();
+                initNodes();
+                animate();
+                
+                // Gestione resize
+                window.addEventListener('resize', () => {
+                    resizeCanvas();
+                    initNodes();
+                });
+                
+                // Cleanup
+                return () => {
+                    if (animationId) {
+                        cancelAnimationFrame(animationId);
+                    }
+                };
+            }
+            
+            // ============================
             // INIZIALIZZAZIONE COMPONENTI
             // ============================
             
             function initializePageComponents() {
+                // Inizializza neural network nell'header
+                if (window.TALON_CONFIG && window.TALON_CONFIG.user.isLoggedIn) {
+                    initHeaderNeuralNetwork();
+                }
                 // Reinizializza tooltip Bootstrap
                 const tooltipTriggerList = [].slice.call(
                     document.querySelectorAll('[data-bs-toggle="tooltip"]')
@@ -575,19 +818,7 @@
                     window.initializeSearchableSelects();
                 }
                 
-                // Log componenti caricati per debug
-                if (window.TALON_CONFIG.debug.enabled) {
-                    console.log('Page components initialized');
-                    
-                    const currentPath = window.location.pathname;
-                    if (currentPath.includes('/attivita')) {
-                        console.log('Attività module components:', {
-                            utils: !!window.AttivitaUtils,
-                            forms: !!window.AttivitaForms,
-                            manager: !!window.AttivitaManager
-                        });
-                    }
-                }
+                // Components initialized silently
             }
             
             // Inizializza componenti al primo caricamento
@@ -615,32 +846,13 @@
                     beforeSend: function(xhr, settings) {
                         if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
                             xhr.setRequestHeader("X-CSRFToken", csrfToken);
-                            xhr.setRequestHeader("X-SPA-Request", "true");
                         }
                     }
                 });
             }
         })();
 
-        // ============================
-        // DEBUG CONSOLE
-        // ============================
-        
-        {% if debug_mode or is_debug %}
-        console.group('🚀 TALON System - SPA Debug Info');
-        console.log('📦 Version:', window.TALON_CONFIG.app.version);
-        console.log('👤 User:', window.TALON_CONFIG.user.fullName, '(' + window.TALON_CONFIG.user.role + ')');
-        console.log('💾 Cache Buster:', window.TALON_CONFIG.app.cacheBuster);
-        console.log('🔐 SSO:', window.TALON_CONFIG.app.ssoEnabled ? 'Enabled' : 'Disabled');
-        console.log('⚡ SPA:', window.TALON_CONFIG.app.spaEnabled ? 'Enabled' : 'Disabled');
-        console.log('🌐 Mode:', navigator.onLine ? 'Online' : 'Offline');
-        console.log('🔑 Permissions:', window.TalonPermissions);
-        console.log('🎯 TalonApp:', window.TalonApp ? 'Loaded' : 'Not loaded');
-        if (window.TalonApp && window.TalonApp.modules) {
-            console.log('📁 Modules:', window.TalonApp.modules);
-        }
-        console.groupEnd();
-        {% endif %}
+        // Debug info removed for production
     </script>
 
     <!-- Blocco per JavaScript aggiuntivi specifici per pagina -->

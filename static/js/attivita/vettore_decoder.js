@@ -525,7 +525,7 @@
             if (level === 'warn' || level === 'error') {
                 console[level]('[VettoreDecoder]', ...args);
             } else {
-                console.log('[VettoreDecoder]', level, ...args);
+                // console.log removed for production silence
             }
         }
     }
@@ -552,10 +552,9 @@
         module.exports = decoder;
     }
     
-    // Log versione
+    // Log versione - removed for production silence
     if (CONFIG.DEBUG) {
-        console.log('[VettoreDecoder] Modulo caricato v1.0.0');
-        console.log('[VettoreDecoder] Codici disponibili:', decoder.getAllCodes().length);
+        // console.log removed for production silence
     }
 
 })(window, document);

@@ -115,7 +115,7 @@
     
     function log(...args) {
         if (config.DEBUG || window.TALON_CONFIG?.debug?.enabled) {
-            console.log('[Fullscreen Manager]', ...args);
+            // console.log removed for production silence
         }
     }
     

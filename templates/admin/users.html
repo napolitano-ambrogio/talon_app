@@ -8,10 +8,10 @@
 
 {% block breadcrumb %}
 <li class="breadcrumb-item">
-    <a href="{{ url_for('main.dashboard_admin') }}" data-spa-link>Dashboard Admin</a>
+    <a href="{{ url_for('main.dashboard_admin') }}">Dashboard Admin</a>
 </li>
 <li class="breadcrumb-item">
-    <a href="{{ url_for('main.impostazioni') }}" data-spa-link>Impostazioni</a>
+    <a href="{{ url_for('main.impostazioni') }}">Impostazioni</a>
 </li>
 <li class="breadcrumb-item active">Gestione Utenti</li>
 {% endblock %}
@@ -23,7 +23,7 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2><i class="fas fa-users"></i> Gestione Utenti</h2>
                 <div>
-                    <a href="{{ url_for('main.dashboard_admin') }}" class="btn btn-outline-primary me-2" data-spa-link data-spa-force="true" data-spa-no-cache="true">
+                    <a href="{{ url_for('main.dashboard_admin') }}" class="btn btn-outline-primary me-2">
                         <i class="fas fa-arrow-left"></i> Torna al Sistema
                     </a>
                     <button class="btn btn-success" onclick="showCreateUserModal()">
@@ -92,7 +92,7 @@
                     <!-- Filtri di ricerca -->
                     <div class="row mb-3">
                         <div class="col-md-4">
-                            <input type="text" class="form-control" id="searchFilter" placeholder="🔍 Cerca per nome, email, ruolo, ente..." onkeyup="filterTable()">
+                            <input type="text" class="form-control" id="searchFilter" placeholder="🔍 Cerca per nome, email, ruolo, ente..." onkeyup="filterTable()" autocomplete="off">
                         </div>
                         <div class="col-md-2">
                             <select class="form-select" id="roleFilter" onchange="filterTable()">
@@ -243,13 +243,13 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="nome" class="form-label">Nome *</label>
-                                <input type="text" class="form-control" id="nome" name="nome" required>
+                                <input type="text" class="form-control" id="nome" name="nome" required autocomplete="given-name">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="cognome" class="form-label">Cognome *</label>
-                                <input type="text" class="form-control" id="cognome" name="cognome" required>
+                                <input type="text" class="form-control" id="cognome" name="cognome" required autocomplete="family-name">
                             </div>
                         </div>
                     </div>
@@ -336,572 +336,29 @@
     </div>
 </div>
 
+<!-- JavaScript moved to external file: static/js/admin/users.js -->
+
+<!-- Include external JavaScript -->
+<script src="{{ url_for('static', filename='js/admin/users.js') }}"></script>
+
+<!-- Force initialization for SPA -->
 <script>
-// User management functions
-
-// Global variables
-let currentUserId = null;
-let isEditMode = false;
-let dropdownData = null;
-
-// Force reload when navigating to dashboard_admin
-document.addEventListener('DOMContentLoaded', function() {
-    const tornaSistemaBtn = document.querySelector('a[href*="dashboard_admin"]');
-    if (tornaSistemaBtn) {
-        tornaSistemaBtn.addEventListener('click', function(e) {
-            console.log('[Users Page] Navigating to dashboard_admin, forcing full reload');
-            // Set a flag to force dashboard reload
-            if (window.TalonSPA) {
-                window.TalonSPA.clearCache();
-            }
-        });
+// Force users management initialization after script loads
+setTimeout(function() {
+    if (typeof window.initializeUsersManagement === 'function') {
+        window.initializeUsersManagement();
     }
     
-    // Load dropdown data on page load
-    loadDropdownData();
-    
-    // Setup save button handler
-    document.getElementById('saveUserBtn').addEventListener('click', saveUser);
-    
-    // Setup email domain validation
-    document.getElementById('username').addEventListener('blur', validateEmailDomain);
-    
-    // Listen for custom event from sidebar
-    document.addEventListener('openCreateUserModal', function() {
-        window.showCreateUserModal();
-    });
-});
-
-// Validate email domain
-function validateEmailDomain() {
-    const emailInput = document.getElementById('username');
-    const email = emailInput.value.toLowerCase().trim();
-    
-    if (email) {
-        // Regex che corrisponde a quella del backend
-        const emailRegex = /^[a-zA-Z0-9][a-zA-Z0-9._%-]*@esercito\.difesa\.it$/;
-        
-        if (!emailRegex.test(email)) {
-            emailInput.setCustomValidity('Email non valida: deve iniziare con lettera/numero e terminare con @esercito.difesa.it');
-            emailInput.classList.add('is-invalid');
-            emailInput.classList.remove('is-valid');
-        } else {
-            emailInput.setCustomValidity('');
-            emailInput.classList.remove('is-invalid');
-            emailInput.classList.add('is-valid');
-        }
-    } else {
-        emailInput.setCustomValidity('');
-        emailInput.classList.remove('is-invalid', 'is-valid');
+    // Ensure all functions are globally available
+    if (!window.showCreateUserModal || !window.toggleDisabledUsers) {
+        // If external script failed, define minimal functions to prevent errors
+        window.showCreateUserModal = window.showCreateUserModal || function() { alert('Funzione non disponibile. Premi F5 per ricaricare.'); };
+        window.toggleDisabledUsers = window.toggleDisabledUsers || function() { alert('Funzione non disponibile. Premi F5 per ricaricare.'); };
+        window.editUser = window.editUser || function() { alert('Funzione non disponibile. Premi F5 per ricaricare.'); };
+        window.showUserDetails = window.showUserDetails || function() { alert('Funzione non disponibile. Premi F5 per ricaricare.'); };
+        window.toggleUserStatus = window.toggleUserStatus || function() { alert('Funzione non disponibile. Premi F5 per ricaricare.'); };
     }
-}
-
-// Load dropdown data for roles and enti militari
-async function loadDropdownData() {
-    try {
-        console.log('Loading dropdown data...');
-        const response = await fetch('/api/dropdown-data');
-        const data = await response.json();
-        
-        console.log('Dropdown data response:', data);
-        
-        if (data.success) {
-            dropdownData = data;
-            console.log('Roles loaded:', data.roles);
-            console.log('Enti militari loaded:', data.enti_militari);
-            populateDropdowns();
-        } else {
-            console.error('Dropdown data error:', data.error);
-            showToast('Errore nel caricamento dati dropdown: ' + data.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error loading dropdown data:', error);
-        showToast('Errore nel caricamento dati dropdown', 'error');
-    }
-}
-
-function populateDropdowns() {
-    if (!dropdownData) return;
-    
-    // Populate roles dropdown
-    const roleSelect = document.getElementById('ruolo_id');
-    roleSelect.innerHTML = '<option value="">Seleziona ruolo...</option>';
-    dropdownData.roles.forEach(role => {
-        const option = document.createElement('option');
-        option.value = role.id;
-        option.textContent = `${role.nome} (Livello ${role.livello_accesso})`;
-        roleSelect.appendChild(option);
-    });
-    
-    // Populate enti militari dropdown
-    const enteSelect = document.getElementById('ente_militare_id');
-    enteSelect.innerHTML = '<option value="">Nessun ente...</option>';
-    dropdownData.enti_militari.forEach(ente => {
-        const option = document.createElement('option');
-        option.value = ente.id;
-        option.textContent = ente.nome + (ente.codice ? ` (${ente.codice})` : '');
-        enteSelect.appendChild(option);
-    });
-}
-
-// Define globally accessible functions
-window.showCreateUserModal = function() {
-    isEditMode = false;
-    currentUserId = null;
-    
-    // Reset form
-    document.getElementById('userForm').reset();
-    document.getElementById('attivo').checked = true;
-    
-    // Clear email field and validation
-    const emailInput = document.getElementById('username');
-    emailInput.value = '';
-    emailInput.setCustomValidity('');
-    emailInput.classList.remove('is-invalid', 'is-valid');
-    
-    // Reset password field and visibility icon
-    document.getElementById('passwordModal').type = 'password';
-    const passwordIcon = document.getElementById('passwordToggleIconModal');
-    if (passwordIcon) {
-        passwordIcon.className = 'fas fa-eye-slash';
-    }
-    
-    // Update modal title and button
-    document.getElementById('userModalLabel').textContent = 'Nuovo Utente';
-    document.getElementById('saveUserBtn').textContent = 'Crea Utente';
-    
-    // Show password field as required for new users
-    document.getElementById('passwordModal').required = true;
-    document.querySelector('label[for="passwordModal"]').innerHTML = 'Password *';
-    
-    // Show modal
-    new bootstrap.Modal(document.getElementById('userModal')).show();
-};
-
-window.showUserDetails = async function(userId) {
-    try {
-        const response = await fetch(`/api/users/${userId}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            const user = data.user;
-            
-            const content = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6>Informazioni Base</h6>
-                        <table class="table table-sm">
-                            <tr><td><strong>ID:</strong></td><td>${user.id}</td></tr>
-                            <tr><td><strong>Email Militare:</strong></td><td>${user.username}</td></tr>
-                            <tr><td><strong>Nome Completo:</strong></td><td>${user.nome} ${user.cognome}</td></tr>
-                        </table>
-                    </div>
-                    <div class="col-md-6">
-                        <h6>Ruolo e Permessi</h6>
-                        <table class="table table-sm">
-                            <tr><td><strong>Ruolo:</strong></td><td><span class="badge bg-primary">${user.ruolo_nome}</span></td></tr>
-                            <tr><td><strong>Livello Accesso:</strong></td><td>${user.livello_accesso}</td></tr>
-                            <tr><td><strong>Ente Militare:</strong></td><td>${user.ente_nome || 'Nessun ente'}</td></tr>
-                            <tr><td><strong>Accesso Globale:</strong></td><td>${user.accesso_globale ? 'Sì' : 'No'}</td></tr>
-                            <tr><td><strong>Stato:</strong></td><td><span class="badge ${user.attivo ? 'bg-success' : 'bg-danger'}">${user.attivo ? 'Attivo' : 'Disattivato'}</span></td></tr>
-                        </table>
-                    </div>
-                </div>
-                
-                <div class="row mt-3">
-                    <div class="col-12">
-                        <h6>Informazioni Audit</h6>
-                        <table class="table table-sm">
-                            <tr><td><strong>Ultimo Accesso:</strong></td><td>${user.ultimo_accesso ? new Date(user.ultimo_accesso).toLocaleString('it-IT') : 'Mai connesso'}</td></tr>
-                            <tr><td><strong>Primo Accesso:</strong></td><td>${user.primo_accesso ? 'Sì' : 'No'}</td></tr>
-                            <tr><td><strong>Data Creazione:</strong></td><td>${user.data_creazione ? new Date(user.data_creazione).toLocaleString('it-IT') : 'Non disponibile'}</td></tr>
-                            <tr><td><strong>Creato Da:</strong></td><td>${user.creato_da_username || 'Non disponibile'}</td></tr>
-                            <tr><td><strong>Data Ultima Modifica:</strong></td><td>${user.data_modifica ? new Date(user.data_modifica).toLocaleString('it-IT') : 'Mai modificato'}</td></tr>
-                            <tr><td><strong>Modificato Da:</strong></td><td>${user.modificato_da_username || 'Non disponibile'}</td></tr>
-                        </table>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('userDetailsContent').innerHTML = content;
-            new bootstrap.Modal(document.getElementById('userDetailsModal')).show();
-            
-        } else {
-            showToast('Errore nel caricamento dettagli utente: ' + data.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error loading user details:', error);
-        showToast('Errore nel caricamento dettagli utente', 'error');
-    }
-}
-
-window.editUser = async function(userId) {
-    try {
-        const response = await fetch(`/api/users/${userId}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            const user = data.user;
-            isEditMode = true;
-            currentUserId = userId;
-            
-            // Populate form with user data
-            document.getElementById('username').value = user.username;
-            document.getElementById('nome').value = user.nome || '';
-            document.getElementById('cognome').value = user.cognome || '';
-            document.getElementById('ruolo_id').value = user.ruolo_id;
-            document.getElementById('ente_militare_id').value = user.ente_militare_id || '';
-            document.getElementById('accesso_globale').checked = user.accesso_globale;
-            document.getElementById('attivo').checked = user.attivo;
-            
-            // Clear password field and make it optional for editing
-            document.getElementById('passwordModal').value = '';
-            document.getElementById('passwordModal').type = 'password'; // Reset to password type
-            document.getElementById('passwordModal').required = false;
-            document.querySelector('label[for="passwordModal"]').innerHTML = 'Password <small>(lascia vuoto per mantenere)</small>';
-            
-            // Reset password visibility icon
-            const passwordIcon = document.getElementById('passwordToggleIconModal');
-            if (passwordIcon) {
-                passwordIcon.className = 'fas fa-eye-slash';
-            }
-            
-            // Update modal title and button
-            document.getElementById('userModalLabel').textContent = 'Modifica Utente';
-            document.getElementById('saveUserBtn').textContent = 'Aggiorna Utente';
-            
-            // Show modal
-            new bootstrap.Modal(document.getElementById('userModal')).show();
-            
-        } else {
-            showToast('Errore nel caricamento dati utente: ' + data.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error loading user data:', error);
-        showToast('Errore nel caricamento dati utente', 'error');
-    }
-}
-
-async function saveUser() {
-    const form = document.getElementById('userForm');
-    const formData = new FormData(form);
-    
-    // Convert FormData to JSON
-    const userData = {};
-    formData.forEach((value, key) => {
-        if (key === 'accesso_globale' || key === 'attivo') {
-            userData[key] = form.querySelector(`[name="${key}"]`).checked;
-        } else if (key === 'ruolo_id' || key === 'ente_militare_id') {
-            userData[key] = value ? parseInt(value) : null;
-        } else {
-            userData[key] = value || null;
-        }
-    });
-    
-    // Debug log
-    console.log('Form data being sent:', userData);
-    
-    // Validation
-    if (!userData.username || !userData.nome || !userData.cognome || !userData.ruolo_id) {
-        showToast('Compila tutti i campi obbligatori', 'error');
-        return;
-    }
-    
-    // Validate email format
-    const emailRegex = /^[a-zA-Z0-9][a-zA-Z0-9._%-]*@esercito\.difesa\.it$/;
-    if (!emailRegex.test(userData.username.toLowerCase())) {
-        showToast('Email non valida: deve iniziare con lettera/numero e terminare con @esercito.difesa.it', 'error');
-        return;
-    }
-    
-    if (!isEditMode && (!userData.password || userData.password.length < 8)) {
-        showToast('La password deve essere di almeno 8 caratteri', 'error');
-        return;
-    }
-    
-    try {
-        const url = isEditMode ? `/api/users/${currentUserId}` : '/api/users';
-        const method = isEditMode ? 'PUT' : 'POST';
-        
-        const response = await fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(userData)
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast(data.message, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
-            
-            // Reload page to show updated data
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-        } else {
-            showToast(data.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error saving user:', error);
-        showToast('Errore nel salvataggio utente', 'error');
-    }
-}
-
-window.toggleUserStatus = async function(userId, currentStatus) {
-    const action = currentStatus ? 'disattivare' : 'attivare';
-    
-    if (!confirm(`Sei sicuro di voler ${action} questo utente?`)) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/api/users/${userId}/toggle`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            showToast(data.message, 'success');
-            
-            // Reload page to show updated status
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-        } else {
-            showToast(data.error, 'error');
-        }
-    } catch (error) {
-        console.error('Error toggling user status:', error);
-        showToast('Errore nel cambio stato utente', 'error');
-    }
-}
-
-function showToast(message, type = 'info') {
-    if (window.TalonApp && window.TalonApp.showToast) {
-        window.TalonApp.showToast(message, type);
-    } else {
-        // Fallback for simple alert
-        alert(message);
-    }
-}
-
-// Password visibility toggle function (reusable)
-function togglePasswordVisibility(inputId, iconId) {
-    const passwordInput = document.getElementById(inputId);
-    const toggleIcon = document.getElementById(iconId);
-    
-    if (passwordInput && toggleIcon) {
-        if (passwordInput.type === 'password') {
-            passwordInput.type = 'text';
-            // Gestisce SVG (FontAwesome convertito) e elementi <i> normali
-            if (toggleIcon.tagName.toUpperCase() === 'SVG') {
-                const parent = toggleIcon.parentNode;
-                parent.innerHTML = '<i class="fas fa-eye" id="' + iconId + '"></i>';
-            } else {
-                toggleIcon.className = 'fas fa-eye';
-            }
-        } else {
-            passwordInput.type = 'password';
-            // Gestisce SVG (FontAwesome convertito) e elementi <i> normali
-            if (toggleIcon.tagName.toUpperCase() === 'SVG') {
-                const parent = toggleIcon.parentNode;
-                parent.innerHTML = '<i class="fas fa-eye-slash" id="' + iconId + '"></i>';
-            } else {
-                toggleIcon.className = 'fas fa-eye-slash';
-            }
-        }
-    }
-}
-
-// Variables for table functionality
-let currentSortColumn = -1;
-let currentSortDirection = 'asc';
-
-// Toggle disabled users visibility
-function toggleDisabledUsers() {
-    const showDisabled = document.getElementById('showDisabledUsers').checked;
-    const disabledRows = document.querySelectorAll('.disabled-user');
-    
-    disabledRows.forEach(row => {
-        row.style.display = showDisabled ? '' : 'none';
-    });
-    
-    updateResultCount();
-}
-
-// Filter table based on search criteria
-function filterTable() {
-    const searchText = document.getElementById('searchFilter').value.toLowerCase();
-    const roleFilter = document.getElementById('roleFilter').value;
-    const statusFilter = document.getElementById('statusFilter').value;
-    
-    const rows = document.querySelectorAll('.user-row');
-    let visibleCount = 0;
-    
-    rows.forEach(row => {
-        const nome = row.dataset.nome.toLowerCase();
-        const email = row.dataset.email.toLowerCase();
-        const ruolo = row.dataset.ruolo;
-        const ente = row.dataset.ente.toLowerCase();
-        const ultimoAccesso = row.dataset.ultimoAccesso.toLowerCase();
-        const stato = row.dataset.stato;
-        
-        // Check search text (searches in name, email, role, entity, last access)
-        const matchesSearch = !searchText || 
-            nome.includes(searchText) || 
-            email.includes(searchText) || 
-            ruolo.toLowerCase().includes(searchText) || 
-            ente.includes(searchText) ||
-            ultimoAccesso.includes(searchText);
-        
-        // Check role filter
-        const matchesRole = !roleFilter || ruolo === roleFilter;
-        
-        // Check status filter
-        const matchesStatus = !statusFilter || stato === statusFilter;
-        
-        // Check if disabled users should be shown
-        const isDisabled = row.classList.contains('disabled-user');
-        const showDisabled = document.getElementById('showDisabledUsers').checked;
-        const shouldShowDisabled = !isDisabled || showDisabled;
-        
-        // Show row only if all conditions match
-        if (matchesSearch && matchesRole && matchesStatus && shouldShowDisabled) {
-            row.style.display = '';
-            visibleCount++;
-        } else {
-            row.style.display = 'none';
-        }
-    });
-    
-    updateResultCount(visibleCount);
-}
-
-// Clear all filters
-function clearFilters() {
-    document.getElementById('searchFilter').value = '';
-    document.getElementById('roleFilter').value = '';
-    document.getElementById('statusFilter').value = '';
-    document.getElementById('showDisabledUsers').checked = false;
-    
-    // Reset all rows visibility
-    const rows = document.querySelectorAll('.user-row');
-    rows.forEach(row => {
-        const isDisabled = row.classList.contains('disabled-user');
-        row.style.display = isDisabled ? 'none' : '';
-    });
-    
-    updateResultCount();
-}
-
-// Sort table by column
-function sortTable(columnIndex) {
-    const table = document.getElementById('usersTable');
-    const tbody = table.querySelector('tbody');
-    const rows = Array.from(tbody.querySelectorAll('.user-row'));
-    
-    // Determine sort direction
-    if (currentSortColumn === columnIndex) {
-        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
-    } else {
-        currentSortDirection = 'asc';
-        currentSortColumn = columnIndex;
-    }
-    
-    // Update sort icons
-    updateSortIcons(columnIndex, currentSortDirection);
-    
-    // Sort rows
-    rows.sort((a, b) => {
-        let aVal, bVal;
-        
-        switch(columnIndex) {
-            case 0: // ID
-                aVal = parseInt(a.dataset.userId);
-                bVal = parseInt(b.dataset.userId);
-                break;
-            case 1: // Nome
-                aVal = a.dataset.nome.toLowerCase();
-                bVal = b.dataset.nome.toLowerCase();
-                break;
-            case 2: // Email
-                aVal = a.dataset.email.toLowerCase();
-                bVal = b.dataset.email.toLowerCase();
-                break;
-            case 3: // Ruolo
-                aVal = a.dataset.ruolo;
-                bVal = b.dataset.ruolo;
-                break;
-            case 4: // Ente
-                aVal = a.dataset.ente.toLowerCase();
-                bVal = b.dataset.ente.toLowerCase();
-                break;
-            case 5: // Ultimo Accesso
-                aVal = a.dataset.ultimoAccesso;
-                bVal = b.dataset.ultimoAccesso;
-                // Handle "Mai connesso" case
-                if (aVal === 'mai connesso') aVal = '1900-01-01';
-                if (bVal === 'mai connesso') bVal = '1900-01-01';
-                break;
-            case 6: // Stato
-                aVal = a.dataset.stato;
-                bVal = b.dataset.stato;
-                break;
-            default:
-                return 0;
-        }
-        
-        if (typeof aVal === 'string' && typeof bVal === 'string') {
-            return currentSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-        } else {
-            return currentSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
-        }
-    });
-    
-    // Reappend sorted rows
-    rows.forEach(row => tbody.appendChild(row));
-}
-
-// Update sort icons
-function updateSortIcons(activeColumn, direction) {
-    const headers = document.querySelectorAll('.sortable .sort-icon');
-    
-    headers.forEach((icon, index) => {
-        if (index === activeColumn) {
-            icon.className = direction === 'asc' ? 'fas fa-sort-up sort-icon' : 'fas fa-sort-down sort-icon';
-        } else {
-            icon.className = 'fas fa-sort sort-icon';
-        }
-    });
-}
-
-// Update result count badge
-function updateResultCount(count = null) {
-    if (count === null) {
-        const visibleRows = document.querySelectorAll('.user-row:not([style*="display: none"])');
-        count = visibleRows.length;
-    }
-    
-    document.getElementById('resultCount').textContent = `${count} utenti`;
-}
-
-// Initialize table sorting/filtering
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Users management page loaded with enhanced table functionality');
-    
-    // Set initial result count
-    updateResultCount();
-    
-    // Add event listeners for real-time filtering
-    document.getElementById('searchFilter').addEventListener('input', filterTable);
-});
+}, 200);
 </script>
 
 <style>

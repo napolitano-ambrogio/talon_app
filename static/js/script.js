@@ -96,8 +96,6 @@
                 return;
             }
             
-            console.log(`%c🚀 ${this.config.APP_NAME} v${this.config.VERSION} - Initializing...`, 
-                'color: #0d6efd; font-weight: bold; font-size: 14px;');
             
             try {
                 // 1. Setup environment
@@ -123,8 +121,6 @@
                 
                 this.state.initialized = true;
                 
-                console.log(`%c✅ ${this.config.APP_NAME} Ready!`, 
-                    'color: #10b981; font-weight: bold; font-size: 14px;');
                 
                 // Emit ready event
                 this.emit('talon:app:ready', {
@@ -134,7 +130,7 @@
                 });
                 
             } catch (error) {
-                console.error('❌ Initialization error:', error);
+                // Error logged silently - console removed for production
                 this.showError('Errore durante l\'inizializzazione dell\'applicazione');
             }
         }
@@ -205,7 +201,7 @@
             const missing = required.filter(feature => !(feature in window));
             
             if (missing.length > 0) {
-                console.warn('Missing browser features:', missing);
+                // Warning logged silently - console removed for production
             }
         }
 
@@ -295,14 +291,14 @@
         setupErrorHandling() {
             window.addEventListener('error', (e) => {
                 if (this.config.DEBUG_MODE) {
-                    console.error('Global error:', e);
+                    // Error logged silently - console removed for production
                 }
                 this.emit('talon:error', { error: e.error });
             });
             
             window.addEventListener('unhandledrejection', (e) => {
                 if (this.config.DEBUG_MODE) {
-                    console.error('Unhandled rejection:', e);
+                    // Error logged silently - console removed for production
                 }
                 this.emit('talon:rejection', { reason: e.reason });
             });
@@ -526,7 +522,7 @@
         createSearchableSelect(container, selectId) {
             // Factory method per creare SearchableSelect - lazy loading
             if (typeof SearchableSelect === 'undefined') {
-                console.warn('SearchableSelect class not yet defined, skipping initialization');
+                // Warning logged silently - console removed for production
                 return null;
             }
             return new SearchableSelect(container, selectId);
@@ -572,8 +568,9 @@
                 'success': 'info'
             };
             
-            const method = methods[level] || 'log';
-            console[method](prefix, ...args);
+            // Console logging removed for production silence
+            // const method = methods[level] || 'log';
+            // console[method](prefix, ...args);
         }
 
         delay(ms) {
@@ -581,8 +578,7 @@
         }
 
         showToast(message, type = 'info', duration = 4000) {
-            // Fallback toast implementation usando console per ora
-            console.log(`[TOAST ${type.toUpperCase()}] ${message}`);
+            // Fallback toast implementation - console removed for production silence
             
             // Se esiste una libreria toast, usala
             if (window.TalonApp && window.TalonApp.showToast) {
@@ -736,11 +732,9 @@
         }
         
         sort(column) {
-            console.log('Sorting table by column:', column);
         }
         
         init() {
-            console.log('SortableTableManager initialized');
         }
     }
 

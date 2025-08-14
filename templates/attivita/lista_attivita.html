@@ -12,8 +12,7 @@
     <div class="detail-header">
         <h3>Elenco Attività</h3>
         <a href="{{ url_for('attivita.inserisci_attivita_form') }}" 
-           class="btn-modifica" 
-           data-spa-link="true">Nuova Attività</a>
+           class="btn-modifica">Nuova Attività</a>
     </div>
 
     <div class="list-container">
@@ -58,7 +57,7 @@
                     <tr class="clickable-row" 
                         data-href="{{ url_for('attivita.visualizza_attivita', id=attivita.id) }}"
                         data-attivita-id="{{ attivita.id }}"
-                        data-spa-link="true">
+                        >
                         <td data-sort="{{ attivita.data_inizio.isoformat() if attivita.data_inizio else '' }}">
                             {{ attivita.data_inizio.strftime('%d/%m/%Y') if attivita.data_inizio else '' }}
                         </td>
@@ -102,11 +101,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Re-inizializzazione per navigazione SPA
-document.addEventListener('spa:content-loaded', function(e) {
-    // Per SPA, il modulo gestisce già la re-inizializzazione
-    console.log('[Lista Attività] Contenuto SPA caricato');
-});
 
 // Handler personalizzati per questa vista (se necessari)
 document.addEventListener('attivita:ready', function() {

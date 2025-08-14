@@ -21,6 +21,38 @@ main_bp = Blueprint(
 )
 
 # ===========================================
+# API ENDPOINTS PER SESSIONE
+# ===========================================
+
+@main_bp.route('/api/ping-session')
+@login_required
+def ping_session():
+    """
+    Endpoint per mantenere viva la sessione e prevenire logout indesiderati.
+    Chiamato dalla SPA quando riceve un 401.
+    """
+    from flask import session
+    
+    # Aggiorna il timestamp della sessione
+    session.permanent = True
+    session.modified = True
+    
+    # Log opzionale per debug
+    user_info = get_current_user_info()
+    if user_info:
+        log_user_action(
+            user_info.get('id'), 
+            'session_ping',
+            'Sessione mantenuta attiva'
+        )
+    
+    return jsonify({
+        'success': True,
+        'message': 'Session refreshed',
+        'user': user_info.get('username') if user_info else None
+    })
+
+# ===========================================
 # HELPERS DATABASE
 # ===========================================
 
@@ -168,7 +200,7 @@ def dashboard():
     stats = get_dashboard_stats(user_role)
     
     return render_spa_template(
-        'dashboard.html',
+        'dashboard_new.html',
         user_info=user_info,
         user_role=user_role,
         stats=stats,

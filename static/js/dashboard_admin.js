@@ -281,7 +281,7 @@
     
     function log(...args) {
         if (config.debug || window.TALON_CONFIG?.debug?.enabled) {
-            console.log('[Dashboard Admin]', ...args);
+            // console.log removed for production silence
         }
     }
 
@@ -823,7 +823,6 @@
 
     // Funzione di inizializzazione principale
     function initializeDashboardAdmin() {
-        console.log('[Dashboard Admin] Initializing...');
         
         // Inietta stili CSS
         injectStyles();
@@ -831,7 +830,6 @@
         // Inizializza il modulo principale
         initialize();
         
-        console.log('[Dashboard Admin] ✅ Initialized');
     }
 
     // ========================================

@@ -932,8 +932,9 @@
                 'success': 'log'
             };
             
-            const method = methods[level] || 'log';
-            console[method](prefix, ...args);
+            // Console logging removed for production silence
+            // const method = methods[level] || 'log';
+            // console[method](prefix, ...args);
         }
 
         // ========================================
@@ -1016,13 +1017,6 @@
 
         showDebugInfo() {
             const info = this.getDebugInfo();
-            console.group('🔍 Role Manager Debug Info');
-            console.log('Role:', info.role);
-            console.log('Permissions:', info.permissions);
-            console.log('Statistics:', info.stats);
-            console.log('Cache:', info.cache);
-            console.log('Configuration:', CONFIG);
-            console.groupEnd();
         }
     }
 
@@ -1046,7 +1040,6 @@
         async init() {
             if (this.initialized) return;
             
-            console.log('[RoleManager Singleton] Initializing...');
             
             // Inietta stili
             this.injectStyles();
@@ -1058,7 +1051,6 @@
             this.setupSPAListeners();
             
             this.initialized = true;
-            console.log('[RoleManager Singleton] ✅ Ready');
         }
 
         setupSPAListeners() {
@@ -1246,7 +1238,5 @@
     window.RoleManagerAPI = window.TalonRoleManager;
     window.roleManager = manager.get();
     
-    console.log('%c🛡️ Talon Role Manager v2.0.0 - SPA Ready', 
-        'color: #fd7e14; font-weight: bold; font-size: 14px;');
 
 })(window, document);

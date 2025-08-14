@@ -1,0 +1,568 @@
+{% extends "_base.html" %}
+
+{% block title %}Dashboard - TALON{% endblock %}
+
+{% block content %}
+
+
+<!-- Drill-Down Chart Container -->
+<div class="dashboard-content">
+    <div class="chart-main-container">
+        <!-- Period Selector -->
+        <div class="period-selector">
+            <button class="period-btn" data-period="week">Ultima Settimana</button>
+            <button class="period-btn" data-period="month">Ultimo Mese</button>
+            <button class="period-btn" data-period="quarter">Ultimo Trimestre</button>
+            <button class="period-btn active" data-period="year">Ultimo Anno</button>
+            <button class="period-btn" data-period="custom" id="custom-period-btn">Intervallo Personalizzato</button>
+        </div>
+        
+        <!-- Custom Date Range Selector - Hidden by default -->
+        <div class="custom-date-selector" id="custom-date-selector" style="display: none;">
+            <div class="date-inputs">
+                <div class="date-input-group">
+                    <label for="start-date">Data Inizio:</label>
+                    <input type="date" id="start-date" class="form-control">
+                </div>
+                <div class="date-input-group">
+                    <label for="end-date">Data Fine:</label>
+                    <input type="date" id="end-date" class="form-control">
+                </div>
+                <button class="btn btn-primary btn-sm" id="apply-custom-dates">Applica</button>
+                <button class="btn btn-outline-secondary btn-sm" id="cancel-custom-dates">Annulla</button>
+            </div>
+        </div>
+        
+        <!-- Custom Period Display - Hidden by default -->
+        <div class="custom-period-display" id="custom-period-display" style="display: none;">
+            <div class="period-info">
+                <i class="fas fa-calendar-alt"></i>
+                <span id="custom-period-text">Dal 01/01/2024 al 31/01/2024 (31 giorni)</span>
+            </div>
+        </div>
+
+        <!-- Breadcrumb Navigation -->
+        <div class="breadcrumb-nav" id="chart-breadcrumb">
+            <div class="breadcrumb-item active" data-level="0">
+                ATTIVITÀ
+            </div>
+        </div>
+
+        <!-- Main Chart -->
+        <div class="chart-container">
+            <canvas id="chartCanvas"></canvas>
+        </div>
+
+        <!-- Info Cards -->
+        <div class="info-cards" id="infoCards">
+            <div class="info-card">
+                <div class="value" id="totalValue">0</div>
+                <div class="label">Totale Attività</div>
+            </div>
+            <div class="info-card">
+                <div class="value" id="entitiesValue">0</div>
+                <div class="label">Enti Coinvolti</div>
+            </div>
+            <div class="info-card">
+                <div class="value" id="specificActivitiesValue">0</div>
+                <div class="label">Attività Specifiche</div>
+            </div>
+            <div class="info-card">
+                <div class="value" id="periodValue">365</div>
+                <div class="label">Giorni Analizzati</div>
+            </div>
+        </div>
+
+        <!-- Details Panel - Nascosto di default -->
+        <div class="details-panel" id="detailsPanel" style="display: none;">
+            <div id="detailsList"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Dashboard Styles */
+
+.dashboard-content {
+    padding: 0 30px;
+}
+
+.chart-main-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    padding: 30px;
+    margin-bottom: 30px;
+}
+
+/* Period Selector */
+.period-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.period-btn {
+    padding: 8px 16px;
+    border: 2px solid #e0e7ff;
+    background: white;
+    color: #6366f1;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.period-btn:hover {
+    background: #f0f4ff;
+    border-color: #6366f1;
+}
+
+.period-btn.active {
+    background: #6366f1;
+    color: white;
+    border-color: #6366f1;
+}
+
+/* Custom Date Selector */
+.custom-date-selector {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.date-inputs {
+    display: flex;
+    gap: 15px;
+    align-items: end;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.date-input-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 140px;
+}
+
+.date-input-group label {
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.9rem;
+}
+
+.date-input-group input {
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.date-input-group input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+#apply-custom-dates {
+    height: fit-content;
+    padding: 8px 16px;
+    margin-left: 10px;
+}
+
+#cancel-custom-dates {
+    height: fit-content;
+    padding: 8px 16px;
+}
+
+/* Custom Period Display */
+.custom-period-display {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.period-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.period-info i {
+    font-size: 0.8rem;
+}
+
+/* Breadcrumb */
+.breadcrumb-nav {
+    display: flex;
+    align-items: center;
+    margin-bottom: 25px;
+    padding: 15px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.breadcrumb-item {
+    display: inline-block;
+    padding: 10px 16px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+    line-height: 1.4;
+    vertical-align: middle;
+}
+
+.breadcrumb-item.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    cursor: default;
+}
+
+.breadcrumb-item:not(.active):hover {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+/* Rimuovi i separatori "/" automatici di Bootstrap */
+.breadcrumb-nav .breadcrumb-item + .breadcrumb-item::before {
+    content: none !important;
+}
+
+/* Sovrascrivi il padding-left di Bootstrap per permettere il centramento perfetto */
+.breadcrumb-item + .breadcrumb-item {
+    padding-left: 16px !important;
+}
+
+/* Forza il centramento per tutti gli elementi breadcrumb */
+.breadcrumb-nav .breadcrumb-item {
+    padding: 10px 16px !important;
+}
+
+/* Allineamento per icone */
+.breadcrumb-item span {
+    vertical-align: middle;
+}
+
+/* Chart Container */
+.chart-container {
+    position: relative;
+    height: 400px;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #fafafa;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    min-height: 300px;
+    overflow: hidden;
+}
+
+.chart-container canvas {
+    max-width: 100% !important;
+    height: auto !important;
+}
+
+/* Responsive chart container */
+@media (max-width: 768px) {
+    .chart-container {
+        height: 300px;
+        min-height: 250px;
+        padding: 15px;
+    }
+}
+
+/* Info Cards */
+.info-cards {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.info-card {
+    flex: 1;
+    min-width: 150px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+    transition: transform 0.2s ease;
+}
+
+.info-card:hover {
+    transform: translateY(-2px);
+}
+
+.info-card .value {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.info-card .label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+/* Details Panel */
+.details-panel {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.details-panel h4 {
+    margin: 0 0 15px 0;
+    color: #1e293b;
+    font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .dashboard-header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+    
+    .dashboard-controls {
+        justify-content: center;
+    }
+    
+    .dashboard-content {
+        padding: 0 15px;
+    }
+    
+    .chart-main-container {
+        padding: 20px;
+    }
+    
+    .info-cards {
+        flex-direction: column;
+    }
+    
+    .period-selector {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+</style>
+
+<!-- Container nascosto per inizializzazione drill-down -->
+<div id="drill-down-init" 
+     data-drilldown-chart
+     data-period="year"
+     style="display: none;"></div>
+
+<!-- JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/components/drill-down_chart.js') }}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Configurazione API endpoints per Flask
+    window.TALON_CONFIG = window.TALON_CONFIG || {};
+    window.TALON_CONFIG.api = {
+        baseUrl: '',
+        endpoints: {
+            categories: '/drill-down/api/categorie',
+            subcategories: '/drill-down/api/sottocategorie',
+            entities: '/drill-down/api/enti',
+            details: '/drill-down/api/dettagli',
+            stats: '/drill-down/api/statistiche',
+            export: '/drill-down/api/export'
+        }
+    };
+
+    // Distruggi eventuali chart esistenti per evitare conflitti Canvas
+    if (window.chart && typeof window.chart.destroy === 'function') {
+        window.chart.destroy();
+        window.chart = null;
+    }
+    
+    // Inizializza il drill-down chart direttamente
+    if (typeof TalonDrillDownChart !== 'undefined') {
+        window.drillDownChart = new TalonDrillDownChart({
+            container: '.chart-main-container',
+            canvas: 'chartCanvas',
+            period: 'year'
+        });
+    } else {
+        console.error('❌ Modulo TalonDrillDownChart non disponibile');
+    }
+
+    // Gestione pulsanti periodo
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const period = this.dataset.period;
+            
+            if (period === 'custom') {
+                // Mostra il selettore di date personalizzato
+                showCustomDateSelector();
+            } else {
+                // Nasconde il selettore personalizzato se visibile
+                hideCustomDateSelector();
+                
+                // Nasconde l'indicatore dell'intervallo personalizzato
+                hideCustomPeriodDisplay();
+                
+                // Aggiorna periodo standard
+                document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                if (window.drillDownChart && typeof window.drillDownChart.setPeriod === 'function') {
+                    window.drillDownChart.setPeriod(period);
+                } else {
+                    console.warn('drillDownChart.setPeriod non disponibile');
+                }
+            }
+        });
+    });
+    
+    // Gestione selettore date personalizzato
+    function showCustomDateSelector() {
+        const selector = document.getElementById('custom-date-selector');
+        if (selector) {
+            selector.style.display = 'block';
+            
+            // Imposta date di default (ultimo mese)
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setMonth(startDate.getMonth() - 1);
+            
+            document.getElementById('start-date').value = startDate.toISOString().split('T')[0];
+            document.getElementById('end-date').value = endDate.toISOString().split('T')[0];
+        }
+    }
+    
+    function hideCustomDateSelector() {
+        const selector = document.getElementById('custom-date-selector');
+        if (selector) {
+            selector.style.display = 'none';
+        }
+    }
+    
+    function showCustomPeriodDisplay(startDate, endDate) {
+        const display = document.getElementById('custom-period-display');
+        const text = document.getElementById('custom-period-text');
+        if (display && text) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            
+            const startFormatted = start.toLocaleDateString('it-IT', {
+                day: '2-digit',
+                month: '2-digit', 
+                year: 'numeric'
+            });
+            const endFormatted = end.toLocaleDateString('it-IT', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+            
+            text.textContent = `Dal ${startFormatted} al ${endFormatted} (${days} giorni)`;
+            display.style.display = 'block';
+        }
+    }
+    
+    function hideCustomPeriodDisplay() {
+        const display = document.getElementById('custom-period-display');
+        if (display) {
+            display.style.display = 'none';
+        }
+    }
+    
+    // Pulsante Applica date personalizzate
+    document.getElementById('apply-custom-dates')?.addEventListener('click', function() {
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        
+        if (!startDate || !endDate) {
+            alert('Seleziona entrambe le date');
+            return;
+        }
+        
+        if (new Date(startDate) > new Date(endDate)) {
+            alert('La data di inizio deve essere precedente alla data di fine');
+            return;
+        }
+        
+        // Aggiorna stato attivo
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('custom-period-btn').classList.add('active');
+        
+        // Applica intervallo personalizzato
+        if (window.drillDownChart && typeof window.drillDownChart.setCustomPeriod === 'function') {
+            window.drillDownChart.setCustomPeriod(startDate, endDate);
+        } else {
+            console.warn('drillDownChart.setCustomPeriod non disponibile');
+        }
+        
+        // Nasconde il selettore
+        hideCustomDateSelector();
+        
+        // Mostra l'indicatore dell'intervallo personalizzato
+        showCustomPeriodDisplay(startDate, endDate);
+        
+        // Aggiorna label giorni (già gestito da setCustomPeriod)
+        const daysDiff = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+        const periodEl = document.getElementById('periodValue');
+        if (periodEl) {
+            periodEl.textContent = daysDiff;
+        }
+    });
+    
+    // Pulsante Annulla date personalizzate
+    document.getElementById('cancel-custom-dates')?.addEventListener('click', function() {
+        hideCustomDateSelector();
+    });
+});
+
+
+// Utility function per notificazioni (se non già presente)
+function showNotification(message, type = 'info') {
+    // Implementazione semplice
+    console.log(`${type.toUpperCase()}: ${message}`);
+    
+    // Se esiste un sistema di notifiche esistente, usalo
+    if (typeof window.showToast === 'function') {
+        window.showToast(message, type);
+    }
+}
+
+</script>
+
+{% endblock %}

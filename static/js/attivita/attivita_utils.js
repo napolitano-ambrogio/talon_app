@@ -37,7 +37,7 @@
             debug: 'color: #6c757d'
         };
         
-        console.log(`%c[${module}]`, styles[level] || styles.debug, ...args);
+        // console.log removed for production silence
     }
 
     // ========================================
@@ -513,8 +513,5 @@
         version: '2.0.0'
     };
 
-    // Log caricamento
-    console.log('%c⚙️ TALON Attività Utils v2.0.0 - Ready', 
-        'color: #6c757d; font-weight: bold;');
 
 })(window, document);

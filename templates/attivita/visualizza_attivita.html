@@ -5,441 +5,276 @@
 {% block head %}
 <!-- CSS specifico per visualizzazione attività -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/visualizza_attivita.css') }}?v={{ cache_buster }}">
+<!-- JavaScript per decodifica vettore GETRA -->
+<script src="{{ url_for('static', filename='js/attivita/vettore_decoder.js') }}?v={{ cache_buster }}"></script>
 {% endblock %}
 
 {% block content %}
-<div class="attivita-detail-container" id="visualizza-attivita-container">
-    <!-- Header con navigazione -->
-    <div class="detail-card">
-        <div class="detail-header">
-            <div class="header-left">
-                <h3>Dettaglio Attività #{{ attivita.id }}</h3>
-                <span class="badge badge-{{ 'success' if not attivita.data_fine or attivita.data_fine >= today else 'secondary' }}">
-                    {% if not attivita.data_fine or attivita.data_fine >= today %}
-                        <i class="fas fa-circle"></i> Attiva
-                    {% else %}
-                        <i class="fas fa-check-circle"></i> Conclusa
-                    {% endif %}
-                </span>
-            </div>
-            <div class="header-right">
-                <a href="{{ url_for('attivita.lista_attivita') }}" class="btn btn-outline-secondary btn-sm" data-spa-link="true">
-                    <i class="fas fa-arrow-left"></i> Torna all'elenco
-                </a>
-                {% if can_edit %}
-                <a href="{{ url_for('attivita.modifica_attivita_form', id=attivita.id) }}" class="btn btn-primary btn-sm" data-spa-link="true">
-                    <i class="fas fa-edit"></i> Modifica
-                </a>
+<div class="detail-card">
+    <div class="detail-header">
+        <div>
+            <h3>{{ attivita.tipologia_nome }}</h3>
+            {% if attivita.data_inizio and (not attivita.data_fine or attivita.data_inizio == attivita.data_fine) %}
+                {# Attività di un solo giorno #}
+                {% if attivita.data_inizio < today %}
+                    {% set status_text = 'CONCLUSA' %}
+                    {% set status_color = '#6c757d' %}
+                {% elif attivita.data_inizio > today %}
+                    {% set status_text = 'PIANIFICATA' %}
+                    {% set status_color = '#17a2b8' %}
+                {% else %}
+                    {% set status_text = 'IN CORSO' %}
+                    {% set status_color = '#ffc107' %}
                 {% endif %}
-            </div>
-        </div>
-        
-        <!-- Sezione Informazioni Principali -->
-        <div class="detail-section">
-            <h4 class="section-title">
-                <i class="fas fa-info-circle"></i> Informazioni Principali
-            </h4>
-            <div class="detail-grid">
-                <!-- Colonna Sinistra -->
-                <div class="detail-column">
-                    <div class="detail-item">
-                        <dt>Ente Svolgimento</dt>
-                        <dd class="text-primary font-weight-bold">{{ attivita.ente_nome }}</dd>
-                    </div>
-                    <div class="detail-item">
-                        <dt>Tipologia Attività</dt>
-                        <dd>
-                            <span class="badge badge-info">{{ attivita.tipologia_nome }}</span>
-                        </dd>
-                    </div>
-                    <div class="detail-item">
-                        <dt>Operazione</dt>
-                        <dd>
-                            {% if attivita.operazione_nome %}
-                                <span class="text-success">
-                                    <i class="fas fa-flag"></i> {{ attivita.operazione_nome }}
-                                </span>
-                            {% else %}
-                                <span class="text-muted">Nessuna operazione associata</span>
-                            {% endif %}
-                        </dd>
-                    </div>
-                    <div class="detail-item">
-                        <dt>Periodo</dt>
-                        <dd>
-                            <i class="fas fa-calendar-alt"></i>
-                            <strong>Dal:</strong> {{ attivita.data_inizio.strftime('%d/%m/%Y') if attivita.data_inizio else 'N/D' }}
-                            {% if attivita.data_fine %}
-                                <br><i class="fas fa-calendar-check"></i>
-                                <strong>Al:</strong> {{ attivita.data_fine.strftime('%d/%m/%Y') }}
-                                <span class="text-muted">({{ (attivita.data_fine - attivita.data_inizio).days }} giorni)</span>
-                            {% else %}
-                                <span class="text-warning">(In corso)</span>
-                            {% endif %}
-                        </dd>
-                    </div>
-                </div>
-                
-                <!-- Colonna Destra -->
-                <div class="detail-column">
-                    <div class="detail-item">
-                        <dt>Descrizione</dt>
-                        <dd class="description-text">
-                            {{ attivita.descrizione or 'Nessuna descrizione disponibile' }}
-                        </dd>
-                    </div>
-                    <div class="detail-item">
-                        <dt>Note</dt>
-                        <dd class="notes-text">
-                            {% if attivita.note %}
-                                <i class="fas fa-sticky-note text-warning"></i> {{ attivita.note }}
-                            {% else %}
-                                <span class="text-muted">Nessuna nota aggiuntiva</span>
-                            {% endif %}
-                        </dd>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Sezione Località -->
-        <div class="detail-section">
-            <h4 class="section-title">
-                <i class="fas fa-map-marked-alt"></i> Località
-            </h4>
-            <div class="detail-grid">
-                <div class="detail-column">
-                    <div class="detail-item">
-                        <dt><i class="fas fa-map-marker-alt text-success"></i> Luogo Partenza</dt>
-                        <dd>{{ partenza or 'Non specificato' }}</dd>
-                    </div>
-                </div>
-                <div class="detail-column">
-                    <div class="detail-item">
-                        <dt><i class="fas fa-map-marker-alt text-danger"></i> Luogo Destinazione</dt>
-                        <dd>{{ destinazione or 'Non specificato' }}</dd>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Sezione Personale -->
-        <div class="detail-section">
-            <h4 class="section-title">
-                <i class="fas fa-users"></i> Personale Impiegato
-            </h4>
-            <div class="personnel-grid">
-                <div class="personnel-card">
-                    <div class="personnel-icon"><i class="fas fa-star"></i></div>
-                    <div class="personnel-label">Ufficiali</div>
-                    <div class="personnel-value">{{ attivita.personale_ufficiali or 0 }}</div>
-                </div>
-                <div class="personnel-card">
-                    <div class="personnel-icon"><i class="fas fa-chevron"></i></div>
-                    <div class="personnel-label">Sottufficiali</div>
-                    <div class="personnel-value">{{ attivita.personale_sottufficiali or 0 }}</div>
-                </div>
-                <div class="personnel-card">
-                    <div class="personnel-icon"><i class="fas fa-shield-alt"></i></div>
-                    <div class="personnel-label">Graduati/VFP</div>
-                    <div class="personnel-value">{{ attivita.personale_graduati or 0 }}</div>
-                </div>
-                <div class="personnel-card">
-                    <div class="personnel-icon"><i class="fas fa-user-tie"></i></div>
-                    <div class="personnel-label">Civili</div>
-                    <div class="personnel-value">{{ attivita.personale_civili or 0 }}</div>
-                </div>
-                <div class="personnel-card total">
-                    <div class="personnel-icon"><i class="fas fa-users"></i></div>
-                    <div class="personnel-label">Totale</div>
-                    <div class="personnel-value">
-                        {{ (attivita.personale_ufficiali or 0) + 
-                           (attivita.personale_sottufficiali or 0) + 
-                           (attivita.personale_graduati or 0) + 
-                           (attivita.personale_civili or 0) }}
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Sezione Dettagli Specifici (mostrata solo se ci sono) -->
-        {% if dettagli_specifici %}
-        <div class="detail-section detail-specific">
-            <h4 class="section-title">
-                <i class="fas fa-clipboard-list"></i> Dettagli Specifici: {{ attivita.tipologia_nome }}
-            </h4>
-            
-            <!-- Dettagli Trasporti -->
-            {% if attivita.tipologia_nome == 'MOVIMENTI E TRASPORTI' %}
-            <div class="detail-grid">
-                <div class="detail-column">
-                    <div class="detail-item">
-                        <dt><i class="fas fa-box"></i> Tipologia Carico</dt>
-                        <dd>{{ dettagli_specifici.tipologia_carico or 'Non specificato' }}</dd>
-                    </div>
-                    <div class="detail-item">
-                        <dt><i class="fas fa-truck"></i> Mezzo Impiegato</dt>
-                        <dd>{{ dettagli_specifici.mezzo_impiegato or 'Non specificato' }}</dd>
-                    </div>
-                </div>
-                <div class="detail-column">
-                    <div class="detail-item">
-                        <dt><i class="fas fa-weight"></i> Quantità</dt>
-                        <dd>
-                            {% if dettagli_specifici.quantita %}
-                                <span class="badge badge-secondary">
-                                    {{ dettagli_specifici.quantita }} {{ dettagli_specifici.unita_di_misura or '' }}
-                                </span>
-                            {% else %}
-                                Non specificata
-                            {% endif %}
-                        </dd>
-                    </div>
-                </div>
-            </div>
+            {% elif attivita.data_inizio and attivita.data_fine %}
+                {# Attività di più giorni #}
+                {% if attivita.data_fine < today %}
+                    {% set status_text = 'CONCLUSA' %}
+                    {% set status_color = '#6c757d' %}
+                {% elif attivita.data_inizio <= today and attivita.data_fine >= today %}
+                    {% set status_text = 'ATTIVA' %}
+                    {% set status_color = '#28a745' %}
+                {% elif attivita.data_inizio > today %}
+                    {% set status_text = 'PIANIFICATA' %}
+                    {% set status_color = '#17a2b8' %}
+                {% else %}
+                    {% set status_text = 'ATTIVA' %}
+                    {% set status_color = '#28a745' %}
+                {% endif %}
+            {% else %}
+                {# Fallback per attività senza date chiare #}
+                {% set status_text = 'ATTIVA' %}
+                {% set status_color = '#28a745' %}
             {% endif %}
-
-            <!-- Dettagli Mantenimento -->
-            {% if attivita.tipologia_nome == 'MANTENIMENTO E SQUADRE A CONTATTO' %}
-            <div class="detail-grid">
-                <div class="detail-column">
-                    <div class="detail-item">
-                        <dt><i class="fas fa-tools"></i> Tipo Intervento</dt>
-                        <dd>{{ dettagli_specifici.tipo_intervento or 'Non specificato' }}</dd>
-                    </div>
-                    <div class="detail-item">
-                        <dt><i class="fas fa-wrench"></i> Attività Svolta</dt>
-                        <dd>{{ dettagli_specifici.attivita_svolta or 'Non specificata' }}</dd>
-                    </div>
-                </div>
-                <div class="detail-column">
-                    <div class="detail-item">
-                        <dt><i class="fas fa-cog"></i> Piattaforma/Sistema</dt>
-                        <dd>{{ dettagli_specifici.piattaforma_materiale or 'Non specificato' }}</dd>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Dettagli Rifornimenti -->
-            {% if attivita.tipologia_nome == 'RIFORNIMENTI' %}
-            <div class="detail-grid">
-                <div class="detail-column">
-                    <div class="detail-item">
-                        <dt><i class="fas fa-gas-pump"></i> Tipologia Rifornimento</dt>
-                        <dd>{{ dettagli_specifici.tipologia_rifornimento or 'Non specificato' }}</dd>
-                    </div>
-                    <div class="detail-item">
-                        <dt><i class="fas fa-cube"></i> Dettaglio Materiale</dt>
-                        <dd>{{ dettagli_specifici.dettaglio_materiale or 'Non specificato' }}</dd>
-                    </div>
-                </div>
-                <div class="detail-column">
-                    <div class="detail-item">
-                        <dt><i class="fas fa-balance-scale"></i> Quantità</dt>
-                        <dd>
-                            {% if dettagli_specifici.quantita %}
-                                <span class="badge badge-secondary">
-                                    {{ dettagli_specifici.quantita }} {{ dettagli_specifici.unita_di_misura or '' }}
-                                </span>
-                            {% else %}
-                                Non specificata
-                            {% endif %}
-                        </dd>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Dettagli GETRA -->
-            {% if attivita.tipologia_nome == 'GESTIONE TRANSITO' %}
-            <div class="detail-grid">
-                <div class="detail-column">
-                    <div class="detail-item">
-                        <dt><i class="fas fa-plane"></i> Vettore</dt>
-                        <dd>
-                            {% if dettagli_specifici.tipo_vettore %}
-                                <div class="vettore-info">
-                                    <strong>{{ dettagli_specifici.tipo_vettore }}</strong>
-                                    {% if dettagli_specifici.seriale_vettore %}
-                                        - {{ dettagli_specifici.seriale_vettore }}
-                                    {% endif %}
-                                    <div id="vettore-decode" class="vettore-decode text-muted small mt-2">
-                                        <!-- Decodifica inserita via JavaScript -->
-                                    </div>
-                                </div>
-                            {% else %}
-                                Non specificato
-                            {% endif %}
-                        </dd>
-                    </div>
-                </div>
-                <div class="detail-column">
-                    <div class="detail-item">
-                        <dt><i class="fas fa-users"></i> Personale Movimentato</dt>
-                        <dd>
-                            {% if dettagli_specifici.numero_personale %}
-                                <span class="badge badge-info">{{ dettagli_specifici.numero_personale }} persone</span>
-                            {% else %}
-                                Non specificato
-                            {% endif %}
-                        </dd>
-                    </div>
-                    <div class="detail-item">
-                        <dt><i class="fas fa-truck"></i> Mezzi Movimentati</dt>
-                        <dd>
-                            {% if dettagli_specifici.numero_mezzi %}
-                                <span class="badge badge-info">{{ dettagli_specifici.numero_mezzi }} mezzi</span>
-                            {% else %}
-                                Non specificato
-                            {% endif %}
-                        </dd>
-                    </div>
-                    <div class="detail-item">
-                        <dt><i class="fas fa-weight-hanging"></i> Volume/Quantità</dt>
-                        <dd>
-                            {% if dettagli_specifici.volume %}
-                                <span class="badge badge-secondary">
-                                    {{ dettagli_specifici.volume }} {{ dettagli_specifici.unita_di_misura or '' }}
-                                </span>
-                            {% else %}
-                                Non specificato
-                            {% endif %}
-                        </dd>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
+            <p style="color: {{ status_color }}; font-weight: bold; margin: 5px 0 0 0; font-size: 0.9em;">{{ status_text }}</p>
         </div>
-        {% endif %}
+        <a href="{{ url_for('attivita.lista_attivita') }}" class="cancel-link" style="font-size: 0.9em;">&larr; Torna all'Elenco</a>
+    </div>
 
-        <!-- Sezione Informazioni Sistema -->
-        <div class="detail-section system-info">
-            <h4 class="section-title">
-                <i class="fas fa-info"></i> Informazioni Sistema
-            </h4>
-            <div class="detail-grid">
-                <div class="detail-column">
-                    <div class="detail-item">
-                        <dt>Creata il</dt>
-                        <dd>{{ attivita.data_creazione.strftime('%d/%m/%Y %H:%M') if attivita.data_creazione else 'N/D' }}</dd>
-                    </div>
-                    <div class="detail-item">
-                        <dt>Creata da</dt>
-                        <dd>{{ attivita.creato_da_nome if attivita.creato_da_nome else 'N/D' }}</dd>
-                    </div>
-                </div>
-                <div class="detail-column">
-                    {% if attivita.data_modifica %}
-                    <div class="detail-item">
-                        <dt>Ultima modifica</dt>
-                        <dd>{{ attivita.data_modifica.strftime('%d/%m/%Y %H:%M') }}</dd>
-                    </div>
-                    <div class="detail-item">
-                        <dt>Modificata da</dt>
-                        <dd>{{ attivita.modificato_da_nome if attivita.modificato_da_nome else 'N/D' }}</dd>
+    <dl class="detail-grid">
+        <div>
+            <div class="detail-item">
+                <dt>Ente Svolgimento</dt>
+                <dd>{{ attivita.ente_nome }}</dd>
+            </div>
+            <div class="detail-item">
+                <dt>Data Inizio</dt>
+                <dd>{{ attivita.data_inizio.strftime('%d/%m/%Y') if attivita.data_inizio else 'Non specificata' }}</dd>
+            </div>
+            <div class="detail-item">
+                <dt>Data Fine</dt>
+                <dd>
+                    {% if attivita.data_fine %}
+                        {{ attivita.data_fine.strftime('%d/%m/%Y') }}
+                        {% if attivita.data_inizio and attivita.data_fine != attivita.data_inizio %}
+                            <span class="text-muted">({{ (attivita.data_fine - attivita.data_inizio).days + 1 }} giorni)</span>
+                        {% elif attivita.data_inizio and attivita.data_fine == attivita.data_inizio %}
+                            <span class="text-muted">(1 giorno)</span>
+                        {% endif %}
+                    {% elif attivita.data_inizio %}
+                        {{ attivita.data_inizio.strftime('%d/%m/%Y') }}
+                        <span class="text-muted">(1 giorno)</span>
+                    {% else %}
+                        <span class="text-muted">Non specificata</span>
+                    {% endif %}
+                </dd>
+            </div>
+            <div class="detail-item">
+                <dt>Operazione</dt>
+                <dd>{{ attivita.operazione_nome if attivita.operazione_nome else 'Nessuna operazione associata' }}</dd>
+            </div>
+        </div>
+        <div>
+            <div class="detail-item">
+                <dt>Luogo Partenza</dt>
+                <dd>{{ partenza if partenza else 'Non specificato' }}</dd>
+            </div>
+            <div class="detail-item">
+                <dt>Luogo Destinazione</dt>
+                <dd>{{ destinazione if destinazione else 'Non specificato' }}</dd>
+            </div>
+            <div class="detail-item">
+                <dt>Descrizione</dt>
+                <dd>{{ attivita.descrizione if attivita.descrizione else 'Nessuna descrizione disponibile' }}</dd>
+            </div>
+        </div>
+    </dl>
+
+    <hr style="margin-top: 30px; margin-bottom: 20px;">
+    
+    <h4 style="margin-bottom: 15px; color: #495057;">Personale Impiegato</h4>
+    <dl class="detail-grid">
+        <div>
+            <div class="detail-item">
+                <dt>Ufficiali</dt>
+                <dd>{{ attivita.personale_ufficiali or 0 }}</dd>
+            </div>
+            <div class="detail-item">
+                <dt>Sottufficiali</dt>
+                <dd>{{ attivita.personale_sottufficiali or 0 }}</dd>
+            </div>
+        </div>
+        <div>
+            <div class="detail-item">
+                <dt>Graduati/VFP</dt>
+                <dd>{{ attivita.personale_graduati or 0 }}</dd>
+            </div>
+            <div class="detail-item">
+                <dt>Civili</dt>
+                <dd>{{ attivita.personale_civili or 0 }}</dd>
+            </div>
+        </div>
+    </dl>
+
+    {% if dettagli_specifici %}
+    <hr style="margin-top: 30px; margin-bottom: 20px;">
+    
+    <h4 style="margin-bottom: 15px; color: #495057;">Dettagli Specifici</h4>
+    <dl class="detail-grid">
+        <div>
+            {# Gestione GETRA - Vettore combinato #}
+            {% if dettagli_specifici.tipo_vettore or dettagli_specifici.seriale_vettore %}
+            <div class="detail-item">
+                <dt>Vettore</dt>
+                <dd>
+                    {% if dettagli_specifici.tipo_vettore %}{{ dettagli_specifici.tipo_vettore }}{% endif %}
+                    {% if dettagli_specifici.tipo_vettore and dettagli_specifici.seriale_vettore %} {% endif %}
+                    {% if dettagli_specifici.seriale_vettore %}{{ dettagli_specifici.seriale_vettore }}{% endif %}
+                    {% if dettagli_specifici.tipo_vettore %}
+                    <div class="vettore-decoded" id="vettore-decode-{{ dettagli_specifici.tipo_vettore }}" style="font-size: 0.85em; margin-top: 5px; color: #6c757d;">
+                        <span class="decode-eng"></span><br>
+                        <span class="decode-ita"></span>
                     </div>
                     {% endif %}
-                </div>
+                </dd>
             </div>
-        </div>
+            {% endif %}
 
-        <!-- Pulsanti Azione -->
-        <div class="action-buttons">
-            {% if can_edit %}
-            <a href="{{ url_for('attivita.modifica_attivita_form', id=attivita.id) }}" 
-               class="btn btn-primary" data-spa-link="true">
-                <i class="fas fa-edit"></i> Modifica Attività
-            </a>
+            {# Altri dettagli prima colonna #}
+            {% for key, value in dettagli_specifici.items() %}
+            {% if value and key != 'id' and key != 'attivita_id' and key != 'data_creazione' and key != 'creato_da' 
+               and key != 'tipo_vettore' and key != 'seriale_vettore' and key != 'volume' and key != 'unita_di_misura' %}
+                {% if loop.index <= ((dettagli_specifici|length) // 2) %}
+                <div class="detail-item">
+                    <dt>{{ key.replace('_', ' ').title() }}</dt>
+                    <dd>{{ value }}</dd>
+                </div>
+                {% endif %}
             {% endif %}
-            
-            {% if can_delete %}
-            <button type="button" class="btn btn-danger" id="btn-delete-activity">
-                <i class="fas fa-trash"></i> Elimina Attività
-            </button>
-            {% endif %}
-            
-            <button type="button" class="btn btn-secondary" onclick="window.print()">
-                <i class="fas fa-print"></i> Stampa
-            </button>
-            
-            <a href="{{ url_for('attivita.lista_attivita') }}" 
-               class="btn btn-outline-secondary" data-spa-link="true">
-                <i class="fas fa-arrow-left"></i> Torna all'elenco
-            </a>
+            {% endfor %}
         </div>
+        <div>
+            {# Gestione GETRA - Volume combinato #}
+            {% if dettagli_specifici.volume or dettagli_specifici.unita_di_misura %}
+            <div class="detail-item">
+                <dt>Volume</dt>
+                <dd>
+                    {% if dettagli_specifici.volume %}{{ dettagli_specifici.volume }}{% endif %}
+                    {% if dettagli_specifici.volume and dettagli_specifici.unita_di_misura %} {% endif %}
+                    {% if dettagli_specifici.unita_di_misura %}{{ dettagli_specifici.unita_di_misura }}{% endif %}
+                </dd>
+            </div>
+            {% endif %}
+
+            {# Altri dettagli seconda colonna #}
+            {% for key, value in dettagli_specifici.items() %}
+            {% if value and key != 'id' and key != 'attivita_id' and key != 'data_creazione' and key != 'creato_da' 
+               and key != 'tipo_vettore' and key != 'seriale_vettore' and key != 'volume' and key != 'unita_di_misura' %}
+                {% if loop.index > ((dettagli_specifici|length) // 2) %}
+                <div class="detail-item">
+                    <dt>{{ key.replace('_', ' ').title() }}</dt>
+                    <dd>{{ value }}</dd>
+                </div>
+                {% endif %}
+            {% endif %}
+            {% endfor %}
+        </div>
+    </dl>
+    {% endif %}
+
+    {% if attivita.note %}
+    <hr style="margin-top: 30px; margin-bottom: 20px;">
+    
+    <h4 style="margin-bottom: 15px; color: #495057;">Note</h4>
+    <div class="detail-item">
+        <dd>{{ attivita.note }}</dd>
+    </div>
+    {% endif %}
+
+    <hr style="margin-top: 30px; margin-bottom: 20px;">
+
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+        {% if can_edit %}
+        <a href="{{ url_for('attivita.modifica_attivita_form', id=attivita.id) }}" style="background-color: #007bff; color: white; padding: 10px 20px; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em; text-decoration: none;">Modifica</a>
+        {% endif %}
+        
+        {% if can_delete %}
+        <form action="#" method="POST" onsubmit="return confirm('Confermare l\'eliminazione dell\'attività?');" style="margin: 0;">
+            <button type="submit" style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">Elimina</button>
+        </form>
+        {% endif %}
+        
+        <button type="button" onclick="window.print()" style="background-color: #6c757d; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">Stampa</button>
     </div>
 </div>
-
-<!-- Form nascosto per eliminazione -->
-{% if can_delete %}
-<form id="delete-form" action="{{ url_for('attivita.elimina_attivita', id=attivita.id) }}" 
-      method="POST" style="display: none;">
-    <!-- CSRF token se necessario -->
-</form>
-{% endif %}
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/attivita/vettore_decoder.js') }}?v={{ cache_buster }}"></script>
-
 <script>
+// Decodifica automatica del vettore GETRA - versione inline
 document.addEventListener('DOMContentLoaded', function() {
-    // Decodifica vettore GETRA se presente
-    {% if dettagli_specifici and dettagli_specifici.tipo_vettore %}
-    if (window.VettoreDecoder) {
-        const decoded = window.VettoreDecoder.decode('{{ dettagli_specifici.tipo_vettore }}');
-        const decodeElement = document.getElementById('vettore-decode');
-        
-        if (decoded && decodeElement) {
-            decodeElement.innerHTML = `
-                <div class="decode-result">
-                    <div><i class="fas fa-globe"></i> ${decoded.fullDecodeEng}</div>
-                    <div><i class="fas fa-flag-checkered"></i> ${decoded.fullDecodeIta}</div>
-                </div>
-            `;
+    {% if dettagli_specifici.tipo_vettore %}
+    
+    // Decodifiche inline per i vettori più comuni
+    const vettoreDecodes = {
+        'SAFOPS': {
+            eng: 'Sourced - Air Force - Operations',
+            ita: 'Pianificata - Aeronautica Militare - Operazioni'
+        },
+        'UAFOPS': {
+            eng: 'Unsourced - Air Force - Operations', 
+            ita: 'Non Pianificata - Aeronautica Militare - Operazioni'
+        },
+        'SAFEXE': {
+            eng: 'Sourced - Air Force - Exercises',
+            ita: 'Pianificata - Aeronautica Militare - Esercitazioni'
+        },
+        'SAHA': {
+            eng: 'Sourced - Army - Humanitarian Aid',
+            ita: 'Pianificata - Esercito - Aiuti Umanitari'
+        },
+        'SNOPS': {
+            eng: 'Sourced - Navy - Operations',
+            ita: 'Pianificata - Marina Militare - Operazioni'
+        },
+        'SCCOPS': {
+            eng: 'Sourced - Commercial Cargo - Operations',
+            ita: 'Pianificata - Cargo Commerciale - Operazioni'
+        }
+    };
+    
+    const tipoVettore = '{{ dettagli_specifici.tipo_vettore }}';
+    const decoded = vettoreDecodes[tipoVettore];
+    
+    if (decoded) {
+        const container = document.getElementById('vettore-decode-{{ dettagli_specifici.tipo_vettore }}');
+        if (container) {
+            const engSpan = container.querySelector('.decode-eng');
+            const itaSpan = container.querySelector('.decode-ita');
+            
+            if (engSpan) engSpan.textContent = decoded.eng;
+            if (itaSpan) itaSpan.textContent = decoded.ita;
+            
+            container.style.display = 'block';
+        }
+    } else {
+        // Nascondi se non decodificabile
+        const container = document.getElementById('vettore-decode-{{ dettagli_specifici.tipo_vettore }}');
+        if (container) {
+            container.style.display = 'none';
         }
     }
     {% endif %}
-    
-    // Handler eliminazione con conferma
-    {% if can_delete %}
-    const deleteBtn = document.getElementById('btn-delete-activity');
-    if (deleteBtn) {
-        deleteBtn.addEventListener('click', async function() {
-            // Prima conferma
-            const firstConfirm = confirm('Sei sicuro di voler eliminare questa attività?\nL\'azione è irreversibile.');
-            
-            if (firstConfirm) {
-                // Seconda conferma
-                const secondConfirm = confirm('ATTENZIONE: Confermi definitivamente l\'eliminazione dell\'attività #{{ attivita.id }}?');
-                
-                if (secondConfirm) {
-                    // Invia il form di eliminazione
-                    document.getElementById('delete-form').submit();
-                }
-            }
-        });
-    }
-    {% endif %}
-    
-    // Stampa ottimizzata
-    window.addEventListener('beforeprint', function() {
-        document.body.classList.add('printing');
-    });
-    
-    window.addEventListener('afterprint', function() {
-        document.body.classList.remove('printing');
-    });
 });
-
-// Dati attività per eventuali elaborazioni JavaScript
-window.currentAttivita = {
-    id: {{ attivita.id }},
-    tipologia: '{{ attivita.tipologia_nome }}',
-    ente: '{{ attivita.ente_nome }}',
-    dataInizio: '{{ attivita.data_inizio.isoformat() if attivita.data_inizio else "" }}',
-    dataFine: '{{ attivita.data_fine.isoformat() if attivita.data_fine else "" }}'
-};
 </script>
 {% endblock %}

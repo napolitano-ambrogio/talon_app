@@ -4,10 +4,10 @@
 
 {% block breadcrumb %}
 <li class="breadcrumb-item">
-    <a href="{{ url_for('main.dashboard_admin') }}" data-spa-link>Dashboard Admin</a>
+    <a href="{{ url_for('main.dashboard_admin') }}">Dashboard Admin</a>
 </li>
 <li class="breadcrumb-item">
-    <a href="{{ url_for('main.impostazioni') }}" data-spa-link>Impostazioni</a>
+    <a href="{{ url_for('main.impostazioni') }}">Impostazioni</a>
 </li>
 <li class="breadcrumb-item active">Informazioni Sistema</li>
 {% endblock %}
@@ -19,7 +19,7 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2><i class="fas fa-server"></i> Informazioni Sistema</h2>
                 <div>
-                    <a href="{{ url_for('main.dashboard_admin') }}" class="btn btn-outline-primary me-2" data-spa-link data-spa-force="true" data-spa-no-cache="true">
+                    <a href="{{ url_for('main.dashboard_admin') }}" class="btn btn-outline-primary me-2">
                         <i class="fas fa-arrow-left"></i> Torna al Sistema
                     </a>
                 </div>
@@ -155,10 +155,6 @@
                                 <span class="badge bg-success">PRODUCTION</span>
                                 {% endif %}
                             </td>
-                        </tr>
-                        <tr>
-                            <td><strong>SPA Mode:</strong></td>
-                            <td><span class="badge bg-info">Enabled</span></td>
                         </tr>
                         <tr>
                             <td><strong>SSO:</strong></td>

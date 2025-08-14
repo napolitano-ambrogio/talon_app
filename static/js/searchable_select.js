@@ -1252,7 +1252,7 @@
         init() {
             if (this.initialized) return;
             
-            console.log('[SearchableSelect Manager] Initializing...');
+            // console.log removed for production silence
             
             // Setup SPA listeners
             this.setupSPAListeners();
@@ -1261,7 +1261,7 @@
             this.autoInitialize();
             
             this.initialized = true;
-            console.log('[SearchableSelect Manager] ✅ Ready');
+            // console.log removed for production silence
         }
 
         setupSPAListeners() {
@@ -1371,7 +1371,5 @@
     window.TALON_API.initializeSearchableSelects = () => manager.autoInitialize();
     window.TALON_API.refreshSearchableSelects = () => manager.refresh();
     
-    console.log('%c🔍 Talon SearchableSelect v2.0.0 - SPA Ready', 
-        'color: #6366f1; font-weight: bold; font-size: 14px;');
 
 })(window, document);

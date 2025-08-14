@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TALON - Drill-Down Attività</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- CSS specifico per Drill-Down Chart -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/drill-down_chart.css') }}">
+    
+    <style>
+        body { 
+            margin: 0; 
+            padding: 15px; 
+            background: #f8f9fa; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .dashboard-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin: 0;
+            min-height: calc(100vh - 30px);
+        }
+        
+        /* Info Cards Layout Orizzontale */
+        .info-cards {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .info-card {
+            flex: 1;
+            min-width: 120px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 8px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        
+        .info-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .info-card .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 4px;
+            line-height: 1;
+        }
+        
+        .info-card .label {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Responsive: su mobile impilate */
+        @media (max-width: 640px) {
+            .info-cards {
+                flex-direction: column;
+            }
+            .info-card {
+                min-width: auto;
+            }
+        }
+        
+        /* Nascondi elementi loading */
+        .loading-spinner, .spinner-border, .show {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard-container">
+
+    <!-- Period Selector -->
+    <div class="period-selector">
+        <button class="period-btn" data-period="week">Ultima Settimana</button>
+        <button class="period-btn" data-period="month">Ultimo Mese</button>
+        <button class="period-btn" data-period="quarter">Ultimo Trimestre</button>
+        <button class="period-btn active" data-period="year">Ultimo Anno</button>
+    </div>
+
+    <!-- Breadcrumb Navigation -->
+    <div class="breadcrumb-nav" id="breadcrumb">
+        <div class="breadcrumb-item active" data-level="0">
+            <span>📊</span> Categorie Principali
+        </div>
+    </div>
+
+    <!-- Main Chart -->
+    <div class="chart-container">
+        <canvas id="chartCanvas"></canvas>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="info-cards" id="infoCards">
+        <div class="info-card">
+            <div class="value" id="totalValue">0</div>
+            <div class="label">Totale Attività</div>
+        </div>
+        <div class="info-card">
+            <div class="value" id="categoriesValue">0</div>
+            <div class="label">Categorie</div>
+        </div>
+        <div class="info-card">
+            <div class="value" id="entitiesValue">0</div>
+            <div class="label">Enti Coinvolti</div>
+        </div>
+        <div class="info-card">
+            <div class="value" id="periodValue">7</div>
+            <div class="label">Giorni Analizzati</div>
+        </div>
+    </div>
+
+    <!-- Details Panel - Nascosto di default -->
+    <div class="details-panel" id="detailsPanel" style="display: none;">
+        <h4>📋 Dettagli Attività</h4>
+        <div id="detailsList"></div>
+    </div>
+
+    <!-- Loading Spinner rimosso -->
+</div>
+
+<!-- Container nascosto per inizializzazione drill-down -->
+<div id="drill-down-init" 
+     data-drilldown-chart
+     data-period="year"
+     style="display: none;"></div>
+</div>
+
+<!-- JavaScript -->
+<!-- Chart.js (se non già incluso nel base.html) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Drill-Down Chart Module - Riattivato per dati reali -->
+<script src="{{ url_for('static', filename='js/components/drill-down_chart.js') }}"></script>
+
+<!-- Script di inizializzazione specifico -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurazione API endpoints per Flask
+    window.TALON_CONFIG = window.TALON_CONFIG || {};
+    window.TALON_CONFIG.api = {
+        baseUrl: '',
+        endpoints: {
+            categories: '/drill-down/api/categorie',
+            subcategories: '/drill-down/api/sottocategorie',
+            entities: '/drill-down/api/enti',
+            details: '/drill-down/api/dettagli',
+            stats: '/drill-down/api/statistiche',
+            export: '/drill-down/api/export'
+        }
+    };
+
+    // Distruggi eventuali chart esistenti per evitare conflitti Canvas
+    if (window.chart && typeof window.chart.destroy === 'function') {
+        window.chart.destroy();
+        window.chart = null;
+    }
+    
+    // Usa SOLO le API reali - nessun fallback ai dati mock
+    if (typeof TalonDrillDownChart !== 'undefined') {
+        console.log('🎯 Drill-down chart: Caricamento dati reali da API PostgreSQL...');
+        window.drillDownChart = new TalonDrillDownChart({
+            container: '.dashboard-container',
+            canvas: 'chartCanvas',
+            period: 'year'
+        });
+    } else {
+        console.error('❌ Modulo TalonDrillDownChart non disponibile - impossibile caricare dati reali');
+        document.querySelector('.dashboard-container').innerHTML = '<div style="text-align:center;padding:50px;color:#dc3545;"><h3>Errore</h3><p>Modulo drill-down non disponibile</p></div>';
+    }
+
+    // Gestione pulsanti periodo
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            const period = this.dataset.period;
+            
+            if (window.drillDownChart && typeof window.drillDownChart.setPeriod === 'function') {
+                window.drillDownChart.setPeriod(period);
+            } else {
+                console.warn('drillDownChart.setPeriod non disponibile');
+            }
+        });
+    });
+});
+
+// Tutti i dati mock rimossi - usa SOLO API reali
+console.log('TALON Drill-down Chart - Solo dati reali PostgreSQL attivi');
+</script>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

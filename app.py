@@ -77,6 +77,7 @@ from routes.enti_militari import enti_militari_bp
 from routes.enti_civili import enti_civili_bp
 from routes.operazioni import operazioni_bp
 from routes.attivita import attivita_bp
+from routes.drill_down_chart import drill_down_bp
 
 # ===========================================
 # FUNZIONI SPA SUPPORT
@@ -209,7 +210,13 @@ def create_app():
     # CONFIGURAZIONE APP E SESSIONI
     # ===========================================
     
-    app.config['SECRET_KEY'] = 'talon-secret-key-super-secure-2025-auth-v2'
+    # Cambia SECRET_KEY ad ogni riavvio per invalidare sessioni precedenti in sviluppo
+    if app.debug:
+        import uuid
+        app.config['SECRET_KEY'] = f'talon-debug-{uuid.uuid4().hex}'
+    else:
+        app.config['SECRET_KEY'] = 'talon-secret-key-super-secure-2025-auth-v2'
+    
     app.config['user_sessions'] = {}  # Sessioni in memoria per token API
     app.config['USE_SSO'] = SSO_AVAILABLE  # Flag per SSO
     
@@ -252,20 +259,28 @@ def create_app():
         
         @app.after_request
         def after_request_handler(response):
-            """Gestisce headers per cache e SPA"""
+            """Gestisce headers per cache, SPA e SSO"""
             # Aggiungi header per identificare risposte SPA
             if hasattr(request, 'is_spa') and request.is_spa:
                 response.headers['X-SPA-Response'] = 'true'
             
-            # Disabilita cache in debug
-            if request.endpoint == 'static':
-                response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-                response.headers['Pragma'] = 'no-cache'
-                response.headers['Expires'] = '0'
-            elif request.endpoint and not request.endpoint.startswith('api'):
-                response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-                response.headers['Pragma'] = 'no-cache'
-                response.headers['Expires'] = '0'
+            # FORZA DISABILITA CACHE SEMPRE
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            response.headers['Last-Modified'] = '0'
+            response.headers['ETag'] = ''
+            
+            # Aggiungi timestamp per forzare refresh
+            import time
+            response.headers['X-Timestamp'] = str(int(time.time()))
+            
+            # Gestione token SSO se necessario
+            if SSO_AVAILABLE and (request.path.startswith('/dashboard') or request.path.startswith('/superset')):
+                try:
+                    response = inject_sso_token_in_response(response)
+                except:
+                    pass
             
             return response
     
@@ -625,6 +640,7 @@ def create_app():
             return redirect(url_for('main.dashboard'))
         return redirect(url_for('show_login'))
     
+    
     # ===========================================
     # ROUTE DI AUTENTICAZIONE
     # ===========================================
@@ -764,11 +780,7 @@ def create_app():
                 })
             else:
                 # Risposta web
-                nome_completo = f"{user.get('nome', '')} {user.get('cognome', '')}".strip()
-                if nome_completo:
-                    flash(f'Benvenuto, {nome_completo}!', 'success')
-                else:
-                    flash(f'Benvenuto, {username}!', 'success')
+                # Login completato senza messaggio popup
                 
                 next_page = request.args.get('next')
                 if next_page and next_page.startswith('/'):
@@ -869,15 +881,7 @@ def create_app():
             superset_url += "&standalone=1&show_top_bar=0&hide_nav=1&embedded=1"
             return redirect(superset_url)
         
-        @app.after_request
-        def add_sso_token_cookie(response):
-            """Aggiunge token SSO ai cookie se necessario"""
-            if SSO_AVAILABLE and (request.path.startswith('/dashboard') or request.path.startswith('/superset')):
-                try:
-                    response = inject_sso_token_in_response(response)
-                except:
-                    pass
-            return response
+        # SSO token management ora integrato nel after_request_handler principale
     
     # ===========================================
     # ROUTE API
@@ -1153,6 +1157,7 @@ def create_app():
     app.register_blueprint(enti_civili_bp)
     app.register_blueprint(operazioni_bp)
     app.register_blueprint(attivita_bp)
+    app.register_blueprint(drill_down_bp)
     
     # ===========================================
     # INIZIALIZZAZIONE APPLICAZIONE

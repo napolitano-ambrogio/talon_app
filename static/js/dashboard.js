@@ -84,7 +84,7 @@
             error: 'color: #dc3545',
             debug: 'color: #6c757d'
         };
-        console.log(`%c${prefix}`, styles[level] || styles.debug, ...args);
+        // console.log removed for production silence
     }
 
     function formatNumber(num) {
@@ -615,8 +615,5 @@
         setTimeout(initialize, 100);
     }
 
-    // Log versione
-    console.log('%c🎯 TALON Dashboard Module v2.0.0 - Ready', 
-        'color: #28a745; font-weight: bold;');
 
 })(window, document);

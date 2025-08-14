@@ -27,7 +27,6 @@
         eventHandlers: new Map(),
         changeTimeout: null,
         modifiedIndicator: null,
-        resetButton: null,
         loader: null
     };
 
@@ -98,7 +97,6 @@
         setupFormSubmitHandler();
         setupUnsavedChangesWarning();
         setupChangeTracking();
-        addResetButton();
         
         state.initialized = true;
         log('[ModificaAttivita] ✅ Form modifica inizializzato');
@@ -135,10 +133,6 @@
             state.modifiedIndicator = null;
         }
 
-        if (state.resetButton && state.resetButton.parentNode) {
-            state.resetButton.remove();
-            state.resetButton = null;
-        }
 
         if (state.loader && state.loader.parentNode) {
             state.loader.remove();
@@ -163,7 +157,7 @@
     
     function log(...args) {
         if (config.DEBUG || window.TALON_CONFIG?.debug?.enabled) {
-            console.log(...args);
+            // console.log removed for production silence
         }
     }
 
@@ -434,28 +428,6 @@
         }
     }
 
-    function addResetButton() {
-        const submitButton = state.form?.querySelector('button[type="submit"]');
-        if (!submitButton) return;
-
-        // Verifica se esiste già
-        if (state.resetButton) return;
-
-        state.resetButton = document.createElement('button');
-        state.resetButton.type = 'button';
-        state.resetButton.className = 'btn btn-secondary';
-        state.resetButton.textContent = 'Annulla Modifiche';
-        state.resetButton.style.marginLeft = '10px';
-        
-        const resetHandler = function() {
-            if (confirm('Vuoi annullare tutte le modifiche e ripristinare i valori originali?')) {
-                resetToOriginalState();
-            }
-        };
-        
-        addEventHandler(state.resetButton, 'click', resetHandler);
-        submitButton.parentNode.insertBefore(state.resetButton, submitButton.nextSibling);
-    }
 
     function resetToOriginalState() {
         if (!state.originalFormData || !state.form) return;
@@ -544,8 +516,8 @@
             }
         }
         
-        // Fallback console
-        console.log(`[${type.toUpperCase()}]`, message);
+        // Fallback console - removed for production silence
+        // console.log removed for production silence
     }
 
     function showSuccess(message, duration) {

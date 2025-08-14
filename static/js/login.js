@@ -133,7 +133,7 @@
     
     function log(...args) {
         if (config.DEBUG_MODE) {
-            console.log(...args);
+            // console.log removed for production silence
         }
     }
 

@@ -1433,8 +1433,9 @@
                 'success': 'log'
             };
             
-            const method = methods[level] || 'log';
-            console[method](prefix, ...args);
+            // Console logging removed for production silence
+            // const method = methods[level] || 'log';
+            // console[method](prefix, ...args);
         }
 
         removeStyles() {
@@ -1656,7 +1657,6 @@
     }
     
     function initializeSidebar() {
-        console.log('[TalonSidebar] DOM ready, initializing v3.0.0...');
         
         // Inietta stili
         injectStyles();
@@ -1703,9 +1703,6 @@
         // Esponi anche classe per estensioni
         window.TalonSidebar = TalonSidebar;
         
-        console.log('[TalonSidebar] ✅ Version 3.0.0 SPA initialized!');
-        console.log('[TalonSidebar] API available at window.sidebarAPI');
-        console.log('[TalonSidebar] Status:', window.sidebarAPI.status());
     }
 
 })(window, document);

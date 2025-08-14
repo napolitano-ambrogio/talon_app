@@ -11,14 +11,6 @@
 <div class="form-container attivita-form-container" id="modifica-attivita-container">
     <div class="form-header">
         <h1>Modifica Attività #{{ attivita.id }}</h1>
-        <div class="form-actions-top">
-            <a href="{{ url_for('attivita.visualizza_attivita', id=attivita.id) }}" class="btn btn-secondary" data-spa-link="true">
-                <i class="fas fa-eye"></i> Visualizza
-            </a>
-            <a href="{{ url_for('attivita.lista_attivita') }}" class="btn btn-outline-secondary" data-spa-link="true">
-                <i class="fas fa-list"></i> Torna all'elenco
-            </a>
-        </div>
     </div>
     
     <form action="{{ url_for('attivita.aggiorna_attivita', id=attivita.id) }}" method="POST" id="form-modifica-attivita" class="attivita-form">
@@ -418,12 +410,9 @@
         <!-- Pulsanti azione -->
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save"></i> Aggiorna Attività
+                <i class="fas fa-save"></i> Salva Modifiche
             </button>
-            <button type="button" class="btn btn-warning" id="btn-reset-changes">
-                <i class="fas fa-undo"></i> Annulla Modifiche
-            </button>
-            <a href="{{ url_for('attivita.visualizza_attivita', id=attivita.id) }}" class="btn btn-outline-secondary" data-spa-link="true">
+            <a href="{{ url_for('attivita.visualizza_attivita', id=attivita.id) }}" class="btn btn-outline-secondary">
                 <i class="fas fa-times"></i> Annulla
             </a>
         </div>
@@ -448,12 +437,6 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('[Modifica Attività] Pagina pronta per attività #{{ attivita.id }}');
 });
 
-// Handler per navigazione SPA
-document.addEventListener('spa:content-loaded', function(e) {
-    if (e.detail && e.detail.page === 'modifica-attivita') {
-        console.log('[Modifica Attività] Contenuto SPA caricato');
-    }
-});
 
 // Dati attività per JavaScript (se necessario)
 window.currentAttivita = {

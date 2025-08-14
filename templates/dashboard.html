@@ -26,24 +26,21 @@
 <div id="contentModal" class="modal-overlay" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Seleziona Contenuto</h2>
+            <h2>Aggiungi Elemento alla Dashboard</h2>
             <button onclick="closeContentModal()" class="modal-close">&times;</button>
         </div>
         
-        <div class="modal-tabs">
-            <button class="tab-button active" onclick="showTab('dashboards')">Dashboard</button>
-            <button class="tab-button" onclick="showTab('charts')">Grafici</button>
-        </div>
-        
-        <div id="dashboardsTab" class="tab-content active">
-            <div class="content-grid" id="dashboardsList">
-                <!-- Dashboard verranno inserite qui -->
+        <div class="primary-options">
+            <div class="option-card" onclick="selectPrimaryOption('drill-down')">
+                <div class="option-icon">🎯</div>
+                <div class="option-title">Grafico Esplorabile delle Attività</div>
+                <div class="option-description">Analisi interattiva drill-down con dati TALON</div>
             </div>
-        </div>
-        
-        <div id="chartsTab" class="tab-content" style="display: none;">
-            <div class="content-grid" id="chartsList">
-                <!-- Grafici verranno inseriti qui -->
+            
+            <div class="option-card" onclick="selectPrimaryOption('superset')">
+                <div class="option-icon">📊</div>
+                <div class="option-title">Dashboard Superset</div>
+                <div class="option-description">Dashboard n. 1 associata al tuo account</div>
             </div>
         </div>
     </div>
@@ -129,18 +126,30 @@ body {
 }
 .modal-close:hover { background: #f0f0f0; color: #333; }
 
-/* Tabs */
-.modal-tabs { display: flex; padding: 0 20px; background: #f8f9fa; border-bottom: 2px solid #e0e0e0; }
-.tab-button {
-    padding: 12px 24px; background: none; border: none; cursor: pointer; font-size: 14px; font-weight: 500;
-    color: #666; position: relative; transition: all 0.3s;
+/* Primary Options */
+.primary-options { 
+    padding: 30px; display: flex; gap: 20px; justify-content: center; 
+    flex-wrap: wrap; min-height: 200px; 
 }
-.tab-button:hover { color: #007bff; }
-.tab-button.active { color: #007bff; }
-.tab-button.active::after {
-    content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: #007bff;
+.option-card {
+    flex: 1; max-width: 300px; min-width: 250px; padding: 25px; border: 2px solid #e0e0e0; 
+    border-radius: 12px; cursor: pointer; transition: all 0.3s ease;
+    background: white; text-align: center; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
 }
-.tab-content { flex: 1; overflow-y: auto; padding: 20px; }
+.option-card:hover {
+    border-color: #007bff; background: #f8f9ff; transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,123,255,0.15);
+}
+.option-icon { 
+    font-size: 48px; margin-bottom: 15px; display: block;
+}
+.option-title { 
+    font-weight: 600; font-size: 16px; color: #333; margin-bottom: 8px; 
+}
+.option-description { 
+    font-size: 13px; color: #666; line-height: 1.4; 
+}
 
 /* Content Grid */
 .content-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
@@ -188,6 +197,54 @@ body {
     .dashboard-card.resizable { max-width: calc(100vw - 40px); width: 100% !important; }
     .content-grid { grid-template-columns: 1fr; }
     .modal-content { width: 95%; max-height: 90vh; }
+}
+
+/* Stili per il pulsante X floating */
+.floating-close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    border: none;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.floating-close-button:hover {
+    background: rgba(220, 53, 69, 1);
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* Area sensibile per attivare il pulsante floating */
+.hover-area-close {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    z-index: 999;
+    /* Debug: rimuovi dopo il test */
+    /* background: rgba(255, 0, 0, 0.1); */
+}
+
+/* Assicurati che la card abbia position relative per i figli absolute */
+.dashboard-card {
+    position: relative !important;
 }
 </style>
 
@@ -282,7 +339,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeResizable();
     loadAutoRefreshSettings();
     setupWindowResize();
-    populateContentModal(); // riempi il modal
 });
 
 // Solo suggerimento se in HTTPS ma Superset è HTTP
@@ -301,47 +357,39 @@ function checkEnvironmentHint() {
 // ==========================================
 // GESTIONE MODAL SELEZIONE
 // ==========================================
-function populateContentModal() {
-    // Dashboard
-    const dashboardsList = document.getElementById('dashboardsList');
-    dashboardsList.innerHTML = AVAILABLE_CONTENT.dashboards.map(d => `
-        <div class="content-item" onclick="selectContent('dashboard', ${d.id}, '${d.title}')">
-            <div class="content-item-icon">${d.icon}</div>
-            <div class="content-item-title">${d.title}</div>
-            <div class="content-item-id">ID: ${d.id}</div>
-            <span class="content-item-type">Dashboard</span>
-        </div>
-    `).join('');
-    
-    // Grafici
-    const chartsList = document.getElementById('chartsList');
-    chartsList.innerHTML = AVAILABLE_CONTENT.charts.map(c => `
-        <div class="content-item" onclick="selectContent('chart', ${c.id}, '${c.title}')">
-            <div class="content-item-icon">${c.icon}</div>
-            <div class="content-item-title">${c.title}</div>
-            <div class="content-item-id">ID: ${c.id}</div>
-            <span class="content-item-type">Grafico</span>
-        </div>
-    `).join('');
-}
-function showTab(tabName) {
-    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-    if (tabName === 'dashboards') {
-        document.querySelector('.tab-button:first-child').classList.add('active');
-        document.getElementById('dashboardsTab').style.display = 'block';
-    } else {
-        document.querySelector('.tab-button:last-child').classList.add('active');
-        document.getElementById('chartsTab').style.display = 'block';
-    }
-}
 function openContentModal() { document.getElementById('contentModal').style.display = 'flex'; }
 function closeContentModal() { document.getElementById('contentModal').style.display = 'none'; }
-function selectContent(type, id, title) {
-    const chartData = { type, title };
-    if (type === 'dashboard') chartData.dashboardId = id; else chartData.sliceId = id;
+
+function selectPrimaryOption(option) {
     closeContentModal();
-    addNewChartWithData(chartData);
+    
+    if (option === 'drill-down') {
+        // Aggiungi il Grafico Esplorabile delle Attività - senza controllo Superset
+        const chartData = {
+            type: 'drill-down',
+            title: 'Grafico Esplorabile delle Attività',
+            url: '/drill-down/'
+        };
+        addNewChartWithData(chartData);
+    } else if (option === 'superset') {
+        // Per Superset verifica l'autenticazione
+        if (!supersetAuthenticated) {
+            if (sessionStorage.getItem('superset_authenticated') === 'true') {
+                supersetAuthenticated = true;
+            } else {
+                openSupersetLogin(true);
+                return;
+            }
+        }
+        
+        // Aggiungi la Dashboard Superset n. 1
+        const chartData = {
+            type: 'dashboard',
+            title: 'Dashboard Superset #1',
+            dashboardId: 1
+        };
+        addNewChartWithData(chartData);
+    }
 }
 
 // ==========================================
@@ -401,7 +449,8 @@ function addNewChartWithData(chartData) {
     try {
         // Validate chart data before creating
         if (chartData.type === 'dashboard' && chartData.dashboardId) {
-            if (typeof chartData.dashboardId === 'number' && chartData.dashboardId <= 12) {
+            // Allow dashboard ID 1 but block other hardcoded example IDs
+            if (typeof chartData.dashboardId === 'number' && chartData.dashboardId > 1 && chartData.dashboardId <= 12) {
                 console.error(`🚫 REJECTED: Dashboard ID ${chartData.dashboardId} is invalid (hardcoded example)`);
                 showNotification(`Dashboard ID ${chartData.dashboardId} non valida - rimuovere dai dati salvati`, 'error');
                 return;
@@ -462,21 +511,61 @@ function createChartCard(chartId, chartData, width, height) {
     card.id = chartId; card.style.width = `${width}px`; card.style.height = `${height}px`;
     const titleDiv = document.createElement("div");
     titleDiv.className = "chart-title";
-    titleDiv.style.background = chartData.type === 'dashboard' ? '#e3f2fd' : '#f8f9fa';
-    let icon = '';
-    if (chartData.type === 'dashboard') {
-        const d = AVAILABLE_CONTENT.dashboards.find(x => x.id == chartData.dashboardId);
-        icon = d ? d.icon : '📊';
+    
+    // Per drill-down non mostrare il titolo
+    if (chartData.type === 'drill-down') {
+        titleDiv.style.display = 'none';
     } else {
-        const c = AVAILABLE_CONTENT.charts.find(x => x.id == chartData.sliceId);
-        icon = c ? c.icon : '📈';
+        titleDiv.style.background = chartData.type === 'dashboard' ? '#e3f2fd' : '#f8f9fa';
+        let icon = '';
+        if (chartData.type === 'dashboard') {
+            const d = AVAILABLE_CONTENT.dashboards.find(x => x.id == chartData.dashboardId);
+            icon = d ? d.icon : '📊';
+        } else {
+            const c = AVAILABLE_CONTENT.charts.find(x => x.id == chartData.sliceId);
+            icon = c ? c.icon : '📈';
+        }
+        titleDiv.innerHTML = `${icon} ${chartData.title || 'Dashboard'}`;
     }
-    titleDiv.innerHTML = `${icon} ${chartData.title || 'Dashboard'}`;
+    
     const closeBtn = document.createElement("button");
     closeBtn.innerHTML = "&times;"; closeBtn.className = "close-button";
     closeBtn.onclick = () => removeChart(chartId);
+    
+    // Crea un pulsante X floating per l'iframe
+    const floatingCloseBtn = document.createElement("button");
+    floatingCloseBtn.innerHTML = "&times;";
+    floatingCloseBtn.className = "floating-close-button";
+    floatingCloseBtn.onclick = () => removeChart(chartId);
+    floatingCloseBtn.title = "Chiudi";
+    
+    // Crea un'area sensibile per il hover nell'angolo in alto a destra
+    const hoverArea = document.createElement("div");
+    hoverArea.className = "hover-area-close";
+    
+    // Mostra/nascondi il pulsante floating al hover
+    hoverArea.addEventListener('mouseenter', () => {
+        floatingCloseBtn.style.opacity = '1';
+        floatingCloseBtn.style.visibility = 'visible';
+    });
+    
+    hoverArea.addEventListener('mouseleave', () => {
+        floatingCloseBtn.style.opacity = '0';
+        floatingCloseBtn.style.visibility = 'hidden';
+    });
+    
+    floatingCloseBtn.addEventListener('mouseenter', () => {
+        floatingCloseBtn.style.opacity = '1';
+        floatingCloseBtn.style.visibility = 'visible';
+    });
+    
     const iframeContainer = document.createElement("div");
     iframeContainer.className = "iframe-container";
+    
+    // Per drill-down occupa tutta l'altezza (senza titolo)
+    if (chartData.type === 'drill-down') {
+        iframeContainer.style.height = '100%';
+    }
     const iframe = createIframe(chartData, chartId);
     const loadingOverlay = createLoadingOverlay();
     titleDiv.appendChild(closeBtn);
@@ -484,6 +573,10 @@ function createChartCard(chartId, chartData, width, height) {
     iframeContainer.appendChild(loadingOverlay);
     card.appendChild(titleDiv);
     card.appendChild(iframeContainer);
+    
+    // Aggiungi l'area hover e il pulsante floating
+    card.appendChild(hoverArea);
+    card.appendChild(floatingCloseBtn);
     return card;
 }
 function createIframe(chartData, chartId) {
@@ -516,6 +609,16 @@ function createIframe(chartData, chartId) {
     iframe.setAttribute('data-dashboard-id', chartData.dashboardId || '');
     iframe.onload = function() {
         const overlay = this.parentElement.querySelector('.loading-overlay');
+        const chartType = this.getAttribute('data-chart-type');
+        
+        // Per il drill-down non fare controlli di autenticazione Superset
+        if (chartType === 'drill-down') {
+            if (overlay) overlay.style.display = 'none';
+            console.log('🎯 Drill-down caricato correttamente');
+            return;
+        }
+        
+        // Solo per dashboard Superset fare i controlli di autenticazione
         try {
             const iframeDoc = this.contentDocument || this.contentWindow.document;
             if (iframeDoc && /login/i.test(iframeDoc.body.innerHTML)) {
@@ -541,7 +644,6 @@ function createIframe(chartData, chartId) {
                 }
             } else {
                 if (overlay) overlay.style.display = 'none';
-                // ok
             }
         } catch(e) {
             if (overlay) overlay.style.display = 'none';
@@ -551,21 +653,28 @@ function createIframe(chartData, chartId) {
     return iframe;
 }
 function buildIframeUrl(chartData) {
-    // VALIDATE DASHBOARD ID BEFORE BUILDING URL
-    if (chartData.type === 'dashboard' && chartData.dashboardId) {
-        // Block hardcoded example dashboard IDs that don't exist
-        if (typeof chartData.dashboardId === 'number' && chartData.dashboardId <= 12) {
-            console.error(`🚫 BLOCKED: Attempt to load non-existent dashboard ID ${chartData.dashboardId}`);
-            throw new Error(`Dashboard ID ${chartData.dashboardId} is a hardcoded example that doesn't exist in Superset`);
-        }
-    }
-    
     let url = '';
-    if (chartData.type === 'dashboard') {
+    
+    if (chartData.type === 'drill-down') {
+        // Per il Grafico Esplorabile delle Attività
+        console.log('Building drill-down chart URL');
+        url = chartData.url || '/components/drill-down_chart.html';
+        
+    } else if (chartData.type === 'dashboard') {
+        // VALIDATE DASHBOARD ID BEFORE BUILDING URL
+        if (chartData.dashboardId) {
+            // Block hardcoded example dashboard IDs that don't exist (except ID 1 which we want to allow)
+            if (typeof chartData.dashboardId === 'number' && chartData.dashboardId > 1 && chartData.dashboardId <= 12) {
+                console.error(`🚫 BLOCKED: Attempt to load non-existent dashboard ID ${chartData.dashboardId}`);
+                throw new Error(`Dashboard ID ${chartData.dashboardId} is a hardcoded example that doesn't exist in Superset`);
+            }
+        }
+        
         console.log(`Building dashboard URL for ID: ${chartData.dashboardId}`);
         url = `${CONFIG.SUPERSET_BASE_URL}/superset/dashboard/${chartData.dashboardId}/?`;
         url += 'standalone=1&show_top_bar=0&hide_nav=1&embedded=1';
         if (chartData.nativeFiltersKey) url += `&native_filters_key=${chartData.nativeFiltersKey}`;
+        
     } else {
         console.log(`Building chart URL for slice ID: ${chartData.sliceId}`);
         url = `${CONFIG.SUPERSET_BASE_URL}/explore/?`;
@@ -726,6 +835,10 @@ function loadLayout() {
             
             // Verifica se ci sono dashboard/chart che potrebbero non esistere
             const validCharts = loadedCharts.filter(chart => {
+                if (chart.type === 'drill-down') {
+                    console.log(`Loading drill-down chart: ${chart.title}`);
+                    return true;
+                }
                 if (chart.type === 'dashboard' && chart.dashboardId) {
                     console.log(`Attempting to load dashboard ID: ${chart.dashboardId}`);
                     return true; // Per ora teniamo tutto, gestiamo errori nell'iframe
@@ -765,6 +878,17 @@ function loadLayout() {
 // ==========================================
 // REFRESH
 // ==========================================
+function refreshAllCharts() {
+    const iframes = document.querySelectorAll('.dashboard-iframe');
+    if (iframes.length === 0) {
+        console.log('Nessun grafico da aggiornare');
+        return;
+    }
+    
+    iframes.forEach(iframe => refreshIframe(iframe));
+    showNotification(`${iframes.length} grafici aggiornati!`, 'success');
+}
+
 function refreshSingleChart(chartId) {
     const card = document.getElementById(chartId);
     if (!card) return;

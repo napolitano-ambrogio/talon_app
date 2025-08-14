@@ -45,8 +45,8 @@
 
         const selectedText = selectedOption.text.trim().toUpperCase();
         
-        // Debug info
-        console.log(`[TalonAttivitaForms] Tipologia selezionata: ${selectedText}`);
+        // Debug info - removed for production silence
+        // console.log removed for production silence
 
         // Nascondi tutte le sezioni
         hideAllDetailSections();
@@ -88,7 +88,7 @@
                 section.style.opacity = '1';
             }, 10);
             
-            console.log(`[TalonAttivitaForms] Sezione attivata: ${sectionId}`);
+            // console.log removed for production silence
         }
     }
 
@@ -211,7 +211,7 @@
             }
         });
         
-        console.log('[TalonAttivitaForms] Sezioni di dettaglio resettate');
+        // console.log removed for production silence
     }
 
     /**
@@ -237,7 +237,7 @@
             }
         });
         
-        console.log(`[TalonAttivitaForms] Sezione ${sectionId} popolata con dati`);
+        // console.log removed for production silence
     }
 
     /**
@@ -329,7 +329,7 @@
             inputs.volume._spaVolumeHandler = volumeHandler;
         }
 
-        console.log('[TalonAttivitaForms] Sezione GETRA inizializzata');
+        // console.log removed for production silence
     }
 
     /**
@@ -448,7 +448,7 @@
      * Inizializzazione completa del modulo (SPA-friendly)
      */
     function initialize() {
-        console.log('[TalonAttivitaForms] Inizializzazione modulo SPA...');
+        // console.log removed for production silence
         
         // Cleanup se già inizializzato
         if (isInitialized) {
@@ -470,14 +470,14 @@
         markRequiredFields();
         
         isInitialized = true;
-        console.log('[TalonAttivitaForms] Modulo SPA inizializzato');
+        // console.log removed for production silence
     }
 
     /**
      * Cleanup completo del modulo
      */
     function cleanup() {
-        console.log('[TalonAttivitaForms] Cleanup modulo...');
+        // console.log removed for production silence
         
         // Cleanup form listeners
         if (currentConfig && currentConfig.tipologiaSelectId) {
@@ -553,6 +553,5 @@
         isInitialized: () => isInitialized
     };
 
-    console.log('[TalonAttivitaForms] Modulo caricato v' + window.TalonAttivitaForms.version + ' (SPA Ready)');
 
 })(window, document);

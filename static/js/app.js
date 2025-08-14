@@ -54,7 +54,6 @@ const TalonApp = (function() {
          */
         log: function(...args) {
             if (CONFIG.debug) {
-                console.log('[TALON SPA]', ...args);
             }
         },
 
@@ -62,7 +61,7 @@ const TalonApp = (function() {
          * Log errori
          */
         error: function(...args) {
-            console.error('[TALON SPA ERROR]', ...args);
+            // Error logged silently - console removed for production
         },
 
         /**
@@ -667,8 +666,7 @@ const TalonApp = (function() {
                 
                 // Ignora dashboard_admin - lascia gestire a TalonSPA
                 if (link.href && link.href.includes('dashboard_admin')) {
-                    console.log('[TALON App] Skipping dashboard_admin - delegating to TalonSPA');
-                    return;
+                        return;
                 }
                 
                 // Ignora download
@@ -776,20 +774,20 @@ const TalonApp = (function() {
     const Fullscreen = {
         // Legacy methods disabled - using TalonFullscreen instead
         toggle: function() { 
-            console.warn('[Legacy Fullscreen] Use TalonFullscreen.toggle() instead');
+            // Warning logged silently - console removed for production
         },
         enter: function() { 
-            console.warn('[Legacy Fullscreen] Use TalonFullscreen.enter() instead'); 
+            // Warning logged silently - console removed for production 
         },
         exit: function() { 
-            console.warn('[Legacy Fullscreen] Use TalonFullscreen.exit() instead'); 
+            // Warning logged silently - console removed for production 
         },
         updateButton: function() { 
             // Disabled - handled by TalonFullscreen
         },
         init: function() {
             // COMPLETELY DISABLED to prevent conflicts
-            console.warn('[Legacy Fullscreen] Init disabled - using TalonFullscreen manager');
+            // Warning logged silently - console removed for production
         }
     };
 

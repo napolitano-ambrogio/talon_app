@@ -1386,8 +1386,5 @@
         setTimeout(initialize, 100);
     }
 
-    // Log versione
-    console.log('%c📋 TALON Attività Module v3.0.0 REFACTORED - Ready', 
-        'color: #17a2b8; font-weight: bold;');
 
 })(window, document);

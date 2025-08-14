@@ -1,6 +1,6 @@
 # routes/attivita.py - Blueprint per gestione attività con supporto SPA
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, get_flashed_messages, Response
-from datetime import datetime
+from datetime import datetime, date
 from psycopg2.extras import RealDictCursor
 import re
 import csv
@@ -11,7 +11,7 @@ from auth import (
     login_required, permission_required, entity_access_required,
     admin_required, operatore_or_admin_required,
     get_user_accessible_entities, log_user_action, get_current_user_info,
-    is_admin, is_operatore_or_above, get_user_role,
+    is_admin, is_operatore_or_above, get_user_role, get_user_permissions,
     ROLE_ADMIN, ROLE_OPERATORE, ROLE_VISUALIZZATORE,
     get_auth_db_connection  # connessione centralizzata a PostgreSQL
 )
@@ -771,13 +771,21 @@ def visualizza_attivita(id):
         'attivita',
         id
     )
+    
+    # Determina i permessi dell'utente
+    user_permissions = get_user_permissions(user_id)
+    can_edit = 'EDIT_ATTIVITA' in user_permissions
+    can_delete = 'DELETE_ATTIVITA' in user_permissions
 
     return render_spa_template(
-        'descrizione_attivita.html',
+        'attivita/visualizza_attivita.html',
         attivita=attivita_completa,
         partenza=partenza,
         destinazione=destinazione,
-        dettagli_specifici=dettagli_specifici
+        dettagli_specifici=dettagli_specifici,
+        can_edit=can_edit,
+        can_delete=can_delete,
+        today=date.today()
     )
 
 @attivita_bp.route('/attivita/modifica/<int:id>')

@@ -97,7 +97,7 @@
             error: 'color: #dc3545',
             debug: 'color: #6c757d'
         };
-        console.log(`%c${prefix}`, styles[level] || styles.debug, ...args);
+        // console.log removed for production silence
     }
 
     function debounce(func, wait) {
@@ -796,7 +796,7 @@
         if (window.TalonApp?.showToast) {
             window.TalonApp.showToast(message, type);
         } else {
-            console.log(`[${type}] ${message}`);
+            // console.log removed for production silence
         }
     }
 
@@ -902,8 +902,5 @@
         setTimeout(initialize, 100);
     }
 
-    // Log versione
-    console.log('%c⚔️ TALON Enti Militari Module v2.0.0 - Ready', 
-        'color: #dc3545; font-weight: bold;');
 
 })(window, document);

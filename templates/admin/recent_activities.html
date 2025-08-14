@@ -4,7 +4,7 @@
 
 {% block breadcrumb %}
 <li class="breadcrumb-item">
-    <a href="{{ url_for('main.dashboard_admin') }}" data-spa-link>Dashboard Admin</a>
+    <a href="{{ url_for('main.dashboard_admin') }}">Dashboard Admin</a>
 </li>
 <li class="breadcrumb-item active">Attività Recenti</li>
 {% endblock %}
@@ -16,7 +16,7 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2><i class="fas fa-history"></i> Attività Recenti del Sistema</h2>
                 <div>
-                    <a href="{{ url_for('main.dashboard_admin') }}" class="btn btn-outline-primary" data-spa-link>
+                    <a href="{{ url_for('main.dashboard_admin') }}" class="btn btn-outline-primary">
                         <i class="fas fa-arrow-left"></i> Torna al Dashboard
                     </a>
                 </div>
@@ -154,7 +154,7 @@
                             <ul class="pagination justify-content-center">
                                 {% if current_page > 1 %}
                                 <li class="page-item">
-                                    <a class="page-link" href="{{ url_for('main.recent_activities', page=current_page-1) }}" data-spa-link>
+                                    <a class="page-link" href="{{ url_for('main.recent_activities', page=current_page-1) }}">
                                         <i class="fas fa-chevron-left"></i> Precedente
                                     </a>
                                 </li>
@@ -167,7 +167,7 @@
                                     </li>
                                     {% elif page_num <= 3 or page_num > total_pages - 3 or (page_num >= current_page - 2 and page_num <= current_page + 2) %}
                                     <li class="page-item">
-                                        <a class="page-link" href="{{ url_for('main.recent_activities', page=page_num) }}" data-spa-link>{{ page_num }}</a>
+                                        <a class="page-link" href="{{ url_for('main.recent_activities', page=page_num) }}">{{ page_num }}</a>
                                     </li>
                                     {% elif page_num == 4 or page_num == total_pages - 3 %}
                                     <li class="page-item disabled">
@@ -178,7 +178,7 @@
 
                                 {% if current_page < total_pages %}
                                 <li class="page-item">
-                                    <a class="page-link" href="{{ url_for('main.recent_activities', page=current_page+1) }}" data-spa-link>
+                                    <a class="page-link" href="{{ url_for('main.recent_activities', page=current_page+1) }}">
                                         Successiva <i class="fas fa-chevron-right"></i>
                                     </a>
                                 </li>

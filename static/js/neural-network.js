@@ -701,7 +701,7 @@
             };
             
             const method = methods[level] || 'log';
-            console[method](prefix, ...args);
+            // Console logging removed for production silence
         }
     }
 
@@ -725,7 +725,6 @@
         async init() {
             if (this.initialized) return;
             
-            console.log('[Neural Network Manager] Initializing...');
             
             // Setup SPA event listeners
             this.setupSPAListeners();
@@ -734,7 +733,6 @@
             await this.autoDetectCanvas();
             
             this.initialized = true;
-            console.log('[Neural Network Manager] ✅ Ready');
         }
 
         setupSPAListeners() {
@@ -772,8 +770,7 @@
             
             if (success) {
                 this.instances.set(canvasId, network);
-                console.log(`[Neural Network Manager] Created instance: ${canvasId}`);
-            }
+                }
             
             return network;
         }
@@ -787,8 +784,7 @@
             if (network) {
                 network.destroy();
                 this.instances.delete(canvasId);
-                console.log(`[Neural Network Manager] Destroyed instance: ${canvasId}`);
-            }
+                }
         }
 
         destroyAll() {
@@ -847,7 +843,5 @@
     // Alias for backward compatibility
     window.TALON_NeuralNetwork = window.TalonNeuralNetwork;
     
-    console.log('%c🧠 Talon Neural Network v5.0.0 - SPA Ready', 
-        'color: #3b82f6; font-weight: bold; font-size: 14px;');
 
 })(window, document);
