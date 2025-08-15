@@ -237,9 +237,6 @@ document.addEventListener('DOMContentLoaded', function() {
         tornaSistemaBtn.addEventListener('click', function(e) {
             console.log('[System Info] Navigating to dashboard_admin, forcing full reload');
             // Clear cache to force fresh load
-            if (window.TalonSPA) {
-                window.TalonSPA.clearCache();
-            }
         });
     }
     

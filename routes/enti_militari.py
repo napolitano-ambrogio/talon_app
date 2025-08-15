@@ -311,7 +311,7 @@ def get_available_parents(accessible_entities, exclude_id=None):
 # ROUTE PRINCIPALI
 # ===========================================
 
-@enti_militari_bp.route('/organigramma')
+@enti_militari_bp.route('/enti_militari/organigramma')
 @permission_required('VIEW_ENTI_MILITARI')
 def organigramma():
     """Visualizza organigramma enti militari con controllo cono d'ombra"""
@@ -322,7 +322,9 @@ def organigramma():
         view_all = request.args.get('view') == 'all'
         search = request.args.get('search', '').strip()
 
-        accessible = get_accessible_entities()
+        # Usa direttamente get_user_accessible_entities invece del wrapper
+        accessible = get_user_accessible_entities(user_id)
+        
         if not accessible:
             flash('Non hai accesso a nessun ente militare.', 'warning')
             return render_template('organigramma.html', tree=[], view_all=False, user_role=user_role)
@@ -388,7 +390,7 @@ def inserisci_militare_form():
         accessible = get_accessible_entities()
         if not accessible:
             flash('Non hai accesso a nessun ente per creare enti militari.', 'warning')
-            return redirect(url_for('enti_militari.organigramma'))
+            return redirect('/enti_militari/organigramma')
 
         enti_parent = get_available_parents(accessible)
 
@@ -402,7 +404,7 @@ def inserisci_militare_form():
 
     except Exception as e:
         flash(f'Errore nel caricamento del form: {str(e)}', 'error')
-        return redirect(url_for('enti_militari.organigramma'))
+        return redirect('/enti_militari/organigramma')
 
 @enti_militari_bp.route('/salva_militare', methods=['POST'])
 @operatore_or_admin_required
@@ -421,10 +423,7 @@ def salva_militare():
         codice = request.form['codice'].upper().strip()
         parent_id = request.form.get('parent_id') or None
         indirizzo = request.form.get('indirizzo', '').upper().strip()
-        civico = request.form.get('civico', '').upper().strip()
-        cap = request.form.get('cap', '').strip()
-        citta = request.form.get('citta', '').upper().strip()
-        provincia = request.form.get('provincia', '').upper().strip()
+        # Campi civico, cap, citta, provincia eliminati dallo schema
         telefono = request.form.get('telefono', '').strip()
         email = request.form.get('email', '').strip().lower()
         note = request.form.get('note', '').upper().strip()
@@ -443,13 +442,13 @@ def salva_militare():
         new_id = execute(
             """
             INSERT INTO enti_militari
-                (nome, codice, parent_id, indirizzo, civico, cap, citta, provincia,
+                (nome, codice, parent_id, indirizzo,
                  telefono, email, note, creato_da, data_creazione)
             VALUES
-                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
             RETURNING id
             """,
-            (nome, codice, parent_id, indirizzo, civico, cap, citta, provincia,
+            (nome, codice, parent_id, indirizzo,
              telefono, email, note, user_id),
             return_lastrowid=True
         )
@@ -502,7 +501,7 @@ def visualizza_ente(id):
 
             if not ente:
                 flash('Ente militare non trovato.', 'error')
-                return redirect(url_for('enti_militari.organigramma'))
+                return redirect('/enti_militari/organigramma')
 
             parent_name = None
             if ente['parent_id']:
@@ -566,7 +565,7 @@ def visualizza_ente(id):
 
     except Exception as e:
         flash(f'Errore nel caricamento dell\'ente: {str(e)}', 'error')
-        return redirect(url_for('enti_militari.organigramma'))
+        return redirect('/enti_militari/organigramma')
 
 @enti_militari_bp.route('/modifica_militare/<int:id>')
 @entity_access_required('id')
@@ -578,7 +577,7 @@ def modifica_militare_form(id):
         ente = query_one('SELECT * FROM enti_militari WHERE id = %s', (id,))
         if not ente:
             flash('Ente militare non trovato.', 'error')
-            return redirect(url_for('enti_militari.organigramma'))
+            return redirect('/enti_militari/organigramma')
 
         accessible = get_accessible_entities()
         available_parents = get_available_parents(accessible, id)
@@ -597,7 +596,7 @@ def modifica_militare_form(id):
 
     except Exception as e:
         flash(f'Errore nel caricamento dell\'ente: {str(e)}', 'error')
-        return redirect(url_for('enti_militari.organigramma'))
+        return redirect('/enti_militari/organigramma')
 
 @enti_militari_bp.route('/aggiorna_militare/<int:id>', methods=['POST'])
 @entity_access_required('id')
@@ -617,10 +616,7 @@ def aggiorna_militare(id):
         codice = request.form['codice'].upper().strip()
         parent_id = request.form.get('parent_id') or None
         indirizzo = request.form.get('indirizzo', '').upper().strip()
-        civico = request.form.get('civico', '').upper().strip()
-        cap = request.form.get('cap', '').strip()
-        citta = request.form.get('citta', '').upper().strip()
-        provincia = request.form.get('provincia', '').upper().strip()
+        # Campi civico, cap, citta, provincia eliminati dallo schema
         telefono = request.form.get('telefono', '').strip()
         email = request.form.get('email', '').strip().lower()
         note = request.form.get('note', '').upper().strip()
@@ -628,7 +624,7 @@ def aggiorna_militare(id):
         existing = query_one('SELECT nome, codice FROM enti_militari WHERE id = %s', (id,))
         if not existing:
             flash('Ente militare non trovato.', 'error')
-            return redirect(url_for('enti_militari.organigramma'))
+            return redirect('/enti_militari/organigramma')
 
         old_name = existing['nome']
         old_code = existing['codice']
@@ -663,7 +659,7 @@ def aggiorna_militare(id):
                    modificato_da=%s, data_modifica=NOW()
              WHERE id = %s
             """,
-            (nome, codice, parent_id, indirizzo, civico, cap, citta, provincia,
+            (nome, codice, parent_id, indirizzo,
              telefono, email, note, user_id, id)
         )
 
@@ -699,7 +695,7 @@ def elimina_militare(id):
         ente = query_one('SELECT nome, codice FROM enti_militari WHERE id = %s', (id,))
         if not ente:
             flash('Ente militare non trovato.', 'error')
-            return redirect(url_for('enti_militari.organigramma'))
+            return redirect('/enti_militari/organigramma')
 
         nome_ente = ente['nome']
         codice_ente = ente['codice']
@@ -707,7 +703,7 @@ def elimina_militare(id):
         dependencies = check_ente_militare_dependencies(id)
         if dependencies:
             flash(f'Impossibile eliminare l\'ente "{nome_ente}": {", ".join(dependencies)}.', 'error')
-            return redirect(url_for('enti_militari.organigramma'))
+            return redirect('/enti_militari/organigramma')
 
         execute('DELETE FROM enti_militari WHERE id = %s', (id,))
 
@@ -731,7 +727,7 @@ def elimina_militare(id):
             id,
             result='FAILED'
         )
-    return redirect(url_for('enti_militari.organigramma'))
+    return redirect('/enti_militari/organigramma')
 
 # ===========================================
 # ROUTE AGGIUNTIVE E UTILIT
@@ -745,7 +741,7 @@ def export_enti_militari():
 
     if not accessible:
         flash('Nessun ente accessibile per l\'export.', 'warning')
-        return redirect(url_for('enti_militari.organigramma'))
+        return redirect('/enti_militari/organigramma')
 
     try:
         conn = pg_conn()
@@ -800,7 +796,7 @@ def export_enti_militari():
         )
     except Exception as e:
         flash(f'Errore nell\'export: {str(e)}', 'error')
-        return redirect(url_for('enti_militari.organigramma'))
+        return redirect('/enti_militari/organigramma')
 
 @enti_militari_bp.route('/enti_militari/statistiche')
 @operatore_or_admin_required
@@ -810,7 +806,7 @@ def statistiche_enti_militari():
     accessible = get_accessible_entities()
     if not accessible:
         flash('Nessun ente accessibile per le statistiche.', 'warning')
-        return redirect(url_for('enti_militari.organigramma'))
+        return redirect('/enti_militari/organigramma')
 
     try:
         conn = pg_conn()
@@ -861,7 +857,7 @@ def statistiche_enti_militari():
 
     except Exception as e:
         flash(f'Errore nel caricamento delle statistiche: {str(e)}', 'error')
-        return redirect(url_for('enti_militari.organigramma'))
+        return redirect('/enti_militari/organigramma')
 
 @enti_militari_bp.route('/api/enti_militari/cerca')
 @login_required
@@ -931,9 +927,9 @@ def api_albero_enti(root_id):
 @enti_militari_bp.errorhandler(psycopg2.Error)
 def handle_db_error(error):
     flash('Errore nel database degli enti militari. Contattare l\'amministratore.', 'error')
-    return redirect(url_for('enti_militari.organigramma'))
+    return redirect('/enti_militari/organigramma')
 
 @enti_militari_bp.errorhandler(ValueError)
 def handle_value_error(error):
     flash('Dati non validi forniti.', 'error')
-    return redirect(url_for('enti_militari.organigramma'))
+    return redirect('/enti_militari/organigramma')

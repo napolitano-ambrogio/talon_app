@@ -372,15 +372,9 @@ function selectPrimaryOption(option) {
         };
         addNewChartWithData(chartData);
     } else if (option === 'superset') {
-        // Per Superset verifica l'autenticazione
-        if (!supersetAuthenticated) {
-            if (sessionStorage.getItem('superset_authenticated') === 'true') {
-                supersetAuthenticated = true;
-            } else {
-                openSupersetLogin(true);
-                return;
-            }
-        }
+        // Reindirizza alla pagina embedded di Superset
+        window.location.href = '{{ url_for("main.superset_embedded") }}';
+        return;
         
         // Aggiungi la Dashboard Superset n. 1
         const chartData = {

@@ -16,11 +16,7 @@
                 </div>
                 <div class="detail-item">
                     <dt>Indirizzo</dt>
-                    <dd>{{ ente.indirizzo or '' }} {{ ente.civico or '' }}</dd>
-                </div>
-                <div class="detail-item">
-                    <dt>Località</dt>
-                    <dd>{{ ente.citta or '' }} ({{ ente.provincia or '' }}) - {{ ente.cap or '' }}</dd>
+                    <dd>{{ ente.indirizzo or 'Indirizzo non specificato' }}</dd>
                 </div>
                  <div class="detail-item">
                     <dt>Nazione</dt>

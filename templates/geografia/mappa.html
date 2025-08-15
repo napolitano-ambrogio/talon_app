@@ -1,0 +1,388 @@
+{% extends "_base.html" %}
+
+{% block title %}Mappa Enti - TALON{% endblock %}
+
+{% block extra_css %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    #map {
+        height: 600px;
+        width: 100%;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .map-controls {
+        background: white;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .stat-card {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 4px;
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 2em;
+        font-weight: bold;
+        color: #007bff;
+    }
+    
+    .leaflet-popup-content {
+        min-width: 200px;
+    }
+    
+    .ente-popup h4 {
+        margin: 0 0 10px 0;
+        color: #333;
+    }
+    
+    .ente-details {
+        font-size: 0.9em;
+        line-height: 1.4;
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 20px;
+        font-size: 1.1em;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-header">
+    <h3>Mappa Geografica Enti</h3>
+    <div style="display: flex; gap: 10px;">
+        <a href="{{ url_for('geografia.geocodifica') }}" class="btn-modifica" style="background-color: #17a2b8;">Geocodifica Enti</a>
+        <a href="{{ url_for('geografia.statistiche') }}" class="btn-modifica" style="background-color: #6c757d;">Statistiche Geo</a>
+    </div>
+</div>
+
+<!-- Statistiche veloci -->
+{% if stats %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.copertura.militari.con_coordinate }}</div>
+        <div>Enti Militari Georef.</div>
+        <small>{{ stats.copertura.militari.percentuale }}% del totale</small>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.copertura.civili.con_coordinate }}</div>
+        <div>Enti Civili Georef.</div>
+        <small>{{ stats.copertura.civili.percentuale }}% del totale</small>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.copertura.militari.con_coordinate + stats.copertura.civili.con_coordinate }}</div>
+        <div>Totale Georeferenziati</div>
+        <small>su {{ stats.copertura.militari.totali + stats.copertura.civili.totali }} enti</small>
+    </div>
+</div>
+{% endif %}
+
+<!-- Controlli mappa -->
+<div class="map-controls">
+    <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+        <label style="display: flex; align-items: center; gap: 5px;">
+            <input type="checkbox" id="showMilitari" checked>
+            <span style="color: #dc3545;">●</span> Enti Militari
+        </label>
+        <label style="display: flex; align-items: center; gap: 5px;">
+            <input type="checkbox" id="showCivili" checked>
+            <span style="color: #007bff;">●</span> Enti Civili
+        </label>
+        <button id="btnCentraItalia" class="btn btn-sm btn-outline-primary">Centra su Italia</button>
+        <button id="btnTrovaVicini" class="btn btn-sm btn-outline-success">Trova Enti Vicini</button>
+        <span id="loadingIndicator" class="loading" style="display: none;">Caricamento...</span>
+    </div>
+</div>
+
+<!-- Mappa -->
+<div id="map"></div>
+
+<!-- Risultati ricerca -->
+<div id="risultatiRicerca" style="margin-top: 20px; display: none;">
+    <h4>Enti Trovati</h4>
+    <div id="listaEnti"></div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+// ========================================
+// CONFIGURAZIONE MAPPA
+// ========================================
+
+let map;
+let layerMilitari;
+let layerCivili;
+let markersGroup;
+
+// Inizializza mappa
+function initMap() {
+    // Crea mappa centrata sull'Italia
+    map = L.map('map').setView([41.9028, 12.4964], 6);
+    
+    // Tile layer offline-friendly
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18
+    }).addTo(map);
+    
+    // Gruppi layer
+    layerMilitari = L.layerGroup().addTo(map);
+    layerCivili = L.layerGroup().addTo(map);
+    markersGroup = L.layerGroup().addTo(map);
+    
+    console.log('Mappa inizializzata');
+}
+
+// Carica enti militari
+function caricaEntiMilitari() {
+    if (!document.getElementById('showMilitari').checked) {
+        layerMilitari.clearLayers();
+        return;
+    }
+    
+    document.getElementById('loadingIndicator').style.display = 'inline';
+    
+    fetch('/api/geojson/militari')
+        .then(response => response.json())
+        .then(data => {
+            layerMilitari.clearLayers();
+            
+            if (data.features) {
+                data.features.forEach(feature => {
+                    if (feature.geometry && feature.geometry.coordinates) {
+                        const [lon, lat] = feature.geometry.coordinates;
+                        const props = feature.properties;
+                        
+                        // Marker rosso per enti militari
+                        const marker = L.circleMarker([lat, lon], {
+                            radius: 8,
+                            fillColor: '#dc3545',
+                            color: '#721c24',
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        });
+                        
+                        // Popup
+                        const popupContent = `
+                            <div class="ente-popup">
+                                <h4>${props.nome}</h4>
+                                <div class="ente-details">
+                                    <strong>Codice:</strong> ${props.codice || 'N/D'}<br>
+                                    <strong>Tipo:</strong> Ente Militare<br>
+                                    <strong>Coordinate:</strong> ${lat.toFixed(6)}, ${lon.toFixed(6)}<br>
+                                    ${props.indirizzo ? `<strong>Indirizzo:</strong> ${props.indirizzo}` : ''}
+                                </div>
+                            </div>
+                        `;
+                        
+                        marker.bindPopup(popupContent);
+                        layerMilitari.addLayer(marker);
+                    }
+                });
+                
+                console.log(`Caricati ${data.features.length} enti militari`);
+            }
+        })
+        .catch(error => {
+            console.error('Errore caricamento enti militari:', error);
+        })
+        .finally(() => {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        });
+}
+
+// Carica enti civili
+function caricaEntiCivili() {
+    if (!document.getElementById('showCivili').checked) {
+        layerCivili.clearLayers();
+        return;
+    }
+    
+    document.getElementById('loadingIndicator').style.display = 'inline';
+    
+    fetch('/api/geojson/civili')
+        .then(response => response.json())
+        .then(data => {
+            layerCivili.clearLayers();
+            
+            if (data.features) {
+                data.features.forEach(feature => {
+                    if (feature.geometry && feature.geometry.coordinates) {
+                        const [lon, lat] = feature.geometry.coordinates;
+                        const props = feature.properties;
+                        
+                        // Marker blu per enti civili
+                        const marker = L.circleMarker([lat, lon], {
+                            radius: 6,
+                            fillColor: '#007bff',
+                            color: '#004085',
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        });
+                        
+                        // Popup
+                        const popupContent = `
+                            <div class="ente-popup">
+                                <h4>${props.nome}</h4>
+                                <div class="ente-details">
+                                    <strong>Tipo:</strong> Ente Civile<br>
+                                    <strong>Coordinate:</strong> ${lat.toFixed(6)}, ${lon.toFixed(6)}<br>
+                                    ${props.indirizzo ? `<strong>Indirizzo:</strong> ${props.indirizzo}` : ''}
+                                </div>
+                            </div>
+                        `;
+                        
+                        marker.bindPopup(popupContent);
+                        layerCivili.addLayer(marker);
+                    }
+                });
+                
+                console.log(`Caricati ${data.features.length} enti civili`);
+            }
+        })
+        .catch(error => {
+            console.error('Errore caricamento enti civili:', error);
+        })
+        .finally(() => {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        });
+}
+
+// Trova enti vicini al click
+function trovaEntiVicini(lat, lon, raggio = 50) {
+    fetch(`/api/enti-vicini?lat=${lat}&lon=${lon}&raggio=${raggio}&limite=10`)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.length > 0) {
+                mostrarRisultatiRicerca(data, lat, lon);
+                
+                // Aggiungi marker temporaneo per il punto di ricerca
+                markersGroup.clearLayers();
+                const searchMarker = L.marker([lat, lon], {
+                    icon: L.icon({
+                        iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#28a745">
+                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                            </svg>
+                        `),
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 24],
+                        popupAnchor: [0, -24]
+                    })
+                });
+                
+                searchMarker.bindPopup(`
+                    <div class="ente-popup">
+                        <h4>Punto di Ricerca</h4>
+                        <div class="ente-details">
+                            <strong>Coordinate:</strong> ${lat.toFixed(6)}, ${lon.toFixed(6)}<br>
+                            <strong>Trovati:</strong> ${data.length} enti nel raggio di ${raggio}km
+                        </div>
+                    </div>
+                `).openPopup();
+                
+                markersGroup.addLayer(searchMarker);
+                
+            } else {
+                alert('Nessun ente trovato nel raggio specificato.');
+            }
+        })
+        .catch(error => {
+            console.error('Errore ricerca enti vicini:', error);
+            alert('Errore nella ricerca.');
+        });
+}
+
+// Mostra risultati ricerca
+function mostrarRisultatiRicerca(enti, lat, lon) {
+    const risultatiDiv = document.getElementById('risultatiRicerca');
+    const listaDiv = document.getElementById('listaEnti');
+    
+    let html = `
+        <div class="mb-3">
+            <strong>Ricerca da:</strong> ${lat.toFixed(6)}, ${lon.toFixed(6)}
+        </div>
+        <div class="list-group">
+    `;
+    
+    enti.forEach(ente => {
+        const color = ente.tipo === 'MILITARE' ? '#dc3545' : '#007bff';
+        html += `
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1" style="color: ${color};">
+                            <span style="color: ${color};">●</span> ${ente.nome}
+                        </h6>
+                        <p class="mb-1">${ente.tipo}</p>
+                    </div>
+                    <small><strong>${ente.distanza_km} km</strong></small>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    listaDiv.innerHTML = html;
+    risultatiDiv.style.display = 'block';
+}
+
+// ========================================
+// EVENT LISTENERS
+// ========================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    initMap();
+    
+    // Carica dati iniziali
+    caricaEntiMilitari();
+    caricaEntiCivili();
+    
+    // Checkbox toggles
+    document.getElementById('showMilitari').addEventListener('change', caricaEntiMilitari);
+    document.getElementById('showCivili').addEventListener('change', caricaEntiCivili);
+    
+    // Pulsante centra Italia
+    document.getElementById('btnCentraItalia').addEventListener('click', function() {
+        map.setView([41.9028, 12.4964], 6);
+    });
+    
+    // Pulsante trova vicini
+    document.getElementById('btnTrovaVicini').addEventListener('click', function() {
+        alert('Clicca sulla mappa per trovare enti vicini al punto selezionato.');
+        map.once('click', function(e) {
+            trovaEntiVicini(e.latlng.lat, e.latlng.lng, 50);
+        });
+    });
+    
+    // Click sulla mappa per info
+    map.on('click', function(e) {
+        console.log('Click su mappa:', e.latlng);
+    });
+});
+</script>
+{% endblock %}

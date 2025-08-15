@@ -1,4 +1,4 @@
-# app.py - Versione ottimizzata con sistema auth a 3 ruoli + SSO Superset + SPA Support (PostgreSQL)
+# app.py - Versione ottimizzata con sistema auth a 3 ruoli + SSO Superset (PostgreSQL)
 import sys
 import os
 import re
@@ -78,111 +78,9 @@ from routes.enti_civili import enti_civili_bp
 from routes.operazioni import operazioni_bp
 from routes.attivita import attivita_bp
 from routes.drill_down_chart import drill_down_bp
+from routes.geografia import geografia_bp
+from blueprints.geocoding_bp import geocoding_bp
 
-# ===========================================
-# FUNZIONI SPA SUPPORT
-# ===========================================
-
-def spa_response(f):
-    """
-    Decoratore per supportare navigazione SPA.
-    Rileva richieste AJAX e ritorna solo il contenuto necessario.
-    """
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # Esegui la funzione originale
-        response = f(*args, **kwargs)
-        
-        # Verifica se è una richiesta SPA
-        is_spa_request = (
-            request.headers.get('X-SPA-Request') == 'true' or
-            request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-        )
-        
-        if is_spa_request and isinstance(response, str):
-            # È una risposta HTML, dobbiamo processarla per SPA
-            try:
-                # Crea una risposta minima con solo il contenuto necessario
-                spa_data = {
-                    'html': response,
-                    'title': 'TALON System',
-                    'success': True
-                }
-                
-                # Se possiamo estrarre il titolo dalla risposta
-                title_match = re.search(r'<title>(.*?)</title>', response, re.IGNORECASE)
-                if title_match:
-                    spa_data['title'] = title_match.group(1)
-                
-                # Ritorna JSON per richieste SPA
-                return jsonify(spa_data)
-                
-            except Exception as e:
-                print(f"Errore processing SPA response: {e}")
-                # In caso di errore, ritorna la risposta normale
-                return response
-        
-        return response
-    
-    return decorated_function
-
-def render_template_spa(template_name, **context):
-    """
-    Versione di render_template che supporta SPA.
-    Se è una richiesta SPA, ritorna JSON con HTML parziale.
-    """
-    is_spa = (
-        request.headers.get('X-SPA-Request') == 'true' or
-        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-    )
-    
-    if is_spa:
-        # Renderizza il template completo
-        full_html = render_template(template_name, **context)
-        
-        # Estrai le parti necessarie
-        title = 'TALON System'
-        content = full_html
-        breadcrumb = ''
-        
-        # Estrai il titolo
-        title_match = re.search(r'<title>(.*?)</title>', full_html, re.IGNORECASE)
-        if title_match:
-            title = title_match.group(1).strip()
-        
-        # Estrai il contenuto principale
-        content_match = re.search(
-            r'<div class="flex-grow-1 p-3 main-content"[^>]*>(.*?)</div>\s*(?:<footer|$)',
-            full_html,
-            re.DOTALL | re.IGNORECASE
-        )
-        if content_match:
-            content = content_match.group(1).strip()
-        
-        # Estrai breadcrumb
-        breadcrumb_match = re.search(
-            r'<ol class="breadcrumb[^"]*">(.*?)</ol>',
-            full_html,
-            re.DOTALL | re.IGNORECASE
-        )
-        if breadcrumb_match:
-            breadcrumb = breadcrumb_match.group(1).strip()
-        
-        # Ottieni flash messages
-        flash_messages = get_flashed_messages(with_categories=True)
-        
-        # Restituisci JSON per SPA
-        return jsonify({
-            'success': True,
-            'title': title,
-            'content': content,
-            'breadcrumb': breadcrumb,
-            'template': template_name,
-            'flash_messages': flash_messages
-        })
-    
-    # Richiesta normale
-    return render_template(template_name, **context)
 
 def create_app():
     """
@@ -238,20 +136,9 @@ def create_app():
         "password": PG_PASS,
     }
     
-    # ===========================================
-    # MIDDLEWARE SPA
-    # ===========================================
-    
-    @app.before_request
-    def before_request_spa():
-        """Prepara richieste SPA"""
-        if request.headers.get('X-SPA-Request') == 'true':
-            request.is_spa = True
-        else:
-            request.is_spa = False
     
     # ===========================================
-    # CONFIGURAZIONE ANTI-CACHE PER DEBUG + SPA
+    # CONFIGURAZIONE ANTI-CACHE PER DEBUG
     # ===========================================
     
     if app.debug:
@@ -259,11 +146,7 @@ def create_app():
         
         @app.after_request
         def after_request_handler(response):
-            """Gestisce headers per cache, SPA e SSO"""
-            # Aggiungi header per identificare risposte SPA
-            if hasattr(request, 'is_spa') and request.is_spa:
-                response.headers['X-SPA-Response'] = 'true'
-            
+            """Gestisce headers per cache e SSO"""
             # FORZA DISABILITA CACHE SEMPRE
             response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
             response.headers['Pragma'] = 'no-cache'
@@ -425,6 +308,39 @@ def create_app():
             
         return False
     
+    def authenticate_superset_with_token(token: str) -> bool:
+        """
+        Autentica l'utente su Superset usando il token JWT SSO.
+        Effettua una chiamata HTTP a Superset per validare il token.
+        """
+        try:
+            # URL di login Superset con token SSO
+            superset_url = f"http://127.0.0.1:8088/login/?token={token}"
+            
+            # Crea una sessione per mantenere i cookie
+            s = requests.Session()
+            
+            # Effettua richiesta di login con il token
+            response = s.get(superset_url, timeout=5, allow_redirects=True)
+            
+            # Verifica se il login è riuscito
+            # Superset reindirizza a /superset/welcome dopo login riuscito
+            if response.status_code == 200:
+                if '/superset/welcome' in response.url or 'Superset' in response.text:
+                    # Salva i cookie di sessione Superset
+                    if 'session' in s.cookies:
+                        session['superset_session_cookie'] = s.cookies.get('session')
+                    return True
+            
+            return False
+            
+        except requests.exceptions.RequestException as e:
+            app.logger.error(f"Errore connessione a Superset: {e}")
+            return False
+        except Exception as e:
+            app.logger.error(f"Errore generico autenticazione Superset: {e}")
+            return False
+
     def create_api_session_token(user_data: dict) -> str:
         """Crea token di sessione per API"""
         import time
@@ -451,8 +367,7 @@ def create_app():
             'timestamp': datetime.datetime.now().isoformat(),
             'version': '2.0.0',
             'database': 'unknown',
-            'sso': SSO_AVAILABLE,
-            'spa_enabled': True
+            'sso': SSO_AVAILABLE
         }
         
         # Test connessione database
@@ -470,11 +385,6 @@ def create_app():
         
         return jsonify(status), 200 if status['status'] == 'healthy' else 503
 
-    # Test SPA
-    @app.route('/test-spa')
-    def test_spa():
-        """Endpoint test per verificare funzionalità SPA"""
-        return render_template('test-spa.html')
     
     # ===========================================
     # ROUTE STATICHE
@@ -509,47 +419,7 @@ def create_app():
             app.logger.error(f"Errore serving external file {filename}: {e}")
             return Response(status=500)
     
-    @app.route('/superset-proxy/<path:path>')
-    def superset_proxy(path):
-        """
-        Proxy per le richieste Superset che mantiene l'autenticazione
-        """
-        if not session.get('logged_in') or not session.get('superset_authenticated'):
-            return Response('Non autorizzato', status=401)
-        
-        SUPERSET_URL = "http://127.0.0.1:8088"
-        superset_cookies = session.get('superset_cookies', {})
-        
-        try:
-            # Forwarda la richiesta a Superset mantenendo i cookie di autenticazione
-            target_url = f"{SUPERSET_URL}/{path}"
-            
-            headers = {}
-            for key, value in request.headers.items():
-                if key.lower() not in ['host', 'content-length']:
-                    headers[key] = value
-            
-            response = requests.request(
-                method=request.method,
-                url=target_url,
-                headers=headers,
-                data=request.get_data(),
-                cookies=superset_cookies,
-                allow_redirects=False
-            )
-            
-            # Crea la risposta
-            flask_response = Response(
-                response.content,
-                status=response.status_code,
-                headers=dict(response.headers)
-            )
-            
-            return flask_response
-            
-        except Exception as e:
-            app.logger.error(f"Errore nel proxy Superset: {e}")
-            return Response('Errore del proxy', status=500)
+    # Proxy rimosso - ora usiamo endpoint dedicato per il login automatico
     
     # ===========================================
     # SUPERSET INTEGRATION
@@ -748,15 +618,21 @@ def create_app():
             
             app.logger.info(f"Login riuscito per utente: {username}")
             
-            # Autentica automaticamente su Superset con le stesse credenziali
+            # Login automatico su Superset con le stesse credenziali
             try:
-                superset_login_result = authenticate_superset_user(username, password)
+                from superset_auth import perform_superset_login
+                
+                superset_login_result = perform_superset_login(username, password)
                 if superset_login_result:
-                    app.logger.info(f"Autenticazione Superset riuscita per: {username}")
+                    app.logger.info(f"Login automatico Superset riuscito per: {username}")
+                    session['superset_authenticated'] = True
                 else:
-                    app.logger.warning(f"Autenticazione Superset fallita per: {username}")
+                    app.logger.warning(f"Login automatico Superset fallito per: {username}")
+                    session['superset_authenticated'] = False
+                    
             except Exception as e:
-                app.logger.error(f"Errore durante l'autenticazione Superset per {username}: {e}")
+                app.logger.error(f"Errore durante login automatico Superset per {username}: {e}")
+                session['superset_authenticated'] = False
             
             if is_api_request:
                 # Risposta API
@@ -796,10 +672,251 @@ def create_app():
             flash(error_msg, 'error')
             return redirect(url_for('show_login'))
     
+    @app.route('/api/superset-sso-url')
+    @login_required
+    def get_superset_sso_url_endpoint():
+        """
+        Fornisce l'URL di Superset per accesso embedded con autenticazione già effettuata.
+        """
+        try:
+            from superset_auth import get_superset_url_with_auth, is_superset_authenticated
+            
+            # Verifica se l'utente è autenticato su Superset
+            if not is_superset_authenticated():
+                return jsonify({
+                    'error': 'Superset non autenticato. Effettua prima il login.',
+                    'authenticated': False
+                }), 401
+            
+            # Ottieni dashboard_id se specificato
+            dashboard_id = request.args.get('dashboard_id')
+            if dashboard_id:
+                try:
+                    dashboard_id = int(dashboard_id)
+                except ValueError:
+                    dashboard_id = None
+            
+            # Genera URL con autenticazione esistente
+            url = get_superset_url_with_auth(dashboard_id)
+            
+            return jsonify({
+                'success': True,
+                'url': url,
+                'authenticated': True,
+                'embedded': dashboard_id is not None
+            })
+            
+        except Exception as e:
+            app.logger.error(f"Errore generazione URL Superset: {e}")
+            return jsonify({'error': 'Errore generazione URL Superset'}), 500
+
+    @app.route('/api/superset-preauth', methods=['POST'])
+    @login_required
+    def superset_preauth():
+        """
+        Endpoint per assicurarsi che l'autenticazione Superset sia attiva.
+        Riesegue il login se necessario.
+        """
+        try:
+            from superset_auth import perform_superset_login, is_superset_authenticated
+            
+            # Se non è autenticato, prova a rifare il login
+            if not is_superset_authenticated():
+                user_info = get_current_user_info()
+                if not user_info:
+                    return jsonify({'error': 'Utente Talon non trovato'}), 401
+                
+                # Prova a rifare il login (la password non è disponibile in sessione per sicurezza)
+                # Dobbiamo usare un approccio diverso
+                return jsonify({'error': 'Sessione Superset scaduta. Rieffettua il login.'}), 401
+            
+            return jsonify({'success': True, 'message': 'Autenticazione Superset attiva'})
+            
+        except Exception as e:
+            app.logger.error(f"Errore pre-auth Superset: {e}")
+            return jsonify({'error': 'Errore verifica autenticazione'}), 500
+
+    @app.route('/superset-proxy')
+    @login_required 
+    def superset_proxy():
+        """
+        Endpoint che effettua login diretto a Superset e restituisce la pagina autenticata
+        """
+        try:
+            # Ottieni le credenziali dell'utente corrente
+            user_info = get_current_user_info()
+            if not user_info:
+                flash('Errore: utente non trovato', 'error')
+                return redirect(url_for('main.dashboard'))
+            
+            username = user_info['username']
+            password = "admin123"  # Password standard per tutti gli utenti
+            
+            app.logger.info(f"Effettuo login diretto a Superset per: {username}")
+            
+            # Effettua login diretto e restituisce la pagina autenticata
+            import requests
+            
+            # Crea una sessione per il login
+            s = requests.Session()
+            
+            # 1. Ottieni pagina di login
+            login_page = s.get('http://127.0.0.1:8088/login/', timeout=10)
+            
+            if login_page.status_code != 200:
+                app.logger.error(f"Impossibile accedere a Superset: {login_page.status_code}")
+                return redirect('http://127.0.0.1:8088/login/')
+            
+            # 2. Effettua login
+            login_data = {
+                'username': username,
+                'password': password
+            }
+            
+            login_response = s.post(
+                'http://127.0.0.1:8088/login/',
+                data=login_data,
+                allow_redirects=False,
+                timeout=10
+            )
+            
+            if login_response.status_code in [302, 303]:
+                app.logger.info(f"Login Superset riuscito per {username}")
+                
+                # 3. Ottieni la pagina welcome autenticata
+                welcome_response = s.get('http://127.0.0.1:8088/superset/welcome/', timeout=10)
+                
+                if welcome_response.status_code == 200:
+                    # Crea una risposta che include la pagina autenticata
+                    content = welcome_response.text
+                    
+                    # Modifica il contenuto per includere un messaggio di successo
+                    content = content.replace(
+                        '<body',
+                        '<script>console.log("Autenticato tramite Talon SSO");</script><body'
+                    )
+                    
+                    response = Response(content, status=200, headers={
+                        'Content-Type': 'text/html',
+                        'X-Frame-Options': 'ALLOWALL',
+                        'Content-Security-Policy': 'frame-ancestors *'
+                    })
+                    
+                    # Copia i cookie di sessione
+                    for cookie in s.cookies:
+                        response.set_cookie(
+                            cookie.name,
+                            cookie.value,
+                            domain=cookie.domain,
+                            path=cookie.path,
+                            secure=cookie.secure,
+                            httponly=cookie.get_nonstandard_attr('httponly', False)
+                        )
+                    
+                    return response
+                else:
+                    app.logger.error(f"Errore accesso welcome page: {welcome_response.status_code}")
+            else:
+                app.logger.error(f"Login fallito: {login_response.status_code}")
+            
+            # Fallback
+            return redirect('http://127.0.0.1:8088/login/')
+                
+        except Exception as e:
+            app.logger.error(f"Errore proxy Superset: {e}")
+            return redirect('http://127.0.0.1:8088/login/')
+
+    @app.route('/superset-login')
+    @login_required 
+    def superset_login():
+        """
+        Endpoint semplificato che fa login e reindirizza a Superset
+        """
+        try:
+            user_info = get_current_user_info()
+            if not user_info:
+                return redirect('http://127.0.0.1:8088/login/')
+            
+            username = user_info['username']
+            password = "admin123"
+            
+            app.logger.info(f"Pre-autenticazione Superset per: {username}")
+            
+            # Controlla se la richiesta viene da un iframe (per embedded view)
+            is_iframe = request.headers.get('Sec-Fetch-Dest') == 'iframe' or 'iframe' in request.headers.get('Referer', '').lower()
+            
+            if is_iframe:
+                # Per iframe, fai login diretto e reindirizza subito
+                import requests
+                s = requests.Session()
+                
+                # Login automatico
+                login_response = s.post(
+                    'http://127.0.0.1:8088/login/',
+                    data={'username': username, 'password': password},
+                    allow_redirects=False,
+                    timeout=10
+                )
+                
+                if login_response.status_code in [302, 303]:
+                    # Login riuscito, reindirizza alla welcome page
+                    app.logger.info(f"Login iframe Superset riuscito per {username}")
+                    return redirect('http://127.0.0.1:8088/superset/welcome/')
+            
+            # HTML che auto-sottomette il form di login (per nuova scheda)
+            html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Accesso a Superset...</title>
+                <meta charset="utf-8">
+                <meta http-equiv="X-Frame-Options" content="ALLOWALL">
+                <meta http-equiv="Content-Security-Policy" content="frame-ancestors *">
+            </head>
+            <body onload="document.getElementById('loginForm').submit();">
+                <div style="text-align: center; padding: 50px; font-family: Arial;">
+                    <h2>Accesso a Superset in corso...</h2>
+                    <p>Verrai reindirizzato automaticamente.</p>
+                    <div style="margin: 20px;">
+                        <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    </div>
+                </div>
+                
+                <form id="loginForm" action="http://127.0.0.1:8088/login/" method="post" target="_self">
+                    <input type="text" name="username" value="{username}">
+                    <input type="password" name="password" value="{password}">
+                </form>
+                
+                <style>
+                @keyframes spin {{
+                    0% {{ transform: rotate(0deg); }}
+                    100% {{ transform: rotate(360deg); }}
+                }}
+                </style>
+                
+                <script>
+                // Fallback se il form non si sottomette automaticamente
+                setTimeout(function() {{
+                    document.getElementById('loginForm').submit();
+                }}, 500);
+                </script>
+            </body>
+            </html>
+            """
+            
+            response = Response(html, mimetype='text/html')
+            response.headers['X-Frame-Options'] = 'ALLOWALL'
+            response.headers['Content-Security-Policy'] = 'frame-ancestors *'
+            return response
+                
+        except Exception as e:
+            app.logger.error(f"Errore login Superset: {e}")
+            return redirect('http://127.0.0.1:8088/login/')
+
     @app.route('/logout', methods=['GET', 'POST'])
     @app.route('/auth/logout', methods=['GET', 'POST'])
     def logout():
-        """Logout dell'utente - NON usa SPA per forzare reload completo"""
+        """Logout dell'utente"""
         user_id = session.get('user_id')
         username = session.get('username')
         
@@ -855,8 +972,8 @@ def create_app():
         
         @app.route('/api/sso/superset/url', methods=['GET'])
         @login_required
-        def get_superset_sso_url_endpoint():
-            """Genera URL di Superset con token SSO"""
+        def get_superset_sso_url_legacy():
+            """Genera URL di Superset con token SSO (legacy endpoint)"""
             dashboard_id = request.args.get('dashboard_id')
             return_url = request.args.get('return_url')
             
@@ -912,22 +1029,20 @@ def create_app():
         })
     
     # ===========================================
-    # ROUTE DI AMMINISTRAZIONE (con supporto SPA)
+    # ROUTE DI AMMINISTRAZIONE
     # ===========================================
     
     @app.route('/impostazioni')
     @admin_required
-    @spa_response
     def impostazioni():
-        """Pagina impostazioni (solo admin) con supporto SPA"""
-        return render_template_spa('impostazioni.html')
+        """Pagina impostazioni (solo admin)"""
+        return render_template('impostazioni.html')
     
     @app.route('/impostazioni/utenti')
     @app.route('/admin/users')
     @admin_required
-    @spa_response
     def admin_users():
-        """Gestione utenti (solo admin) con supporto SPA"""
+        """Gestione utenti (solo admin)"""
         conn = None
         try:
             conn = get_db_connection()
@@ -944,20 +1059,11 @@ def create_app():
                 )
                 users = cur.fetchall()
             
-            return render_template_spa('admin/users.html', users=users)
+            return render_template('admin/users.html', users=users)
             
         except Exception as e:
             app.logger.error(f"Errore nel caricamento utenti: {e}")
             flash(f'Errore nel caricamento utenti: {str(e)}', 'error')
-            
-            # Se è una richiesta SPA, ritorna JSON con errore
-            if hasattr(request, 'is_spa') and request.is_spa:
-                return jsonify({
-                    'success': False,
-                    'error': str(e),
-                    'redirect': url_for('main.dashboard')
-                }), 500
-            
             return redirect(url_for('main.dashboard'))
         finally:
             if conn:
@@ -980,7 +1086,6 @@ def create_app():
                 'username': session.get('username'),
                 'user_role': session.get('ruolo_nome'),
                 'sso_enabled': SSO_AVAILABLE,
-                'spa_enabled': True,
                 'user_info': user_info,
                 'database': {
                     'type': 'PostgreSQL',
@@ -1158,6 +1263,8 @@ def create_app():
     app.register_blueprint(operazioni_bp)
     app.register_blueprint(attivita_bp)
     app.register_blueprint(drill_down_bp)
+    app.register_blueprint(geografia_bp)
+    app.register_blueprint(geocoding_bp)
     
     # ===========================================
     # INIZIALIZZAZIONE APPLICAZIONE
@@ -1189,7 +1296,6 @@ def create_app():
             else:
                 print("[WARNING] Modulo SSO non disponibile")
             
-            print("[OK] SPA Navigation abilitato")
                 
         except Exception as e:
             app.logger.error(f"Errore nell'inizializzazione: {e}")
@@ -1227,7 +1333,7 @@ def main():
         app.logger.info('TALON System startup')
     
     print("=" * 60)
-    print("[TARGET] TALON SYSTEM v2.0 - SISTEMA AUTENTICAZIONE + SSO + SPA")
+    print("[TARGET] TALON SYSTEM v2.0 - SISTEMA AUTENTICAZIONE + SSO")
     print("=" * 60)
     print("[DB] DATABASE:")
     print(f"   * Tipo: PostgreSQL")
@@ -1254,12 +1360,6 @@ def main():
         print("   [OK] SSO ATTIVO - Login unico TALON -> Superset")
     else:
         print("   [WARN] SSO NON ATTIVO - Crea sso_superset.py")
-    
-    print("   [OK] SPA Navigation - Navigazione senza reload")
-    print("   [OK] Fullscreen persistente tra pagine")
-    print("   [OK] Loading animations")
-    print("   [OK] Toast notifications")
-    print("   [OK] Modular JavaScript structure")
     
     print("=" * 60)
     

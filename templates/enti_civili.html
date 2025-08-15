@@ -12,7 +12,7 @@
 
 <div class="list-container">
     <div class="search-bar">
-        <input type="search" id="searchInput" placeholder="CERCA PER NOME, INDIRIZZO, CITTÀ, NAZIONE...">
+        <input type="search" id="searchInput" placeholder="CERCA PER NOME, INDIRIZZO, NAZIONE...">
     </div>
 
     <table class="styled-table">
@@ -36,9 +36,7 @@
             {% for ente in enti_civili %}
             <tr class="clickable-row" data-href="{{ url_for('enti_civili.visualizza_civile', id=ente.id) }}">
                 <td>{{ ente.nome }}</td>
-                <td>
-                    {{ ente.indirizzo or '' }} {{ ente.civico or '' }}, {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})
-                </td>
+                <td>{{ ente.indirizzo or 'Indirizzo non specificato' }}</td>
                 <td>{{ ente.nazione or 'N/D' }}</td>
             </tr>
             {% else %}

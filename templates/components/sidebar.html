@@ -24,9 +24,9 @@
                 </a>
             </li>
             
-            <!-- Analisi - Link a Superset, accessibile a tutti -->
+            <!-- Analisi - Link a Superset con SSO embedded -->
             <li draggable="true" data-menu-id="analisi" role="listitem">
-                <a href="http://127.0.0.1:8088" target="_blank" aria-label="Analisi Superset">
+                <a href="{{ url_for('main.superset_embedded') }}" aria-label="Analisi Superset">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <line x1="18" y1="20" x2="18" y2="10"></line>
                         <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -38,7 +38,7 @@
             
             <!-- Enti Militari - Accessibile a tutti -->
             <li draggable="true" data-menu-id="enti_militari" role="listitem">
-                <a href="{{ url_for('enti_militari.organigramma') }}" aria-label="Enti Militari">
+                <a href="/enti_militari/organigramma" aria-label="Enti Militari">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="9" y="2" width="6" height="5" rx="1"></rect>
                         <rect x="3" y="17" width="6" height="5" rx="1"></rect>
@@ -76,6 +76,19 @@
                         <line x1="3" y1="10" x2="21" y2="10"></line>
                     </svg>
                     <span class="menu-text">Attività</span>
+                </a>
+            </li>
+            {% endif %}
+            
+            <!-- Geocoding Interattivo - Solo OPERATORE e ADMIN -->
+            {% if session.get('ruolo_nome') in ['ADMIN', 'OPERATORE'] %}
+            <li draggable="true" data-menu-id="geocoding" role="listitem" data-min-role="OPERATORE">
+                <a href="/geocoding" aria-label="Geocoding Interattivo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <span class="menu-text">Geocoding</span>
                 </a>
             </li>
             {% endif %}

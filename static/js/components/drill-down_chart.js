@@ -107,10 +107,10 @@ async function updateInfoCardsForCurrentLevel(data) {
     // Aggiorna le info cards dinamicamente basandosi sul livello corrente
     if (!data || !data.values) return;
     
-    // "Attività Specifiche" = numero di barre nell'istogramma (cioè numero di elementi visualizzati)
-    const specificActivities = data.labels.length;
+    // "Attività Specifiche" = somma di tutte le attività visualizzate nel livello corrente
+    const specificActivities = data.values.reduce((sum, value) => sum + (parseInt(value) || 0), 0);
     
-    // Aggiorna "Attività Specifiche" (numero di barre/elementi visualizzati)
+    // Aggiorna "Attività Specifiche" (somma delle attività del livello corrente)
     const specificActivitiesEl = document.getElementById('specificActivitiesValue');
     if (specificActivitiesEl) {
         specificActivitiesEl.textContent = specificActivities;
@@ -495,6 +495,12 @@ function hideEntityDetails() {
     }
 }
 
+// Funzione helper per nascondere tutti i dettagli
+function hideAllDetails() {
+    hideDetails();
+    hideEntityDetails();
+}
+
 // ========================================
 // INTEGRAZIONE API FLASK
 // ========================================
@@ -753,6 +759,9 @@ function showDetailsListFromAPI(entity, details) {
 
 // Modifica navigateToLevel per gestire il ritorno dai dettagli
 function navigateToLevel(level) {
+    // Nascondi sempre tutti i dettagli quando si naviga
+    hideAllDetails();
+    
     // Mostra di nuovo il grafico se era nascosto
     const chartContainer = document.querySelector('.chart-container');
     if (chartContainer) {
@@ -820,7 +829,6 @@ function navigateToLevel(level) {
             }
         })();
         
-        hideDetails();
         
     } else if (level === 1 && state.currentCategory) {
         // Torna al livello 1: mostra sottocategorie della categoria salvata
@@ -834,8 +842,6 @@ function navigateToLevel(level) {
             chartContainer.style.display = 'block';
         }
         
-        // Nascondi dettagli
-        hideEntityDetails();
         
         // Ricarica sottocategorie
         (async () => {
@@ -863,8 +869,6 @@ function navigateToLevel(level) {
             chartContainer.style.display = 'block';
         }
         
-        // Nascondi dettagli  
-        hideEntityDetails();
         
         // Ricarica enti
         (async () => {
@@ -883,7 +887,7 @@ function navigateToLevel(level) {
     }
     
     updateBreadcrumb();
-    updateInfoCards();
+    // I counter verranno aggiornati automaticamente quando i dati del livello vengono caricati
 }
 
 // Aggiungi questa funzione per inizializzare con dati API

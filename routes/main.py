@@ -21,38 +21,6 @@ main_bp = Blueprint(
 )
 
 # ===========================================
-# API ENDPOINTS PER SESSIONE
-# ===========================================
-
-@main_bp.route('/api/ping-session')
-@login_required
-def ping_session():
-    """
-    Endpoint per mantenere viva la sessione e prevenire logout indesiderati.
-    Chiamato dalla SPA quando riceve un 401.
-    """
-    from flask import session
-    
-    # Aggiorna il timestamp della sessione
-    session.permanent = True
-    session.modified = True
-    
-    # Log opzionale per debug
-    user_info = get_current_user_info()
-    if user_info:
-        log_user_action(
-            user_info.get('id'), 
-            'session_ping',
-            'Sessione mantenuta attiva'
-        )
-    
-    return jsonify({
-        'success': True,
-        'message': 'Session refreshed',
-        'user': user_info.get('username') if user_info else None
-    })
-
-# ===========================================
 # HELPERS DATABASE
 # ===========================================
 
@@ -63,104 +31,6 @@ def get_db_connection():
     """
     return get_auth_db_connection()
 
-# ===========================================
-# HELPERS SPA (Single Page Application)
-# ===========================================
-
-def is_spa_request():
-    """
-    Verifica se la richiesta corrente è una richiesta SPA.
-    
-    Returns:
-        bool: True se è una richiesta AJAX/SPA, False altrimenti
-    """
-    return (
-        request.headers.get('X-SPA-Request') == 'true' or
-        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-    )
-
-def render_spa_template(template_name, **context):
-    """
-    Renderizza un template con supporto SPA.
-    Se è una richiesta SPA, ritorna JSON con HTML parziale.
-    Altrimenti renderizza il template completo.
-    
-    Args:
-        template_name: Nome del template da renderizzare
-        **context: Variabili di contesto per il template
-        
-    Returns:
-        Response: JSON per richieste SPA, HTML per richieste normali
-    """
-    if is_spa_request():
-        # Renderizza il template completo
-        html = render_template(template_name, **context)
-        
-        # Estrai le parti necessarie per SPA
-        title = 'TALON System'
-        content = html
-        breadcrumb = ''
-        
-        # Estrai il titolo dalla pagina
-        title_match = re.search(r'<title>(.*?)</title>', html, re.IGNORECASE)
-        if title_match:
-            title = title_match.group(1).strip()
-        
-        # Estrai il contenuto principale
-        content_match = re.search(
-            r'<div class="flex-grow-1 p-3 main-content"[^>]*>(.*?)(?=<footer|<script|</main>|$)',
-            html,
-            re.DOTALL | re.IGNORECASE
-        )
-        if content_match:
-            content = content_match.group(1).strip()
-        
-        # Estrai breadcrumb se presente
-        breadcrumb_match = re.search(
-            r'<ol class="breadcrumb[^"]*">(.*?)</ol>',
-            html,
-            re.DOTALL | re.IGNORECASE
-        )
-        if breadcrumb_match:
-            breadcrumb = breadcrumb_match.group(1).strip()
-        
-        # Estrai CSS aggiuntivi dalla sezione head (per dashboard_admin.css, ecc.)
-        additional_css = []
-        css_matches = re.findall(
-            r'<link[^>]*rel=["\']stylesheet["\'][^>]*href=["\']([^"\']*)["\'][^>]*>',
-            html,
-            re.IGNORECASE
-        )
-        for css_url in css_matches:
-            if any(page_css in css_url for page_css in ['dashboard_admin.css', 'enti_militari.css', 'enti_civili.css']):
-                additional_css.append(css_url)
-        
-        # Estrai JavaScript aggiuntivi (per Chart.js, ecc.)
-        additional_js = []
-        js_matches = re.findall(
-            r'<script[^>]*src=["\']([^"\']*)["\'][^>]*></script>',
-            html,
-            re.IGNORECASE
-        )
-        for js_url in js_matches:
-            # Include Chart.js and other external libraries
-            if any(js_lib in js_url for js_lib in ['chart.js', 'chartjs', 'datatables', 'd3.js']):
-                additional_js.append(js_url)
-        
-        # Restituisci JSON per SPA
-        return jsonify({
-            'success': True,
-            'title': title,
-            'content': content,
-            'breadcrumb': breadcrumb,
-            'template': template_name,
-            'flash_messages': get_flashed_messages(with_categories=True),
-            'additional_css': additional_css,
-            'additional_js': additional_js
-        })
-    
-    # Richiesta normale - renderizza template completo
-    return render_template(template_name, **context)
 
 # ===========================================
 # ROUTE PRINCIPALI
@@ -181,7 +51,7 @@ def index():
 @login_required
 def dashboard():
     """
-    Dashboard principale con supporto SPA.
+    Dashboard principale.
     Mostra statistiche e informazioni generali basate sul ruolo utente.
     """
     user_id = request.current_user['user_id']
@@ -199,7 +69,7 @@ def dashboard():
     # Ottieni statistiche base per tutti gli utenti
     stats = get_dashboard_stats(user_role)
     
-    return render_spa_template(
+    return render_template(
         'dashboard_new.html',
         user_info=user_info,
         user_role=user_role,
@@ -212,7 +82,7 @@ def dashboard():
 @admin_required
 def dashboard_admin():
     """
-    Dashboard amministratore avanzata con supporto SPA.
+    Dashboard amministratore avanzata.
     Accessibile solo agli amministratori.
     """
     user_id = request.current_user['user_id']
@@ -227,7 +97,7 @@ def dashboard_admin():
         'dashboard_admin'
     )
     
-    return render_spa_template(
+    return render_template(
         'dashboard_admin.html',
         user_info=user_info,
         stats=stats
@@ -235,24 +105,11 @@ def dashboard_admin():
 
 @main_bp.route('/organigramma')
 @login_required
-def organigramma():
+def organigramma_redirect():
     """
-    Visualizza l'organigramma con supporto SPA.
+    Redirect pulito all'organigramma degli enti militari.
     """
-    user_info = get_current_user_info()
-    
-    # Log accesso
-    log_user_action(
-        request.current_user['user_id'],
-        'VIEW_ORGANIGRAMMA',
-        'Visualizzazione organigramma',
-        'organigramma'
-    )
-    
-    return render_spa_template(
-        'organigramma.html',
-        user_info=user_info
-    )
+    return redirect('/enti_militari/organigramma')
 
 # ===========================================
 # ROUTE AMMINISTRAZIONE
@@ -262,7 +119,7 @@ def organigramma():
 @admin_required
 def impostazioni():
     """
-    Pagina impostazioni principali con supporto SPA.
+    Pagina impostazioni principali.
     Solo per amministratori.
     """
     user_info = get_current_user_info()
@@ -275,13 +132,13 @@ def impostazioni():
         'impostazioni'
     )
     
-    return render_spa_template('impostazioni.html', user_info=user_info)
+    return render_template('impostazioni.html', user_info=user_info)
 
 @main_bp.route('/impostazioni/utenti')
 @admin_required
 def gestione_utenti():
     """
-    Gestione utenti con supporto SPA.
+    Gestione utenti.
     Lista tutti gli utenti del sistema con i loro ruoli.
     """
     try:
@@ -331,18 +188,11 @@ def gestione_utenti():
             'gestione_utenti'
         )
         
-        return render_spa_template('admin/users.html', users=users)
+        return render_template('admin/users.html', users=users)
         
     except Exception as e:
         error_msg = f'Errore nel caricamento utenti: {str(e)}'
         flash(error_msg, 'error')
-        
-        if is_spa_request():
-            return jsonify({
-                'success': False,
-                'error': error_msg,
-                'redirect': url_for('main.dashboard')
-            }), 500
         
         return redirect(url_for('main.dashboard'))
 
@@ -350,7 +200,7 @@ def gestione_utenti():
 @admin_required
 def info_sistema():
     """
-    Informazioni di sistema con supporto SPA.
+    Informazioni di sistema.
     Mostra statistiche database e versione sistema.
     """
     try:
@@ -364,18 +214,11 @@ def info_sistema():
             'info_sistema'
         )
         
-        return render_spa_template('admin/system_info.html', stats=stats)
+        return render_template('admin/system_info.html', stats=stats)
         
     except Exception as e:
         error_msg = f'Errore nel caricamento info sistema: {str(e)}'
         flash(error_msg, 'error')
-        
-        if is_spa_request():
-            return jsonify({
-                'success': False,
-                'error': error_msg,
-                'redirect': url_for('main.dashboard')
-            }), 500
         
         return redirect(url_for('main.dashboard'))
 
@@ -722,7 +565,7 @@ def recent_activities():
             'activities'
         )
         
-        return render_spa_template(
+        return render_template(
             'admin/recent_activities.html',
             activities=activities,
             current_page=page,
@@ -734,13 +577,6 @@ def recent_activities():
     except Exception as e:
         error_msg = f'Errore nel caricamento attività: {str(e)}'
         flash(error_msg, 'error')
-        
-        if is_spa_request():
-            return jsonify({
-                'success': False,
-                'error': error_msg,
-                'redirect': url_for('main.dashboard_admin')
-            }), 500
         
         return redirect(url_for('main.dashboard_admin'))
 
@@ -1244,3 +1080,26 @@ def get_activity_title(action):
         'VIEW_SYSTEM_INFO': 'Info sistema visualizzate'
     }
     return title_map.get(action, action.replace('_', ' ').title())
+
+@main_bp.route('/superset')
+@login_required
+def superset_embedded():
+    """
+    Pagina con Superset embedded direttamente in Talon
+    """
+    user_info = get_current_user_info()
+    if not user_info:
+        flash('Errore: utente non trovato', 'error')
+        return redirect(url_for('main.dashboard'))
+    
+    # Log accesso a Superset
+    log_user_action(
+        user_info['id'],
+        'ACCESS_SUPERSET',
+        'Accesso alla dashboard di analisi Superset',
+        'superset'
+    )
+    
+    return render_template('superset_embedded.html', 
+                             user_info=user_info,
+                             page_title="Dashboard di Analisi")

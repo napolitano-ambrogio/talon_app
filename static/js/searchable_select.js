@@ -1,11 +1,10 @@
 /**
  * ========================================
- * TALON SEARCHABLE SELECT COMPONENT - SPA VERSION
+ * TALON SEARCHABLE SELECT COMPONENT
  * File: static/js/searchable_select.js
  * 
- * Versione: 2.0.0 - Full SPA Integration
- * Descrizione: Componente select con ricerca avanzata,
- *              completamente ottimizzato per SPA
+ * Versione: 2.1.0 - Standard Version
+ * Descrizione: Componente select con ricerca avanzata
  * ========================================
  */
 
@@ -48,14 +47,6 @@
             KEYBOARD_NAVIGATION: true,
             MULTIPLE_SELECTION: false,
             AJAX_LOADING: false
-        },
-        
-        // SPA settings
-        SPA: {
-            AUTO_REINIT: true,
-            PERSIST_STATE: true,
-            CLEANUP_ON_NAVIGATION: true,
-            DEBUG: false
         },
         
         // CSS classes
@@ -122,8 +113,6 @@
             // Bound methods
             this.handleDocumentClick = this.handleDocumentClick.bind(this);
             this.handleSelectChange = this.handleSelectChange.bind(this);
-            this.handleSPACleanup = this.handleSPACleanup.bind(this);
-            this.handleSPANavigation = this.handleSPANavigation.bind(this);
             
             // Initialize
             this.init();
@@ -154,16 +143,10 @@
                 // Setup event handlers
                 this.setupEventHandlers();
                 
-                // Setup SPA integration
-                this.setupSPAIntegration();
                 
                 // Set initial value
                 this.syncWithSelect();
                 
-                // Load saved state if persisting
-                if (this.config.SPA.PERSIST_STATE) {
-                    this.loadState();
-                }
                 
                 this.state.initialized = true;
                 this.log('success', '✅ SearchableSelect initialized');
@@ -992,113 +975,7 @@
             }
         }
 
-        // ========================================
-        // SPA INTEGRATION
-        // ========================================
-        
-        setupSPAIntegration() {
-            if (window.TalonApp) {
-                window.TalonApp.on('talon:cleanup', this.handleSPACleanup);
-                window.TalonApp.on('talon:content:loaded', this.handleSPANavigation);
-            } else {
-                document.addEventListener('spa:cleanup', this.handleSPACleanup);
-                document.addEventListener('spa:content-loaded', this.handleSPANavigation);
-            }
-        }
 
-        removeSPAIntegration() {
-            if (window.TalonApp) {
-                window.TalonApp.off('talon:cleanup', this.handleSPACleanup);
-                window.TalonApp.off('talon:content:loaded', this.handleSPANavigation);
-            } else {
-                document.removeEventListener('spa:cleanup', this.handleSPACleanup);
-                document.removeEventListener('spa:content-loaded', this.handleSPANavigation);
-            }
-        }
-
-        handleSPACleanup() {
-            this.log('debug', 'SPA cleanup triggered');
-            
-            if (this.config.SPA.CLEANUP_ON_NAVIGATION) {
-                // Save state before cleanup
-                if (this.config.SPA.PERSIST_STATE) {
-                    this.saveState();
-                }
-                
-                // Close if open
-                if (this.state.isOpen) {
-                    this.close();
-                }
-            }
-        }
-
-        handleSPANavigation() {
-            this.log('debug', 'SPA navigation detected');
-            
-            if (this.config.SPA.AUTO_REINIT) {
-                // Check if select still exists
-                const select = document.getElementById(this.selectId);
-                if (select) {
-                    // Re-collect options
-                    this.select = select;
-                    this.collectOptions();
-                    this.syncWithSelect();
-                } else {
-                    // Element no longer exists, destroy
-                    this.destroy();
-                }
-            }
-        }
-
-        // ========================================
-        // STATE MANAGEMENT
-        // ========================================
-        
-        saveState() {
-            const state = {
-                selectedValues: Array.from(this.state.selectedValues),
-                searchTerm: this.state.searchTerm,
-                isOpen: this.state.isOpen
-            };
-            
-            try {
-                sessionStorage.setItem(`searchable-select-${this.selectId}`, JSON.stringify(state));
-            } catch (e) {
-                this.log('error', 'Failed to save state:', e);
-            }
-        }
-
-        loadState() {
-            try {
-                const saved = sessionStorage.getItem(`searchable-select-${this.selectId}`);
-                if (saved) {
-                    const state = JSON.parse(saved);
-                    
-                    // Restore selected values
-                    if (state.selectedValues) {
-                        this.state.selectedValues = new Set(state.selectedValues);
-                        
-                        // Sync with select
-                        if (this.select.multiple) {
-                            Array.from(this.select.options).forEach(option => {
-                                option.selected = this.state.selectedValues.has(option.value);
-                            });
-                        } else if (state.selectedValues.length > 0) {
-                            this.select.value = state.selectedValues[0];
-                        }
-                        
-                        this.updateDisplay();
-                    }
-                    
-                    // Restore search term if was open
-                    if (state.isOpen && state.searchTerm) {
-                        this.state.searchTerm = state.searchTerm;
-                    }
-                }
-            } catch (e) {
-                this.log('error', 'Failed to load state:', e);
-            }
-        }
 
         // ========================================
         // UTILITIES
@@ -1124,7 +1001,7 @@
         }
 
         log(level, ...args) {
-            if (!this.config.SPA.DEBUG && level === 'debug') return;
+            if (level === 'debug') return; // Debug disabilitato - rimuove riferimento SPA
             
             const prefix = '[SearchableSelect]';
             const methods = {
@@ -1203,17 +1080,11 @@
             // Remove event handlers
             this.removeEventHandlers();
             
-            // Remove SPA integration
-            this.removeSPAIntegration();
             
             // Clear timers
             clearTimeout(this.searchTimeout);
             clearTimeout(this.animationTimeout);
             
-            // Clear state
-            if (this.config.SPA.PERSIST_STATE) {
-                this.saveState();
-            }
             
             // Restore original select
             this.select.style.display = '';
@@ -1254,8 +1125,6 @@
             
             // console.log removed for production silence
             
-            // Setup SPA listeners
-            this.setupSPAListeners();
             
             // Auto-detect and initialize
             this.autoInitialize();
@@ -1264,17 +1133,6 @@
             // console.log removed for production silence
         }
 
-        setupSPAListeners() {
-            if (window.TalonApp) {
-                window.TalonApp.on('talon:content:loaded', () => {
-                    this.autoInitialize();
-                });
-            } else {
-                document.addEventListener('spa:content-loaded', () => {
-                    this.autoInitialize();
-                });
-            }
-        }
 
         autoInitialize() {
             const elements = document.querySelectorAll('.searchable-select[data-select-id]');

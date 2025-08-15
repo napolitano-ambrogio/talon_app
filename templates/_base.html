@@ -171,62 +171,11 @@
             text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8) !important;
         }
         
-        /* Overlay di sfondo per il loader */
-        .spa-loader-overlay {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            background: rgba(0, 0, 0, 0.3) !important;
-            backdrop-filter: blur(3px) !important;
-            display: none !important;
-            z-index: 9996 !important;
-        }
-        
-        .spa-loader-overlay.active {
-            display: block !important;
-        }
-        
-        /* Transizioni contenuto SPA - DISABILITATE per risolvere problema visibilità */
+        /* Contenuto principale */
         .main-content {
-            /* transition: opacity 0.3s ease; */
             opacity: 1 !important;
             display: block !important;
             visibility: visible !important;
-        }
-        
-        .main-content.loading {
-            /* opacity: 0.3; */
-            opacity: 1 !important;
-        }
-        
-        /* Indicatore navigazione SPA */
-        .spa-navigation-indicator {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #007bff 0%, #0056b3 50%, #007bff 100%);
-            transform: scaleX(0);
-            transform-origin: left;
-            transition: transform 0.3s ease;
-            z-index: 10001;
-        }
-        
-        .spa-navigation-indicator.active {
-            transform: scaleX(1);
-            animation: spa-loading 1s ease-in-out infinite;
-        }
-        
-        @keyframes spa-loading {
-            0% { transform: scaleX(0); transform-origin: left; }
-            50% { transform: scaleX(1); transform-origin: left; }
-            51% { transform-origin: right; }
-            100% { transform: scaleX(0); transform-origin: right; }
         }
     </style>
     
@@ -267,7 +216,7 @@
                 year: {{ current_year or 2025 }},
                 ssoEnabled: {{ 'true' if sso_enabled else 'false' }},
                 offlineMode: true,
-                spaEnabled: true,
+                spaEnabled: false,
                 cacheBuster: "{{ cache_buster }}"
             },
             // Flag debug
@@ -391,7 +340,96 @@
     <script src="/external/chartjs/chart.umd.min.js"></script>
 
     <!-- ============================== -->
-    <!-- CORE SPA APPLICATION -->
+    <!-- ERROR HANDLING FOR SUPERSET -->
+    <!-- ============================== -->
+    <script>
+    // Filtro avanzato per errori di Superset
+    (function() {
+        // Backup delle funzioni originali
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        const originalLog = console.log;
+        
+        // Lista dei pattern di errori di Superset da filtrare
+        const supersetErrorPatterns = [
+            'You should call configure',
+            'configure(...) before calling',
+            '.entry.js:',
+            'spa.07bd1ab9f42922656077',
+            '9601.50a1fa9bff1b3b70dcbe',
+            'chunk loading failed',
+            'superset configuration'
+        ];
+        
+        function shouldFilterMessage(message) {
+            const msgStr = String(message).toLowerCase();
+            return supersetErrorPatterns.some(pattern => 
+                msgStr.includes(pattern.toLowerCase())
+            );
+        }
+        
+        // Override console.error
+        console.error = function(...args) {
+            const message = args.join(' ');
+            if (shouldFilterMessage(message)) {
+                console.debug('[Filtered Superset Error]:', message);
+                return;
+            }
+            originalError.apply(console, args);
+        };
+        
+        // Override console.warn  
+        console.warn = function(...args) {
+            const message = args.join(' ');
+            if (shouldFilterMessage(message)) {
+                console.debug('[Filtered Superset Warning]:', message);
+                return;
+            }
+            originalWarn.apply(console, args);
+        };
+        
+        // Filtra errori window.onerror
+        const originalOnError = window.onerror;
+        window.onerror = function(message, source, lineno, colno, error) {
+            if (shouldFilterMessage(message) || shouldFilterMessage(source)) {
+                console.debug('[Filtered Window Error]:', message, 'from:', source);
+                return true; // Previene la propagazione
+            }
+            if (originalOnError) {
+                return originalOnError.apply(this, arguments);
+            }
+            return false;
+        };
+        
+        // Filtra eventi di errore non gestiti
+        window.addEventListener('error', function(e) {
+            const message = e.message || '';
+            const source = e.filename || '';
+            
+            if (shouldFilterMessage(message) || shouldFilterMessage(source)) {
+                console.debug('[Filtered Error Event]:', message, 'from:', source);
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }, true);
+        
+        // Filtra promise rejections non gestite
+        window.addEventListener('unhandledrejection', function(e) {
+            const message = String(e.reason);
+            if (shouldFilterMessage(message)) {
+                console.debug('[Filtered Promise Rejection]:', message);
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        console.log('[TALON] Filtro errori Superset attivato');
+    })();
+    </script>
+
+    <!-- ============================== -->
+    <!-- CORE APPLICATION SCRIPTS -->
     <!-- ============================== -->
     
     <!-- Core Script (sempre caricato) -->
@@ -422,7 +460,6 @@
     {% endif %}
     
     <!-- Moduli Principali -->
-    <script src="{{ url_for('static', filename='js/organigramma.js') }}?v={{ cache_buster }}"></script>
     <script src="{{ url_for('static', filename='js/enti-militari.js') }}?v={{ cache_buster }}"></script>
     <script src="{{ url_for('static', filename='js/enti-civili.js') }}?v={{ cache_buster }}"></script>
     <script src="{{ url_for('static', filename='js/operazioni.js') }}?v={{ cache_buster }}"></script>
@@ -860,5 +897,91 @@
     
     <!-- Blocco legacy per compatibilità -->
     {% block extra_js %}{% endblock %}
+    
+    <!-- Script per Superset SSO Embedded -->
+    <script>
+        /**
+         * Apre Superset in modalità embedded con SSO
+         */
+        function openSupersetEmbedded(event) {
+            if (event) {
+                event.preventDefault();
+            }
+            
+            // Mostra loading
+            const loadingHtml = `
+                <div class="text-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Caricamento Superset...</span>
+                    </div>
+                    <p class="mt-3">Caricamento dashboard di analisi...</p>
+                </div>
+            `;
+            
+            // Crea modal per contenere l'iframe
+            const modalHtml = `
+                <div class="modal fade" id="supersetModal" tabindex="-1" role="dialog" aria-labelledby="supersetModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl" style="max-width: 95%; height: 90vh;" role="document">
+                        <div class="modal-content" style="height: 100%;">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="supersetModalLabel">
+                                    <i class="fas fa-chart-bar"></i> Dashboard di Analisi
+                                </h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body p-0" style="height: calc(100% - 60px);">
+                                <div id="supersetContainer" style="height: 100%;">
+                                    ${loadingHtml}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Rimuovi modal esistente se presente
+            const existingModal = document.getElementById('supersetModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Aggiungi nuovo modal al DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Mostra il modal
+            $('#supersetModal').modal('show');
+            
+            // Crea iframe che punta al nostro endpoint di login automatico
+            const iframeHtml = `
+                <iframe 
+                    src="/superset-login"
+                    style="width: 100%; height: 100%; border: none;"
+                    frameborder="0"
+                    allowfullscreen
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox"
+                    onload="console.log('Superset iframe caricato')">
+                </iframe>
+            `;
+            
+            // Sostituisci loading con iframe
+            document.getElementById('supersetContainer').innerHTML = iframeHtml;
+        }
+        
+        // Apri Superset embedded nel modal
+        function openSupersetNewTab() {
+            openSupersetEmbedded();
+        }
+        
+        // Funzione temporanea per testare: forza nuovo login e apri Superset
+        window.forceSupsersetReauth = function() {
+            // Questa funzione può essere chiamata dalla console per debug
+            fetch('/logout', { method: 'POST' })
+                .then(() => {
+                    window.location.href = '/login';
+                });
+        }
+    </script>
 </body>
 </html>

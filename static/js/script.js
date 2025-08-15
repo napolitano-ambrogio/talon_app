@@ -1,9 +1,9 @@
 /**
  * ========================================
- * TALON MAIN APPLICATION SCRIPT - SPA VERSION
+ * TALON MAIN APPLICATION SCRIPT
  * File: static/js/script.js
  * 
- * Versione: 3.0.0 - Full SPA Integration
+ * Versione: 3.1.0 - Standard Version
  * Descrizione: Script principale con inizializzazione
  *              applicazione, gestione componenti e utility
  * ========================================
@@ -41,12 +41,6 @@
             AUTO_SAVE_DELAY: 2000
         },
         
-        // SPA Configuration
-        SPA: {
-            ENABLED: true,
-            CLEANUP_ON_NAVIGATION: true,
-            REINIT_ON_CONTENT_LOADED: true
-        },
         
         // Roles
         ROLES: {
@@ -81,9 +75,6 @@
             // Event handlers for cleanup
             this.eventHandlers = new Map();
             
-            // Bind methods
-            this.handleSPANavigation = this.handleSPANavigation.bind(this);
-            this.handleSPACleanup = this.handleSPACleanup.bind(this);
         }
 
         // ========================================
@@ -110,8 +101,6 @@
                 // 4. Setup global handlers
                 this.setupGlobalHandlers();
                 
-                // 5. Setup SPA integration
-                this.setupSPAIntegration();
                 
                 // 6. Initialize UI components
                 await this.initializeUIComponents();
@@ -183,17 +172,6 @@
                 });
             }
             
-            // Fetch wrapper
-            const originalFetch = window.fetch;
-            window.fetch = function(...args) {
-                if (args[1] && typeof args[1] === 'object') {
-                    args[1].headers = {
-                        ...args[1].headers,
-                        'X-CSRF-TOKEN': token.content
-                    };
-                }
-                return originalFetch.apply(this, args);
-            };
         }
 
         checkBrowserCompatibility() {
@@ -399,54 +377,6 @@
             resetTimer();
         }
 
-        // ========================================
-        // SPA INTEGRATION
-        // ========================================
-        
-        setupSPAIntegration() {
-            if (!this.config.SPA.ENABLED) return;
-            
-            // Listen to TalonApp events
-            if (window.TalonApp) {
-                window.TalonApp.on('talon:cleanup', this.handleSPACleanup);
-                window.TalonApp.on('talon:content:loaded', this.handleSPANavigation);
-            } else {
-                // Fallback to custom events
-                document.addEventListener('spa:cleanup', this.handleSPACleanup);
-                document.addEventListener('spa:content-loaded', this.handleSPANavigation);
-            }
-        }
-
-        async handleSPACleanup() {
-            this.log('debug', 'SPA cleanup triggered');
-            
-            if (!this.config.SPA.CLEANUP_ON_NAVIGATION) return;
-            
-            // Clear timers
-            this.clearAllTimers();
-            
-            // Cleanup components
-            await this.cleanupComponents();
-            
-            // Save form drafts
-            this.saveAllFormDrafts();
-            
-            this.emit('talon:app:cleanup');
-        }
-
-        async handleSPANavigation() {
-            this.log('debug', 'SPA navigation detected');
-            
-            if (!this.config.SPA.REINIT_ON_CONTENT_LOADED) return;
-            
-            // Re-initialize components
-            await this.initializeUIComponents();
-            
-            // Load page-specific data
-            await this.loadPageSpecificData();
-            
-            this.emit('talon:app:navigation');
-        }
 
         // ========================================
         // UI COMPONENTS

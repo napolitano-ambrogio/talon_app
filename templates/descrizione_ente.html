@@ -28,11 +28,7 @@
             <div>
                 <div class="detail-item">
                     <dt>Indirizzo</dt>
-                    <dd>{{ ente.indirizzo or 'N/D' }} {{ ente.civico or '' }}</dd>
-                </div>
-                <div class="detail-item">
-                    <dt>Città e CAP</dt>
-                    <dd>{{ ente.citta or 'N/D' }} ({{ ente.provincia or '' }}) - {{ ente.cap or 'N/D' }}</dd>
+                    <dd>{{ ente.indirizzo or 'Indirizzo non specificato' }}</dd>
                 </div>
                 <div class="detail-item">
                     <dt>Contatti</dt>

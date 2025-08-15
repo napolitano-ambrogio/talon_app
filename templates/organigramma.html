@@ -1,12 +1,16 @@
-{% macro render_tree(nodes) %}
-    <ul class="tree">
+{% macro render_tree(nodes, is_root=true) %}
+    <ul{% if is_root %} class="tree"{% endif %}>
         {% for node in nodes %}
-            <li>
+            <li data-nome="{{ node.nome or '' }}" 
+                data-codice="{{ node.codice or '' }}" 
+                data-indirizzo="{{ node.indirizzo or '' }}" 
+                data-telefono="{{ node.telefono or '' }}" 
+                data-email="{{ node.email or '' }}">
                 <div class="node-content">
                     {% if node.children %}
-                        <span class="toggle-btn" onclick="toggleNode(this); event.stopPropagation();"></span>
+                        <span class="toggle-btn" onclick="toggleNode(this); event.stopPropagation();" title="Espandi albero"></span>
                     {% else %}
-                        <span style="width: 25px; display: inline-block;"></span>
+                        <span style="width: 20px; display: inline-block;"></span>
                     {% endif %}
                     <div class="ente-name">
                         <a href="{{ url_for('enti_militari.visualizza_ente', id=node.id) }}">
@@ -15,7 +19,7 @@
                     </div>
                 </div>
                 {% if node.children %}
-                    {{ render_tree(node.children) }}
+                    {{ render_tree(node.children, false) }}
                 {% endif %}
             </li>
         {% endfor %}
@@ -67,30 +71,31 @@
     }
 
     .toggle-btn {
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         width: 20px;
         height: 20px;
         margin-right: 8px;
         cursor: pointer;
-        position: relative;
-        flex-shrink: 0;
         user-select: none;
+    }
+
+    .toggle-btn:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+        border-radius: 3px;
     }
 
     .toggle-btn::before {
         content: '▶';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 12px;
-        color: #6c757d;
-        transition: transform 0.2s ease;
+        font-size: 10px;
+        color: #495057;
+        font-weight: bold;
+        line-height: 1;
     }
 
-    .expanded > .node-content .toggle-btn::before {
+    .tree li.expanded > .node-content .toggle-btn::before {
         content: '▼';
-        transform: translate(-50%, -50%);
     }
 
     /* Nascondi figli quando collassato */
@@ -102,6 +107,7 @@
     .tree li.expanded > ul {
         display: block;
     }
+
 
     .ente-name {
         flex: 1;
@@ -119,24 +125,7 @@
         text-decoration: underline;
     }
 
-    .search-bar {
-        margin: 20px 0;
-    }
-
-    #organigrammaSearchInput {
-        width: 100%;
-        padding: 10px 15px;
-        font-size: 14px;
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
-        text-transform: uppercase;
-    }
-
-    #organigrammaSearchInput:focus {
-        outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
-    }
+    /* Gli stili per search-bar sono ora gestiti dal CSS globale */
 
     .search-highlighted > .node-content {
         background-color: #fff3cd;
@@ -221,9 +210,9 @@
         </table>
 
         <div class="search-bar">
-            <input type="text" 
+            <input type="search" 
                    id="organigrammaSearchInput" 
-                   placeholder="CERCA ENTE MILITARE..."
+                   placeholder="CERCA PER NOME, CODICE, INDIRIZZO, TELEFONO, EMAIL..."
                    onkeyup="searchTree(this.value)">
         </div>
 
@@ -250,18 +239,15 @@
 
 // Toggle espansione/compressione nodo
 function toggleNode(button) {
-    console.log('[Toggle] Button clicked');
     const listItem = button.closest('li');
     if (listItem) {
         if (listItem.classList.contains('expanded')) {
             listItem.classList.remove('expanded');
-            console.log('[Toggle] Node collapsed');
+            button.title = 'Espandi albero';
         } else {
             listItem.classList.add('expanded');
-            console.log('[Toggle] Node expanded');
+            button.title = 'Comprimi albero';
         }
-    } else {
-        console.log('[Toggle] List item not found');
     }
 }
 
@@ -287,6 +273,13 @@ function searchTree(searchTerm) {
     const noResultsMessage = document.getElementById('no-results-message');
     let hasResults = false;
     
+    // Rimuovi completamente la cella che contiene il messaggio e l'icona
+    const unwantedCell = document.querySelector('#no-results-row > td');
+    if (unwantedCell) {
+        unwantedCell.style.display = 'none';
+    }
+    
+    
     if (!normalizedSearch) {
         // Reset visualizzazione
         treeItems.forEach(item => {
@@ -307,30 +300,36 @@ function searchTree(searchTerm) {
     
     // Mostra solo quelli che corrispondono
     treeItems.forEach(item => {
-        const enteName = item.querySelector('.ente-name');
-        if (enteName) {
-            const text = enteName.textContent.toUpperCase();
+        // Cerca in tutti i campi dell'ente
+        const nome = item.dataset.nome || '';
+        const codice = item.dataset.codice || '';
+        const indirizzo = item.dataset.indirizzo || '';
+        const telefono = item.dataset.telefono || '';
+        const email = item.dataset.email || '';
+        
+        // Combina tutti i campi per la ricerca
+        const searchableText = [nome, codice, indirizzo, telefono, email]
+            .join(' ').toUpperCase();
+        
+        if (searchableText.includes(normalizedSearch)) {
+            // Mostra elemento
+            item.style.display = '';
+            item.classList.add('search-highlighted');
+            hasResults = true;
             
-            if (text.includes(normalizedSearch)) {
-                // Mostra elemento
-                item.style.display = '';
-                item.classList.add('search-highlighted');
-                hasResults = true;
-                
-                // Mostra tutti i parent
-                let parent = item.parentElement.closest('li');
-                while (parent) {
-                    parent.style.display = '';
-                    parent.classList.add('expanded');
-                    parent = parent.parentElement.closest('li');
-                }
-                
-                // Mostra tutti i figli
-                const children = item.querySelectorAll('li');
-                children.forEach(child => {
-                    child.style.display = '';
-                });
+            // Mostra tutti i parent
+            let parent = item.parentElement.closest('li');
+            while (parent) {
+                parent.style.display = '';
+                parent.classList.add('expanded');
+                parent = parent.parentElement.closest('li');
             }
+            
+            // Mostra tutti i figli
+            const children = item.querySelectorAll('li');
+            children.forEach(child => {
+                child.style.display = '';
+            });
         }
     });
     
@@ -344,8 +343,10 @@ function searchTree(searchTerm) {
 function expandAll() {
     const allItems = document.querySelectorAll('.tree li');
     allItems.forEach(item => {
-        if (item.querySelector('.toggle-btn')) {
+        const toggleBtn = item.querySelector('.toggle-btn');
+        if (toggleBtn) {
             item.classList.add('expanded');
+            toggleBtn.title = 'Comprimi albero';
         }
     });
 }
@@ -354,7 +355,11 @@ function expandAll() {
 function collapseAll() {
     const allItems = document.querySelectorAll('.tree li');
     allItems.forEach(item => {
-        item.classList.remove('expanded');
+        const toggleBtn = item.querySelector('.toggle-btn');
+        if (toggleBtn) {
+            item.classList.remove('expanded');
+            toggleBtn.title = 'Espandi albero';
+        }
     });
 }
 

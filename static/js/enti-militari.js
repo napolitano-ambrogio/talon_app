@@ -1,9 +1,9 @@
 /**
  * ========================================
- * TALON - ENTI MILITARI MODULE (SPA VERSION)
+ * TALON - ENTI MILITARI MODULE
  * File: static/js/enti-militari.js
  * 
- * Versione: 2.0.0 - Full SPA Integration
+ * Versione: 2.1.0 - Standard Version
  * Data: 2025
  * Funzionalità: Gestione enti militari, organigramma,
  *               struttura gerarchica e relazioni
@@ -209,12 +209,7 @@
         // Se abbiamo endpoint API, usa quello
         if (window.TALON_CONFIG?.api?.baseUrl) {
             try {
-                const response = await fetch(`${window.TALON_CONFIG.api.baseUrl}${CONFIG.API.LIST}`, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRFToken': window.TALON_CONFIG?.api?.csrfToken || ''
-                    }
-                });
+                const response = await fetch(`${window.TALON_CONFIG.api.baseUrl}${CONFIG.API.LIST}`);
                 
                 if (response.ok) {
                     return await response.json();
@@ -815,11 +810,7 @@
         if (window.TALON_CONFIG?.api?.baseUrl) {
             const url = CONFIG.API.DELETE.replace('{id}', id);
             const response = await fetch(`${window.TALON_CONFIG.api.baseUrl}${url}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': window.TALON_CONFIG?.api?.csrfToken || ''
-                }
+                method: 'DELETE'
             });
             
             if (!response.ok) {
@@ -849,23 +840,6 @@
         log('debug', 'Enti Militari module cleaned up');
     }
 
-    // ========================================
-    // INTEGRAZIONE SPA
-    // ========================================
-    
-    function handleSPANavigation() {
-        if (isEntiMilitariPage()) {
-            if (!state.initialized) {
-                initialize();
-            } else {
-                loadEntities();
-            }
-        } else {
-            if (state.initialized) {
-                cleanup();
-            }
-        }
-    }
 
     // ========================================
     // EXPORT API PUBBLICA
@@ -887,13 +861,6 @@
     // AUTO-INIT E EVENT LISTENERS
     // ========================================
     
-    // Ascolta eventi SPA
-    document.addEventListener('spa:content-loaded', handleSPANavigation);
-    document.addEventListener('spa:before-navigate', () => {
-        if (state.initialized && !isEntiMilitariPage()) {
-            cleanup();
-        }
-    });
 
     // Auto-init quando DOM ready
     if (document.readyState === 'loading') {

@@ -1,11 +1,10 @@
 /**
  * ========================================
- * TALON - LOGIN FORM HANDLER (SPA VERSION)
+ * TALON - LOGIN FORM HANDLER
  * File: static/js/login.js
  * 
- * Versione: 2.0.0 - Ottimizzata per SPA
+ * Versione: 2.1.0 - Standard Version
  * Gestisce la logica del form di login
- * con supporto completo SPA
  * ========================================
  */
 
@@ -42,7 +41,7 @@
     // ========================================
     
     function initialize() {
-        log('[TALON Login] Inizializzazione sistema login (SPA)...');
+        log('[TALON Login] Inizializzazione sistema login...');
 
         // Cleanup precedente se necessario
         if (state.initialized) {
@@ -639,21 +638,8 @@
         version: '2.0.0'
     };
 
-    // ========================================
-    // SPA INTEGRATION
-    // ========================================
-    
     // Inietta stili una volta sola
     injectStyles();
-    
-    // Listener per eventi SPA
-    if (window.TalonApp) {
-        window.TalonApp.on('content:loaded', initialize);
-        window.TalonApp.on('navigation:start', cleanup);
-    } else {
-        document.addEventListener('spa:content-loaded', initialize);
-        document.addEventListener('spa:navigation-start', cleanup);
-    }
 
     // Auto-inizializzazione per primo caricamento
     if (document.readyState === 'loading') {
@@ -662,6 +648,6 @@
         setTimeout(initialize, 100);
     }
 
-    log('[TALON Login] Modulo caricato v' + window.TalonLogin.version + ' (SPA Ready)');
+    log('[TALON Login] Modulo caricato v' + window.TalonLogin.version);
 
 })(window, document);

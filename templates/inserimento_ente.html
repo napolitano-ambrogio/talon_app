@@ -2,6 +2,32 @@
 
 {% block title %}Inserisci Ente Militare - TALON{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Rimuovi frecce native dal select nascosto */
+#parent_id,
+select[name="parent_id"] {
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    background-image: none !important;
+    background: none !important;
+}
+
+/* NON aggiungere pseudo-elementi ::after che creerebbero doppie frecce */
+.searchable-select-display::after,
+.searchable-select-display::before {
+    display: none !important;
+    content: none !important;
+}
+
+/* Mantieni solo la freccia SVG del componente */
+.searchable-select-display {
+    background-image: none !important;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="form-container">
     <h1>Nuovo Ente Militare</h1>
@@ -20,7 +46,7 @@
         <div class="form-group">
             <label for="parent_id">Dipende da (Ente Genitore):</label>
             <div class="searchable-select" data-select-id="parent_id"></div>
-            <select name="parent_id" id="parent_id" style="display: none;">
+            <select name="parent_id" id="parent_id" style="display: none !important; visibility: hidden !important; opacity: 0 !important;">
                 <option value="">-- Nessuno (Ente al Vertice) --</option>
                 {% for ente in enti %}
                     <option value="{{ ente.id }}">{{ ente.nome }}</option>
@@ -32,24 +58,12 @@
         <h3>Dettagli Contatto</h3>
         
         <div class="form-group">
-            <label for="indirizzo">Indirizzo (Via/Piazza):</label>
-            <input type="text" id="indirizzo" name="indirizzo">
-        </div>
-        <div class="form-group">
-            <label for="civico">Numero Civico:</label>
-            <input type="text" id="civico" name="civico">
-        </div>
-        <div class="form-group">
-            <label for="cap">CAP:</label>
-            <input type="text" id="cap" name="cap">
-        </div>
-        <div class="form-group">
-            <label for="citta">Città:</label>
-            <input type="text" id="citta" name="citta">
-        </div>
-        <div class="form-group">
-            <label for="provincia">Provincia (sigla):</label>
-            <input type="text" id="provincia" name="provincia" maxlength="2">
+            <label for="indirizzo">Indirizzo Completo:</label>
+            <input type="text" id="indirizzo" name="indirizzo" 
+                   placeholder="es: Via Roma 123, 20100 Milano (MI)">
+            <small style="color: #666; font-size: 0.9em;">
+                Inserire l'indirizzo completo. Utilizzare il Geocoding Interattivo per la localizzazione precisa.
+            </small>
         </div>
         <div class="form-group">
             <label for="telefono">Telefono:</label>

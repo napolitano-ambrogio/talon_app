@@ -1,9 +1,9 @@
 /**
  * ========================================
- * TALON - DASHBOARD ADMIN (SPA VERSION)
+ * TALON - DASHBOARD ADMIN
  * File: static/js/dashboard_admin.js
  * 
- * Versione: 2.0.0 - Ottimizzata per SPA
+ * Versione: 2.1.0 - Standard Version
  * Gestione dashboard amministratore con
  * grafici, contatori e aggiornamenti real-time
  * ========================================
@@ -48,25 +48,7 @@
     
     function initialize() {
         state.initializationCount++;
-        log(`🎯 Initializing Dashboard Admin (SPA Version) - Call #${state.initializationCount}...`);
-        
-        // Check if SPA is calling us (coordination with SPA system)
-        const isSPACall = window.TalonDashboardAdmin && 
-                          (window.TalonDashboardAdmin._spaInitializing || window.TalonDashboardAdmin._spaInitialized);
-        
-        if (isSPACall && state.initialized) {
-            log('✅ SPA coordination: Dashboard Admin already initialized, skipping SPA call');
-            return;
-        }
-        
-        // Log call stack to trace source of multiple calls (only for non-SPA calls)
-        if (config.debug && state.initializationCount > 1 && !isSPACall) {
-            try {
-                throw new Error('Multiple initialization trace');
-            } catch (e) {
-                log('📋 Call stack for multiple initialization:', e.stack);
-            }
-        }
+        log(`🎯 Initializing Dashboard Admin - Call #${state.initializationCount}...`);
         
         // Prevent multiple concurrent initializations
         if (state.initializing) {
@@ -74,15 +56,8 @@
             return;
         }
         
-        // For SPA navigation, always reset if we're navigating back to the page
-        if (isSPACall && state.initialized) {
-            log('🔄 SPA navigation: Force reinitializing dashboard admin');
-            cleanup();
-            state.initialized = false;
-        }
-        
-        // Check if already initialized and not forcing reinitialization
-        if (state.initialized && !isSPACall) {
+        // Check if already initialized
+        if (state.initialized) {
             log('✅ Dashboard Admin already initialized, skipping');
             return;
         }
@@ -110,92 +85,10 @@
         
         log('✅ Admin dashboard detected, initializing components...');
         
-        // For SPA navigation, add extra checks and delays
-        const isSPANavigation = !wasPageRefreshed && window.TalonSPA;
-        if (isSPANavigation) {
-            log('🔄 SPA navigation detected, using enhanced initialization...');
-            
-            // Wait for DOM to be fully rendered with multiple attempts
-            let attempts = 0;
-            const maxAttempts = 10;
-            
-            const initWithChecks = () => {
-                attempts++;
-                
-                // Check if essential elements exist
-                const requiredElements = {
-                    chart: document.getElementById('activityChart'),
-                    counters: document.querySelectorAll('.counter'),
-                    container: document.querySelector('.dashboard-container'),
-                    refreshBtn: document.getElementById('refreshDashboard')
-                };
-                
-                log(`Checking required elements (attempt ${attempts}/${maxAttempts}):`, {
-                    hasChart: !!requiredElements.chart,
-                    hasCounters: requiredElements.counters.length > 0,
-                    hasContainer: !!requiredElements.container,
-                    hasRefreshBtn: !!requiredElements.refreshBtn,
-                    allButtons: document.querySelectorAll('button').length,
-                    domReady: document.readyState
-                });
-                
-                // Critical elements: chart, counters, container
-                const criticalElementsMissing = !requiredElements.chart || 
-                    requiredElements.counters.length === 0 || 
-                    !requiredElements.container;
-                
-                if (criticalElementsMissing && attempts < maxAttempts) {
-                    log(`⏳ Critical elements not ready yet, retrying in ${200 * attempts}ms... (attempt ${attempts}/${maxAttempts})`);
-                    setTimeout(initWithChecks, 200 * attempts); // Progressive delay
-                    return;
-                }
-                
-                if (criticalElementsMissing) {
-                    log('❌ Critical elements still missing after max attempts, proceeding anyway');
-                }
-                
-                performInitialization();
-            };
-            
-            // Use MutationObserver to detect when DOM changes are complete
-            if (window.MutationObserver) {
-                let mutationTimer;
-                const observer = new MutationObserver(() => {
-                    // Reset timer on each mutation
-                    clearTimeout(mutationTimer);
-                    mutationTimer = setTimeout(() => {
-                        observer.disconnect();
-                        log('🔍 DOM mutations settled, starting initialization...');
-                        initWithChecks();
-                    }, 150); // Wait 150ms after last mutation
-                });
-                
-                observer.observe(document.body, {
-                    childList: true,
-                    subtree: true,
-                    attributes: true
-                });
-                
-                // Fallback: disconnect observer after 3 seconds
-                setTimeout(() => {
-                    observer.disconnect();
-                    clearTimeout(mutationTimer);
-                    if (!state.initialized && !state.initializing) {
-                        log('🕐 MutationObserver timeout, starting initialization...');
-                        initWithChecks();
-                    }
-                }, 3000);
-            } else {
-                // Fallback for browsers without MutationObserver
-                setTimeout(initWithChecks, 300);
-            }
-            
-        } else {
-            // Direct page load or refresh - use standard delay
-            setTimeout(() => {
-                performInitialization();
-            }, config.chartUpdateDelay);
-        }
+        // Use standard delay for initialization
+        setTimeout(() => {
+            performInitialization();
+        }, config.chartUpdateDelay);
     }
     
     function performInitialization() {
@@ -266,11 +159,6 @@
         state.initializing = false;
         state.counters = [];
         
-        // Reset SPA coordination flags
-        if (window.TalonDashboardAdmin) {
-            window.TalonDashboardAdmin._spaInitialized = false;
-            window.TalonDashboardAdmin._spaInitializing = false;
-        }
         
         log('✅ Cleanup completed');
     }
@@ -868,15 +756,6 @@
     // Make showComingSoon globally available for onclick handlers (used in dashboard_admin.html)
     window.showComingSoon = showComingSoon;
 
-    // Listen for SPA events to retrigger counter animations
-    document.addEventListener('spa:dashboard-admin-ready', function() {
-        log('📡 Received spa:dashboard-admin-ready event');
-        setTimeout(() => {
-            if (window.TalonDashboardAdmin && window.TalonDashboardAdmin.retriggerCounters) {
-                window.TalonDashboardAdmin.retriggerCounters();
-            }
-        }, 100);
-    });
 
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {

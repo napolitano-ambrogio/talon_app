@@ -1,11 +1,11 @@
 /**
  * ========================================
- * TALON SIDEBAR MODULE - SPA VERSION COMPLETA
+ * TALON SIDEBAR MODULE
  * File: static/js/sidebar.js
  * 
- * Versione: 3.0.0 - Full SPA Integration
+ * Versione: 3.1.0 - Standard Version
  * Data: 2025
- * Funzionalità: Menu navigazione SPA, controlli ruoli, 
+ * Funzionalità: Menu navigazione, controlli ruoli, 
  *               drag&drop, logout, dashboard buttons
  * ========================================
  */
@@ -18,13 +18,6 @@
     // ========================================
     
     const CONFIG = {
-        // Configurazione SPA
-        SPA: {
-            ENABLED: true,
-            CLEANUP_ON_NAVIGATION: true,
-            PERSIST_STATE: true,
-            DEBUG: false
-        },
         
         // Configurazione UI
         UI: {
@@ -98,9 +91,6 @@
             this.eventHandlers = new Map();
             this.timers = new Set();
             
-            // Bind dei metodi
-            this.handleSPANavigation = this.handleSPANavigation.bind(this);
-            this.handleSPACleanup = this.handleSPACleanup.bind(this);
             this.handleDocumentClick = this.handleDocumentClick.bind(this);
             this.toggle = this.toggle.bind(this);
             this.handleMenuClick = this.handleMenuClick.bind(this);
@@ -141,8 +131,6 @@
                 // Setup event handlers
                 this.setupEventHandlers();
                 
-                // Setup SPA integration
-                this.setupSPAIntegration();
                 
                 // Inizializza componenti
                 this.initializeDragAndDrop();
@@ -174,10 +162,6 @@
         cleanup() {
             this.log('info', 'Cleaning up Sidebar...');
             
-            // Salva stato se configurato
-            if (CONFIG.SPA.PERSIST_STATE) {
-                this.saveState();
-            }
             
             // Rimuovi event handlers
             this.removeAllEventHandlers();
@@ -198,8 +182,6 @@
         destroy() {
             this.cleanup();
             
-            // Rimuovi SPA listeners
-            this.removeSPAIntegration();
             
             // Rimuovi stili dinamici
             this.removeStyles();
@@ -234,8 +216,6 @@
         // ========================================
         
         loadPersistedState() {
-            if (!CONFIG.SPA.PERSIST_STATE) return;
-            
             // Carica stato pinned
             const pinned = localStorage.getItem(CONFIG.STORAGE.PINNED_STATE);
             if (pinned !== null) {
@@ -255,8 +235,6 @@
         }
 
         saveState() {
-            if (!CONFIG.SPA.PERSIST_STATE) return;
-            
             localStorage.setItem(CONFIG.STORAGE.PINNED_STATE, this.state.isPinned);
             sessionStorage.setItem(CONFIG.STORAGE.LOCKED_STATE, this.state.isLocked);
             
@@ -548,13 +526,9 @@
                 // Animazione di feedback
                 this.animateMenuClick(linkElement);
                 
-                // Navigazione SPA o normale
+                // Navigazione normale
                 this.addTimer(setTimeout(() => {
-                    if (window.TalonApp?.navigate) {
-                        window.TalonApp.navigate(menuConfig.route);
-                    } else {
-                        window.location.href = menuConfig.route;
-                    }
+                    window.location.href = menuConfig.route;
                 }, 150));
             } else {
                 this.log('warn', `Route not found for menu: ${menuId}`);
@@ -811,11 +785,7 @@
 
         navigateToRoute(route) {
             this.log(`Navigating to: ${route}`);
-            if (window.TalonApp?.navigate) {
-                window.TalonApp.navigate(route);
-            } else {
-                window.location.href = route;
-            }
+            window.location.href = route;
         }
 
         openCreateUserModal() {
@@ -1253,11 +1223,6 @@
         }
 
         showToast(message, type = 'info') {
-            // Usa TalonApp se disponibile
-            if (window.TalonApp?.showToast) {
-                window.TalonApp.showToast(message, type);
-                return;
-            }
             
             // Crea container toast se non esiste
             let toastContainer = document.getElementById('toast-container');
@@ -1337,66 +1302,6 @@
             }, CONFIG.UI.TOAST_DURATION));
         }
 
-        // ========================================
-        // SPA INTEGRATION
-        // ========================================
-        
-        setupSPAIntegration() {
-            if (window.TalonApp) {
-                window.TalonApp.on('navigation:start', this.handleSPACleanup);
-                window.TalonApp.on('content:loaded', this.handleSPANavigation);
-            } else {
-                document.addEventListener('spa:navigation-start', this.handleSPACleanup);
-                document.addEventListener('spa:content-loaded', this.handleSPANavigation);
-            }
-        }
-
-        removeSPAIntegration() {
-            if (window.TalonApp) {
-                window.TalonApp.off('navigation:start', this.handleSPACleanup);
-                window.TalonApp.off('content:loaded', this.handleSPANavigation);
-            } else {
-                document.removeEventListener('spa:navigation-start', this.handleSPACleanup);
-                document.removeEventListener('spa:content-loaded', this.handleSPANavigation);
-            }
-        }
-
-        handleSPACleanup() {
-            this.log('debug', 'SPA cleanup triggered');
-            
-            if (CONFIG.SPA.CLEANUP_ON_NAVIGATION) {
-                // Salva stato prima del cleanup
-                this.saveState();
-                
-                // Cleanup parziale
-                this.clearAllTimers();
-            }
-        }
-
-        handleSPANavigation() {
-            this.log('debug', 'SPA navigation detected');
-            
-            // Verifica se sidebar ancora esiste
-            const sidebar = document.querySelector(CONFIG.SELECTORS.sidebar);
-            
-            if (sidebar) {
-                if (!this.state.initialized) {
-                    // Re-inizializza
-                    this.init();
-                } else {
-                    // Refresh componenti
-                    this.findElements();
-                    this.setupEventHandlers();
-                    this.applyRoleRestrictionsToMenu();
-                    this.initializeDashboardButtons();
-                }
-            } else {
-                // Sidebar non presente
-                if (this.state.initialized) {
-                    this.cleanup();
-                }
-            }
-        }
 
         // ========================================
         // UTILITY
@@ -1422,20 +1327,7 @@
         }
 
         log(level, ...args) {
-            if (!CONFIG.SPA.DEBUG && level === 'debug') return;
-            
-            const prefix = '[TalonSidebar]';
-            const methods = {
-                'debug': 'log',
-                'info': 'info',
-                'warn': 'warn',
-                'error': 'error',
-                'success': 'log'
-            };
-            
             // Console logging removed for production silence
-            // const method = methods[level] || 'log';
-            // console[method](prefix, ...args);
         }
 
         removeStyles() {
@@ -1695,7 +1587,7 @@
             navigate: (route) => window.talonSidebar.navigateToRoute(route),
             
             // Info
-            version: '3.0.0',
+            version: '3.1.0',
             isInitialized: () => window.talonSidebar.state.initialized,
             status: () => window.talonSidebar.getStats()
         };

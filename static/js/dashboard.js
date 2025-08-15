@@ -1,9 +1,9 @@
 /**
  * ========================================
- * TALON - DASHBOARD MODULE (SPA VERSION)
+ * TALON - DASHBOARD MODULE
  * File: static/js/dashboard.js
  * 
- * Versione: 2.0.0 - Full SPA Integration
+ * Versione: 2.1.0 - Standard Version
  * Data: 2025
  * Funzionalità: Dashboard principale con grafici,
  *               statistiche e controlli real-time
@@ -310,12 +310,7 @@
         // Se abbiamo endpoint API, usa quelli
         if (window.TALON_CONFIG?.api?.baseUrl) {
             try {
-                const response = await fetch(`${window.TALON_CONFIG.api.baseUrl}/api/dashboard/data`, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRFToken': window.TALON_CONFIG?.api?.csrfToken || ''
-                    }
-                });
+                const response = await fetch(`${window.TALON_CONFIG.api.baseUrl}/api/dashboard/data`);
                 
                 if (response.ok) {
                     return await response.json();
@@ -559,24 +554,6 @@
         log('debug', 'Dashboard cleaned up');
     }
 
-    // ========================================
-    // INTEGRAZIONE SPA
-    // ========================================
-    
-    function handleSPANavigation() {
-        if (isDashboardPage()) {
-            if (!state.initialized) {
-                initialize();
-            } else {
-                // Ricarica solo i dati
-                loadDashboardData();
-            }
-        } else {
-            if (state.initialized) {
-                cleanup();
-            }
-        }
-    }
 
     // ========================================
     // EXPORT API PUBBLICA
@@ -599,13 +576,6 @@
     // AUTO-INIT E EVENT LISTENERS
     // ========================================
     
-    // Ascolta eventi SPA
-    document.addEventListener('spa:content-loaded', handleSPANavigation);
-    document.addEventListener('spa:before-navigate', () => {
-        if (state.initialized && !isDashboardPage()) {
-            cleanup();
-        }
-    });
 
     // Auto-init quando DOM ready
     if (document.readyState === 'loading') {

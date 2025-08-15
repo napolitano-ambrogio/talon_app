@@ -25,7 +25,7 @@ def get_db_connection():
 # ===========================================
 def validate_ente_civile_data(form_data, ente_id=None):
     errors = []
-    required_fields = ['nome', 'indirizzo', 'citta']
+    required_fields = ['nome', 'indirizzo']
     for field in required_fields:
         if not form_data.get(field, '').strip():
             errors.append(f'Il campo {field}  obbligatorio.')
@@ -34,23 +34,21 @@ def validate_ente_civile_data(form_data, ente_id=None):
     if email and '@' not in email:
         errors.append('Formato email non valido.')
 
-    cap = form_data.get('cap', '').strip()
-    if cap and (not cap.isdigit() or len(cap) != 5):
-        errors.append('Il CAP deve essere di 5 cifre.')
+    # Validazione CAP rimossa - non più necessaria
 
     return errors
 
-def check_duplicate_ente_civile(conn, nome, citta, exclude_id=None):
+def check_duplicate_ente_civile(conn, nome, indirizzo, exclude_id=None):
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         if exclude_id:
             cur.execute(
-                'SELECT id FROM enti_civili WHERE nome = %s AND citta = %s AND id <> %s',
-                (nome, citta, exclude_id)
+                'SELECT id FROM enti_civili WHERE nome = %s AND indirizzo = %s AND id <> %s',
+                (nome, indirizzo, exclude_id)
             )
         else:
             cur.execute(
-                'SELECT id FROM enti_civili WHERE nome = %s AND citta = %s',
-                (nome, citta)
+                'SELECT id FROM enti_civili WHERE nome = %s AND indirizzo = %s',
+                (nome, indirizzo)
             )
         return cur.fetchone() is not None
 
@@ -61,16 +59,8 @@ def get_enti_civili_stats(conn):
         cur.execute('SELECT COUNT(*) AS count FROM enti_civili')
         stats['totale'] = int(cur.fetchone()['count'])
 
-        # Enti per provincia (prime 10)
-        cur.execute(
-            '''SELECT provincia, COUNT(*) AS count
-               FROM enti_civili
-               WHERE provincia IS NOT NULL AND TRIM(provincia) <> ''
-               GROUP BY provincia
-               ORDER BY count DESC
-               LIMIT 10'''
-        )
-        stats['per_provincia'] = cur.fetchall()
+        # Statistiche per provincia non più disponibili (colonna eliminata)
+        stats['per_provincia'] = []
 
         # Enti creati negli ultimi 30 giorni
         cur.execute(
@@ -124,8 +114,7 @@ def enti_civili():
     user_role = get_user_role()
 
     search = request.args.get('search', '').strip()
-    provincia_filter = request.args.get('provincia')
-    citta_filter = request.args.get('citta')
+    # Filtri provincia e citta rimossi
     page = request.args.get('page', 1, type=int)
     per_page = 50
 
@@ -141,17 +130,13 @@ def enti_civili():
         params = []
 
         if search:
-            where.append('(nome ILIKE %s OR indirizzo ILIKE %s OR citta ILIKE %s)')
+            where.append('(nome ILIKE %s OR indirizzo ILIKE %s)')
             like = f'%{search}%'
-            params.extend([like, like, like])
+            params.extend([like, like])
 
-        if provincia_filter:
-            where.append('provincia = %s')
-            params.append(provincia_filter.strip().upper())
+        # Filtro provincia rimosso
 
-        if citta_filter:
-            where.append('citta = %s')
-            params.append(citta_filter.strip().upper())
+        # Filtro citta rimosso
 
         where_sql = ('WHERE ' + ' AND '.join(where)) if where else ''
 
@@ -172,17 +157,9 @@ def enti_civili():
                 )
                 enti_civili_list = cur.fetchall()
 
-                # Filtri options
-                cur.execute(
-                    '''SELECT DISTINCT provincia
-                       FROM enti_civili
-                       WHERE provincia IS NOT NULL AND TRIM(provincia) <> ''
-                       ORDER BY provincia'''
-                )
-                province = cur.fetchall()
-
-                cur.execute('SELECT DISTINCT citta FROM enti_civili ORDER BY citta')
-                citta_opts = cur.fetchall()
+                # Filtri options - Non più necessari con schema semplificato
+                province = []
+                citta_opts = []
 
                 if is_operatore_or_above():
                     stats = get_enti_civili_stats(conn)
@@ -193,7 +170,7 @@ def enti_civili():
             user_id,
             'VIEW_ENTI_CIVILI_LIST',
             f'Visualizzati {len(enti_civili_list)} enti civili (pagina {page}/{total_pages}) - '
-            f'Filtri: search={search}, provincia={provincia_filter}',
+            f'Filtri: search={search}',
             'enti_civili'
         )
 
@@ -205,8 +182,7 @@ def enti_civili():
             stats=stats,
             filtri={
                 'search': search,
-                'provincia_filter': provincia_filter,
-                'citta_filter': citta_filter
+                # Filtri provincia e citta rimossi
             },
             paginazione={
                 'page': page,
@@ -244,10 +220,7 @@ def salva_civile():
 
     nome = request.form['nome'].upper().strip()
     indirizzo = request.form['indirizzo'].upper().strip()
-    civico = request.form.get('civico', '').upper().strip()
-    cap = request.form.get('cap', '').strip()
-    citta = request.form['citta'].upper().strip()
-    provincia = request.form.get('provincia', '').upper().strip()
+    # Campi civico, cap, citta, provincia eliminati dallo schema
     nazione = request.form.get('nazione', 'ITALIA').upper().strip()
     telefono = request.form.get('telefono', '').strip()
     email = request.form.get('email', '').strip().lower()
@@ -256,25 +229,25 @@ def salva_civile():
     conn = get_db_connection()
     try:
         with conn:
-            if check_duplicate_ente_civile(conn, nome, citta):
+            if check_duplicate_ente_civile(conn, nome, indirizzo):
                 flash('Esiste gi un ente civile con questo nome nella stessa citt.', 'warning')
                 return redirect(url_for('enti_civili.inserisci_civile_form'))
 
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute(
                     '''INSERT INTO enti_civili
-                       (nome, indirizzo, civico, cap, citta, provincia, nazione,
+                       (nome, indirizzo, nazione,
                         telefono, email, note, creato_da, data_creazione)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
                        RETURNING id''',
-                    (nome, indirizzo, civico, cap, citta, provincia, nazione,
+                    (nome, indirizzo, nazione,
                      telefono, email, note, user_id)
                 )
                 new_id = int(cur.fetchone()['id'])
 
         log_user_action(
             user_id, 'CREATE_ENTE_CIVILE',
-            f'Creato ente civile: {nome} ({citta})',
+            f'Creato ente civile: {nome}',
             'ente_civile', new_id
         )
         flash(f'Ente civile "{nome}" creato con successo.', 'success')
@@ -339,7 +312,7 @@ def visualizza_civile(id):
 
         log_user_action(
             user_id, 'VIEW_ENTE_CIVILE',
-            f'Visualizzato ente civile: {ente["nome"]} ({ente["citta"]})',
+            f'Visualizzato ente civile: {ente["nome"]}',
             'ente_civile', id
         )
         return render_template('descrizione_civile.html',
@@ -391,10 +364,7 @@ def aggiorna_civile(id):
 
     nome = request.form['nome'].upper().strip()
     indirizzo = request.form['indirizzo'].upper().strip()
-    civico = request.form.get('civico', '').upper().strip()
-    cap = request.form.get('cap', '').strip()
-    citta = request.form['citta'].upper().strip()
-    provincia = request.form.get('provincia', '').upper().strip()
+    # Campi civico, cap, citta, provincia eliminati dallo schema
     nazione = request.form.get('nazione', 'ITALIA').upper().strip()
     telefono = request.form.get('telefono', '').strip()
     email = request.form.get('email', '').strip().lower()
@@ -405,29 +375,29 @@ def aggiorna_civile(id):
         with conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 # Esistenza + vecchi valori
-                cur.execute('SELECT nome, citta FROM enti_civili WHERE id = %s', (id,))
+                cur.execute('SELECT nome, indirizzo FROM enti_civili WHERE id = %s', (id,))
                 existing = cur.fetchone()
                 if not existing:
                     flash('Ente civile non trovato.', 'error')
                     return redirect(url_for('enti_civili.enti_civili'))
 
-                if check_duplicate_ente_civile(conn, nome, citta, id):
+                if check_duplicate_ente_civile(conn, nome, indirizzo, id):
                     flash('Esiste gi un ente civile con questo nome nella stessa citt.', 'warning')
                     return redirect(url_for('enti_civili.modifica_civile_form', id=id))
 
                 cur.execute(
                     '''UPDATE enti_civili
-                       SET nome=%s, indirizzo=%s, civico=%s, cap=%s, citta=%s, provincia=%s,
+                       SET nome=%s, indirizzo=%s,
                            nazione=%s, telefono=%s, email=%s, note=%s,
                            modificato_da=%s, data_modifica=NOW()
                        WHERE id = %s''',
-                    (nome, indirizzo, civico, cap, citta, provincia, nazione,
+                    (nome, indirizzo, nazione,
                      telefono, email, note, user_id, id)
                 )
 
         log_user_action(
             user_id, 'UPDATE_ENTE_CIVILE',
-            f'Aggiornato ente civile da "{existing["nome"]} ({existing["citta"]})" a "{nome} ({citta})"',
+            f'Aggiornato ente civile: {existing["nome"]} -> {nome}',
             'ente_civile', id
         )
         flash(f'Ente civile "{nome}" aggiornato con successo.', 'success')
@@ -452,7 +422,7 @@ def elimina_civile(id):
     try:
         with conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute('SELECT nome, citta FROM enti_civili WHERE id = %s', (id,))
+                cur.execute('SELECT nome, indirizzo FROM enti_civili WHERE id = %s', (id,))
                 ente = cur.fetchone()
                 if not ente:
                     flash('Ente civile non trovato.', 'error')
@@ -467,7 +437,7 @@ def elimina_civile(id):
 
         log_user_action(
             user_id, 'DELETE_ENTE_CIVILE',
-            f'Eliminato ente civile: {ente["nome"]} ({ente["citta"]})',
+            f'Eliminato ente civile: {ente["nome"]}',
             'ente_civile', id
         )
         flash(f'Ente civile "{ente["nome"]}" eliminato con successo.', 'success')
@@ -491,17 +461,15 @@ def export_enti_civili():
     user_id = request.current_user['user_id']
 
     search = request.args.get('search', '').strip()
-    provincia_filter = request.args.get('provincia')
+    # Filtro provincia rimosso - colonna non più esistente
 
     where = []
     params = []
     if search:
-        where.append('(nome ILIKE %s OR indirizzo ILIKE %s OR citta ILIKE %s)')
+        where.append('(nome ILIKE %s OR indirizzo ILIKE %s)')
         like = f'%{search}%'
-        params.extend([like, like, like])
-    if provincia_filter:
-        where.append('provincia = %s')
-        params.append(provincia_filter.strip().upper())
+        params.extend([like, like])
+    # Filtro provincia rimosso
 
     where_sql = ('WHERE ' + ' AND '.join(where)) if where else ''
 
@@ -509,7 +477,7 @@ def export_enti_civili():
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
-                f'''SELECT nome, indirizzo, civico, cap, citta, provincia, nazione,
+                f'''SELECT nome, indirizzo, nazione,
                            telefono, email, note, data_creazione
                     FROM enti_civili
                     {where_sql}
@@ -560,24 +528,8 @@ def statistiche_enti_civili():
         stats = get_enti_civili_stats(conn)
 
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            # Distribuzione per regione (mappatura semplice su sigle provincia)
-            cur.execute(
-                '''SELECT
-                    CASE
-                      WHEN provincia IN ('MI','BG','BS','CO','CR','LC','LO','MN','PV','SO','VA') THEN 'LOMBARDIA'
-                      WHEN provincia IN ('RM','FR','LT','RI','VT') THEN 'LAZIO'
-                      WHEN provincia IN ('NA','AV','BN','CE','SA') THEN 'CAMPANIA'
-                      WHEN provincia IN ('BA','BT','BR','FG','LE','TA') THEN 'PUGLIA'
-                      WHEN provincia IN ('PA','AG','CL','CT','EN','ME','RG','SR','TP') THEN 'SICILIA'
-                      ELSE 'ALTRE'
-                    END AS regione,
-                    COUNT(*) AS count
-                   FROM enti_civili
-                   WHERE provincia IS NOT NULL AND TRIM(provincia) <> ''
-                   GROUP BY regione
-                   ORDER BY count DESC'''
-            )
-            stats['per_regione'] = cur.fetchall()
+            # Distribuzione per regione non più disponibile (colonna provincia eliminata)
+            stats['per_regione'] = []
 
             # Crescita ultimi 12 mesi
             cur.execute(
@@ -610,9 +562,9 @@ def api_cerca_enti_civili():
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             like = f'%{q}%'
             cur.execute(
-                '''SELECT id, nome, citta
+                '''SELECT id, nome, indirizzo
                    FROM enti_civili
-                   WHERE nome ILIKE %s OR citta ILIKE %s
+                   WHERE nome ILIKE %s OR indirizzo ILIKE %s
                    ORDER BY nome
                    LIMIT 20''',
                 (like, like)
@@ -621,8 +573,8 @@ def api_cerca_enti_civili():
         return jsonify([{
             'id': e['id'],
             'nome': e['nome'],
-            'citta': e['citta'],
-            'label': f'{e["nome"]} ({e["citta"]})'
+            'indirizzo': e['indirizzo'],
+            'label': f'{e["nome"]} - {e["indirizzo"] or "Indirizzo non specificato"}'
         } for e in enti])
     except Exception:
         return jsonify([])

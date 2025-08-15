@@ -514,18 +514,8 @@
         }
 
         showNoResults(searchTerm) {
-            if (this.elements.noResults) {
-                this.elements.noResults.style.display = 'block';
-                this.elements.noResults.innerHTML = `
-                    <div class="text-center py-4">
-                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">Nessun risultato per "<strong>${this.escapeHtml(searchTerm)}</strong>"</p>
-                        <button class="btn btn-sm btn-secondary" onclick="window.organigrammaAPI.resetSearch()">
-                            Cancella ricerca
-                        </button>
-                    </div>
-                `;
-            }
+            // Disabilitato - la ricerca è gestita dal nuovo codice nell'organigramma.html
+            return;
         }
 
         hideNoResults() {

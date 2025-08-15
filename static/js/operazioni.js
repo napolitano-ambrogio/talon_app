@@ -1,9 +1,9 @@
 /**
  * ========================================
- * TALON - OPERAZIONI MODULE (SPA VERSION)
+ * TALON - OPERAZIONI MODULE
  * File: static/js/operazioni.js
  * 
- * Versione: 2.0.0 - Full SPA Integration
+ * Versione: 2.1.0 - Standard Version
  * Data: 2025
  * Funzionalità: Gestione operazioni e missioni
  * ========================================
@@ -268,13 +268,7 @@
         if (window.TALON_CONFIG?.api?.baseUrl) {
             try {
                 const response = await fetch(
-                    `${window.TALON_CONFIG.api.baseUrl}${CONFIG.API.LIST}`,
-                    {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRFToken': window.TALON_CONFIG?.api?.csrfToken || ''
-                        }
-                    }
+                    `${window.TALON_CONFIG.api.baseUrl}${CONFIG.API.LIST}`
                 );
                 
                 if (response.ok) {
@@ -1073,11 +1067,7 @@
         if (window.TALON_CONFIG?.api?.baseUrl) {
             const url = CONFIG.API.DELETE.replace('{id}', id);
             const response = await fetch(`${window.TALON_CONFIG.api.baseUrl}${url}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': window.TALON_CONFIG?.api?.csrfToken || ''
-                }
+                method: 'DELETE'
             });
             
             if (!response.ok) {
@@ -1107,23 +1097,6 @@
         log('debug', 'Operazioni module cleaned up');
     }
 
-    // ========================================
-    // INTEGRAZIONE SPA
-    // ========================================
-    
-    function handleSPANavigation() {
-        if (isOperazioniPage()) {
-            if (!state.initialized) {
-                initialize();
-            } else {
-                loadOperations();
-            }
-        } else {
-            if (state.initialized) {
-                cleanup();
-            }
-        }
-    }
 
     // ========================================
     // EXPORT API PUBBLICA
@@ -1148,13 +1121,6 @@
     // AUTO-INIT E EVENT LISTENERS
     // ========================================
     
-    // Ascolta eventi SPA
-    document.addEventListener('spa:content-loaded', handleSPANavigation);
-    document.addEventListener('spa:before-navigate', () => {
-        if (state.initialized && !isOperazioniPage()) {
-            cleanup();
-        }
-    });
 
     // Auto-init quando DOM ready
     if (document.readyState === 'loading') {

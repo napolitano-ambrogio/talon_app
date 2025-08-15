@@ -1,11 +1,10 @@
 /**
  * ========================================
- * TALON NEURAL NETWORK - SPA VERSION
+ * TALON NEURAL NETWORK
  * File: static/js/neural-network.js
  * 
- * Versione: 5.0.0 - Full SPA Integration
- * Descrizione: Neural network visuale con gestione
- *              completa del ciclo di vita SPA
+ * Versione: 5.1.0 - Standard Version
+ * Descrizione: Neural network visuale
  * ========================================
  */
 
@@ -46,13 +45,6 @@
             CANVAS_RESOLUTION: window.devicePixelRatio || 1
         },
         
-        // SPA Settings
-        SPA: {
-            CLEANUP_ON_NAVIGATION: true,
-            PAUSE_ON_HIDDEN: true,
-            REINIT_ON_RESIZE: true,
-            DEBUG: false
-        }
     };
 
     // ========================================
@@ -260,12 +252,10 @@
             this.animationId = null;
             this.resizeTimeout = null;
             
-            // SPA event handlers
+            // Event handlers
             this.boundHandlers = {
                 resize: this.handleResize.bind(this),
-                visibilityChange: this.handleVisibilityChange.bind(this),
-                cleanup: this.handleSPACleanup.bind(this),
-                contentLoaded: this.handleSPAContentLoaded.bind(this)
+                visibilityChange: this.handleVisibilityChange.bind(this)
             };
         }
 
@@ -368,29 +358,11 @@
             // Window events
             window.addEventListener('resize', this.boundHandlers.resize);
             document.addEventListener('visibilitychange', this.boundHandlers.visibilityChange);
-            
-            // SPA events
-            if (window.TalonApp) {
-                window.TalonApp.on('talon:cleanup', this.boundHandlers.cleanup);
-                window.TalonApp.on('talon:content:loaded', this.boundHandlers.contentLoaded);
-            } else {
-                // Fallback su custom events
-                document.addEventListener('spa:cleanup', this.boundHandlers.cleanup);
-                document.addEventListener('spa:content-loaded', this.boundHandlers.contentLoaded);
-            }
         }
 
         removeEventHandlers() {
             window.removeEventListener('resize', this.boundHandlers.resize);
             document.removeEventListener('visibilitychange', this.boundHandlers.visibilityChange);
-            
-            if (window.TalonApp) {
-                window.TalonApp.off('talon:cleanup', this.boundHandlers.cleanup);
-                window.TalonApp.off('talon:content:loaded', this.boundHandlers.contentLoaded);
-            } else {
-                document.removeEventListener('spa:cleanup', this.boundHandlers.cleanup);
-                document.removeEventListener('spa:content-loaded', this.boundHandlers.contentLoaded);
-            }
         }
 
         handleResize() {
@@ -401,50 +373,15 @@
                 
                 this.resizeCanvas();
                 
-                if (CONFIG.SPA.REINIT_ON_RESIZE) {
-                    this.repositionNodes();
-                }
+                this.repositionNodes();
             }, 300);
         }
 
         handleVisibilityChange() {
-            if (!CONFIG.SPA.PAUSE_ON_HIDDEN) return;
-            
             if (document.hidden) {
                 this.pause();
             } else {
                 this.resume();
-            }
-        }
-
-        handleSPACleanup() {
-            this.log('info', 'SPA cleanup triggered');
-            
-            if (CONFIG.SPA.CLEANUP_ON_NAVIGATION) {
-                this.pause();
-            }
-        }
-
-        handleSPAContentLoaded() {
-            this.log('info', 'SPA content loaded');
-            
-            // Verifica se il canvas esiste ancora
-            const canvas = document.getElementById(this.canvasId);
-            
-            if (canvas) {
-                if (!this.state.initialized) {
-                    // Re-inizializza se necessario
-                    this.canvas = canvas;
-                    this.init();
-                } else {
-                    // Resume se era in pausa
-                    this.resume();
-                }
-            } else {
-                // Canvas non presente nella nuova pagina
-                if (this.state.initialized) {
-                    this.pause();
-                }
             }
         }
 
@@ -588,10 +525,6 @@
                 node.draw(this.ctx);
             });
             
-            // Draw debug info if enabled
-            if (CONFIG.SPA.DEBUG) {
-                this.drawDebugInfo();
-            }
         }
 
         drawDebugInfo() {
@@ -684,23 +617,8 @@
             };
         }
 
-        setDebug(enabled) {
-            CONFIG.SPA.DEBUG = enabled;
-        }
 
         log(level, ...args) {
-            if (!CONFIG.SPA.DEBUG && level === 'debug') return;
-            
-            const prefix = '[Neural Network]';
-            const methods = {
-                'debug': 'log',
-                'info': 'info',
-                'warn': 'warn',
-                'error': 'error',
-                'success': 'log'
-            };
-            
-            const method = methods[level] || 'log';
             // Console logging removed for production silence
         }
     }
@@ -726,26 +644,12 @@
             if (this.initialized) return;
             
             
-            // Setup SPA event listeners
-            this.setupSPAListeners();
-            
             // Cerca e inizializza canvas esistenti
             await this.autoDetectCanvas();
             
             this.initialized = true;
         }
 
-        setupSPAListeners() {
-            if (window.TalonApp) {
-                window.TalonApp.on('talon:content:loaded', () => {
-                    this.autoDetectCanvas();
-                });
-            } else {
-                document.addEventListener('spa:content-loaded', () => {
-                    this.autoDetectCanvas();
-                });
-            }
-        }
 
         async autoDetectCanvas() {
             // Cerca canvas con ID standard
@@ -836,7 +740,7 @@
         },
         
         // Info
-        version: '5.0.0',
+        version: '5.1.0',
         isInitialized: () => manager.initialized
     };
     
