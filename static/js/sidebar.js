@@ -598,15 +598,15 @@
                     minRole: 'ADMIN'
                 },
                 'Nuovo Ente Civile': {
-                    action: () => this.navigateToRoute('/enti_civili/new'),
+                    action: () => this.navigateToRoute('/inserisci_civile'),
                     minRole: 'OPERATORE'
                 },
                 'Nuovo Ente Militare': {
-                    action: () => this.navigateToRoute('/enti_militari/new'),
+                    action: () => this.navigateToRoute('/inserisci_militare'),
                     minRole: 'OPERATORE'
                 },
                 'Nuova Operazione': {
-                    action: () => this.navigateToRoute('/operazioni/new'),
+                    action: () => this.navigateToRoute('/inserisci_operazione'),
                     minRole: 'OPERATORE'
                 },
                 'Backup Database': {

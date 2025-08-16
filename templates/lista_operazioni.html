@@ -46,6 +46,7 @@
                             <span class="th-label">Stato</span>
                             <span class="th-arrow" data-arrow="">▲▼</span>
                         </th>
+                        <th>Immagine</th>
                     </tr>
                 </thead>
                 <tbody id="operazioniTableBody">
@@ -58,7 +59,7 @@
                         <td data-sort="{{ op.data_inizio or '9999-12-31' }}">{{ op.data_inizio|datetime_format('%d/%m/%Y') if op.data_inizio else 'N/D' }}</td>
                         <td>
                             {% if op.stato == 'attiva' %}
-                                <span class="stato-attiva">Attiva</span>
+                                <span class="stato-attiva">In corso</span>
                             {% elif op.stato == 'conclusa' %}
                                 <span class="stato-conclusa">Conclusa</span>
                             {% elif op.stato == 'pianificata' %}
@@ -67,10 +68,19 @@
                                 <span class="stato-nd">N/D</span>
                             {% endif %}
                         </td>
+                        <td style="text-align: center;">
+                            {% if op.immagine_path %}
+                                <img src="{{ op.immagine_path }}" alt="Preview operazione" 
+                                     style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;"
+                                     title="{{ op.immagine_nome }}">
+                            {% else %}
+                                <span style="color: #999; font-size: 0.8em;">Nessuna</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="text-center">Nessuna operazione inserita.</td>
+                        <td colspan="7" class="text-center">Nessuna operazione inserita.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

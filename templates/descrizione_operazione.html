@@ -14,10 +14,29 @@
                 <div class="detail-item"><dt>Nazione</dt><dd>{{ operazione.nazione or 'N/D' }}</dd></div>
             </div>
             <div>
-                <div class="detail-item"><dt>Periodo Mandato</dt><dd>Dal: {{ operazione.data_inizio.split('-') | reverse | join('/') if operazione.data_inizio else 'N/D' }}<br>Al: {{ operazione.data_fine.split('-') | reverse | join('/') if operazione.data_fine else 'In corso' }}</dd></div>
+                <div class="detail-item"><dt>Periodo Mandato</dt><dd>Dal: {{ operazione.data_inizio.strftime('%d/%m/%Y') if operazione.data_inizio else 'N/D' }}<br>Al: {{ operazione.data_fine.strftime('%d/%m/%Y') if operazione.data_fine else 'In corso' }}</dd></div>
+                <div class="detail-item"><dt>Coordinate</dt><dd>{{ operazione.coordinate_formatted if operazione.coordinate_formatted else 'Non georeferenziata' }}</dd></div>
                 <div class="detail-item"><dt>Descrizione</dt><dd>{{ operazione.descrizione or 'Nessuna' }}</dd></div>
             </div>
         </dl>
+        
+        {% if operazione.immagine_path %}
+        <hr style="margin-top: 20px; margin-bottom: 15px;">
+        <div class="detail-item">
+            <dt style="font-weight: 600; margin-bottom: 0.5rem;">Immagine Operazione:</dt>
+            <dd style="margin: 0;">
+                <div style="text-align: center; margin: 1rem 0;">
+                    <img src="{{ operazione.immagine_path }}" alt="Immagine operazione {{ operazione.nome_missione }}" 
+                         style="max-width: 100%; max-height: 400px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                </div>
+                <small style="color: #666; font-size: 0.9em;">
+                    File: {{ operazione.immagine_nome }}
+                    {% if operazione.immagine_size %} | Dimensione: {{ (operazione.immagine_size / 1024 / 1024) | round(2) }} MB{% endif %}
+                    {% if operazione.data_modifica %} | Ultima modifica: {{ operazione.data_modifica.strftime('%d/%m/%Y') }}{% endif %}
+                </small>
+            </dd>
+        </div>
+        {% endif %}
         <hr style="margin-top: 30px; margin-bottom: 20px;">
         <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
             <a href="{{ url_for('operazioni.modifica_operazione_form', id=operazione.id) }}" class="btn-modifica">Modifica</a>

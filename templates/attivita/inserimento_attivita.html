@@ -10,19 +10,14 @@
 {% block content %}
 <div class="form-container attivita-form-container" id="inserimento-attivita-container">
     <div class="form-header">
-        <h1>Nuova Attività</h1>
-        <div class="form-actions-top">
-            <a href="{{ url_for('attivita.lista_attivita') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> Torna all'elenco
-            </a>
-        </div>
+        <h3>NUOVA ATTIVITÀ:</h3>
     </div>
     
     <form action="{{ url_for('attivita.salva_attivita') }}" method="POST" id="form-inserimento-attivita" class="attivita-form">
         
         <!-- Sezione Dati Principali -->
         <div class="form-section">
-            <h3 class="section-title">Dati Principali</h3>
+            <h4 class="section-title">DATI PRINCIPALI</h4>
             
             <div class="form-group">
                 <label for="ente_svolgimento_id">Ente che svolge l'attività <span class="required">*</span></label>
@@ -33,11 +28,7 @@
                         <option value="{{ ente.id }}"
                                 data-codice="{{ ente.codice or '' }}"
                                 data-indirizzo="{{ ente.indirizzo or '' }}"
-                                data-civico="{{ ente.civico or '' }}"
-                                data-citta="{{ ente.citta or '' }}"
-                                data-provincia="{{ ente.provincia or '' }}"
-                                data-cap="{{ ente.cap or '' }}"
-                                data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})">
+                                data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}">
                             {{ ente.nome }}
                         </option>
                     {% endfor %}
@@ -97,7 +88,7 @@
 
         <!-- SEZIONE DETTAGLI TRASPORTI (nascosta di default) -->
         <div id="dettagli-trasporti" class="form-section detail-section" style="display: none;" data-active="false">
-            <h3 class="section-title">Dettagli Movimenti e Trasporti</h3>
+            <h4 class="section-title">DETTAGLI MOVIMENTI E TRASPORTI</h4>
             
             <div class="form-group">
                 <label for="tipologia_carico">Tipologia di Carico</label>
@@ -129,7 +120,7 @@
 
         <!-- SEZIONE DETTAGLI MANTENIMENTO (nascosta di default) -->
         <div id="dettagli-mantenimento" class="form-section detail-section" style="display: none;" data-active="false">
-            <h3 class="section-title">Dettagli Mantenimento e Squadre a Contatto</h3>
+            <h4 class="section-title">DETTAGLI MANTENIMENTO E SQUADRE A CONTATTO</h4>
             
             <div class="form-group">
                 <label for="tipo_intervento">Tipo Intervento</label>
@@ -160,7 +151,7 @@
 
         <!-- SEZIONE DETTAGLI RIFORNIMENTI (nascosta di default) -->
         <div id="dettagli-rifornimenti" class="form-section detail-section" style="display: none;" data-active="false">
-            <h3 class="section-title">Dettagli Rifornimenti</h3>
+            <h4 class="section-title">DETTAGLI RIFORNIMENTI</h4>
             
             <div class="form-group">
                 <label for="tipologia_rifornimento">Tipologia di Rifornimento</label>
@@ -183,7 +174,7 @@
             <div class="form-row">
                 <div class="form-group flex-grow">
                     <label for="quantita_rifornimento">Quantità</label>
-                    <input type="number" step="any" id="quantita_rifornimento" name="quantita_rifornimento" class="form-control">
+                    <input type="number" id="quantita_rifornimento" name="quantita_rifornimento" class="form-control" min="0" step="1">
                 </div>
                 <div class="form-group">
                     <label for="unita_di_misura_rifornimento">Unità di Misura</label>
@@ -200,7 +191,7 @@
         
         <!-- SEZIONE DETTAGLI GETRA (nascosta di default) -->
         <div id="dettagli-getra" class="form-section detail-section" style="display: none;" data-active="false">
-            <h3 class="section-title">Dettagli Gestione Transito (GETRA)</h3>
+            <h4 class="section-title">DETTAGLI GESTIONE TRANSITO (GETRA)</h4>
 
             <div class="form-group">
                 <label for="tipo_vettore">Tipo Vettore</label>
@@ -244,9 +235,226 @@
             </div>
         </div>
 
+        <!-- SEZIONE DETTAGLI TRAINING ON THE JOB (nascosta di default) -->
+        <div id="dettagli-training-on-the-job" class="form-section detail-section" style="display: none;" data-active="false">
+            <h4 class="section-title">DETTAGLI TRAINING ON THE JOB</h4>
+            
+            <div class="form-group">
+                <label for="tipo_training">Tipo di Training</label>
+                <select id="tipo_training" name="tipo_training" class="form-control">
+                    <option value="">-- Seleziona --</option>
+                    <option value="ADDESTRAMENTO OPERATIVO">Addestramento Operativo</option>
+                    <option value="ADDESTRAMENTO OPERATIVO SUL CAMPO">Addestramento Operativo sul Campo</option>
+                    <option value="ADDESTRAMENTO TECNICO">Addestramento Tecnico</option>
+                    <option value="ADDESTRAMENTO TATTICO">Addestramento Tattico</option>
+                    <option value="SIMULAZIONE">Simulazione</option>
+                    <option value="AFFIANCAMENTO">Affiancamento</option>
+                    <option value="ALTRO">Altro</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- SEZIONE DETTAGLI FORMAZIONE (nascosta di default) -->
+        <div id="dettagli-formazione" class="form-section detail-section" style="display: none;" data-active="false">
+            <h4 class="section-title">DETTAGLI FORMAZIONE</h4>
+            
+            <div class="form-group">
+                <label for="tipo_formazione">Tipo di Formazione</label>
+                <select id="tipo_formazione" name="tipo_formazione" class="form-control">
+                    <option value="">-- Seleziona --</option>
+                    <option value="CORSO BASE">Corso Base</option>
+                    <option value="CORSO AVANZATO">Corso Avanzato</option>
+                    <option value="CORSO SPECIALIZZAZIONE">Corso Specializzazione</option>
+                    <option value="SEMINARIO">Seminario</option>
+                    <option value="WORKSHOP">Workshop</option>
+                    <option value="CONFERENZA">Conferenza</option>
+                    <option value="E-LEARNING">E-Learning</option>
+                    <option value="ALTRO">Altro</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="nome_corso">Nome del Corso</label>
+                <input type="text" id="nome_corso" name="nome_corso" class="form-control"
+                       placeholder="Inserisci il nome del corso">
+            </div>
+        </div>
+
+        <!-- SEZIONE DETTAGLI ESERCITAZIONE (nascosta di default) -->
+        <div id="dettagli-esercitazione" class="form-section detail-section" style="display: none;" data-active="false">
+            <h4 class="section-title">DETTAGLI ESERCITAZIONE</h4>
+            
+            <div class="form-group">
+                <label for="tipo_esercitazione">Tipo di Esercitazione</label>
+                <select id="tipo_esercitazione" name="tipo_esercitazione" class="form-control">
+                    <option value="">-- Seleziona --</option>
+                    <option value="ESERCITAZIONE NAZIONALE">Esercitazione Nazionale</option>
+                    <option value="ESERCITAZIONE INTERNAZIONALE">Esercitazione Internazionale</option>
+                    <option value="ESERCITAZIONE NATO">Esercitazione NATO</option>
+                    <option value="ESERCITAZIONE BILATERALE">Esercitazione Bilaterale</option>
+                    <option value="ESERCITAZIONE MULTILATERALE">Esercitazione Multilaterale</option>
+                    <option value="CPX">CPX - Command Post Exercise</option>
+                    <option value="FTX">FTX - Field Training Exercise</option>
+                    <option value="LIVEX">LIVEX - Live Exercise</option>
+                    <option value="CAX">CAX - Computer Assisted Exercise</option>
+                    <option value="ALTRO">Altro</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="nome_esercitazione">Nome dell'Esercitazione</label>
+                <input type="text" id="nome_esercitazione" name="nome_esercitazione" class="form-control"
+                       placeholder="Es: NOBLE JUMP 2024, STEADFAST DEFENDER, etc.">
+            </div>
+            
+            <div class="form-group">
+                <label for="descrizione_esercitazione">Descrizione dell'Esercitazione</label>
+                <textarea id="descrizione_esercitazione" name="descrizione_esercitazione" class="form-control" rows="3"
+                          placeholder="Descrivi brevemente gli obiettivi e le attività dell'esercitazione"></textarea>
+            </div>
+        </div>
+
+        <!-- SEZIONE DETTAGLI MEDICINA CURATIVA (nascosta di default) -->
+        <div id="dettagli-med-curativa" class="form-section detail-section" style="display: none;" data-active="false">
+            <h4 class="section-title">DETTAGLI MEDICINA CURATIVA</h4>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="num_interventi">Numero Interventi</label>
+                    <input type="number" id="num_interventi" name="num_interventi" class="form-control" min="0">
+                </div>
+                
+                <div class="form-group">
+                    <label for="a_favore">A Favore di</label>
+                    <select id="a_favore" name="a_favore" class="form-control">
+                        <option value="">-- Seleziona --</option>
+                        <option value="MILITARE">Militare</option>
+                        <option value="CIVILE AVENTE DIRITTO">Civile avente diritto</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="tipo_intervento_med">Tipo Intervento</label>
+                <select id="tipo_intervento_med" name="tipo_intervento_med" class="form-control">
+                    <option value="">-- Seleziona --</option>
+                    <option value="CHIRURGIA GENERALE">Chirurgia Generale</option>
+                    <option value="CHIRURGIA PLASTICA">Chirurgia Plastica</option>
+                    <option value="CHIRURGIA PROCTOLOGICA">Chirurgia Proctologica</option>
+                    <option value="CHIRURGIA VASCOLARE">Chirurgia Vascolare</option>
+                    <option value="GINECOLOGIA">Ginecologia</option>
+                    <option value="NEUROCHIRURGIA">Neurochirurgia</option>
+                    <option value="OCULISTICA">Oculistica</option>
+                    <option value="ORTOPEDIA">Ortopedia</option>
+                    <option value="OTORINOLARINGOIATRIA">Otorinolaringoiatria</option>
+                    <option value="UROLOGIA">Urologia</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- SEZIONE DETTAGLI STRATEVAC (nascosta di default) -->
+        <div id="dettagli-stratevac" class="form-section detail-section" style="display: none;" data-active="false">
+            <h4 class="section-title">DETTAGLI SGOMBERI SANITARI/VETERINARI</h4>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="priorita">Priorità <span class="required">*</span></label>
+                    <select id="priorita" name="priorita" class="form-control">
+                        <option value="">-- Seleziona --</option>
+                        <option value="PRIORITÀ 1">Priorità 1</option>
+                        <option value="PRIORITÀ 2">Priorità 2</option>
+                        <option value="PRIORITÀ 3">Priorità 3</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="num_unita">Numero Unità</label>
+                    <input type="number" id="num_unita" name="num_unita" class="form-control" min="0">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="tipo_vettore_stratevac">Tipo Vettore</label>
+                    <div class="searchable-select" data-select-id="tipo_vettore_stratevac"></div>
+                    <select id="tipo_vettore_stratevac" name="tipo_vettore_stratevac" style="display: none;">
+                        <option value="">-- Seleziona Vettore --</option>
+                        {% include 'attivita/includes/_vettori_getra.html' %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="seriale_vettore_stratevac">Seriale / Targa / Nominativo</label>
+                    <input type="text" id="seriale_vettore_stratevac" name="seriale_vettore_stratevac" class="form-control">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="grado">Grado</label>
+                    <input type="text" id="grado" name="grado" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label for="forza_armata">Forza Armata</label>
+                    <select id="forza_armata" name="forza_armata" class="form-control">
+                        <option value="">-- Seleziona --</option>
+                        <option value="ESERCITO ITALIANO">Esercito Italiano</option>
+                        <option value="AERONAUTICA MILITARE">Aeronautica Militare</option>
+                        <option value="MARINA MILITARE">Marina Militare</option>
+                        <option value="CARABINIERI">Carabinieri</option>
+                        <option value="GUARDIA DI FINANZA">Guardia di Finanza</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="ente_appartenenza">Ente di Appartenenza</label>
+                <div class="searchable-select" data-select-id="ente_appartenenza"></div>
+                <select name="ente_appartenenza" id="ente_appartenenza" style="display: none;">
+                    <option value="">-- Seleziona (opzionale) --</option>
+                    <optgroup label="ENTI MILITARI">
+                        {% for ente in enti_militari %}
+                            <option value="militare-{{ ente.id }}"
+                                    data-tipo="militare"
+                                    data-codice="{{ ente.codice or '' }}"
+                                    data-indirizzo="{{ ente.indirizzo or '' }}"
+                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}">
+                                {{ ente.nome }}
+                            </option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="ALTRI ENTI">
+                        <option value="altro">Altro (testo libero)</option>
+                    </optgroup>
+                </select>
+            </div>
+            
+            <div class="form-group" id="ente_appartenenza_altro" style="display: none;">
+                <label for="ente_appartenenza_testo">Specifica Altro Ente</label>
+                <input type="text" id="ente_appartenenza_testo" name="ente_appartenenza_testo" class="form-control" 
+                       placeholder="Inserisci il nome dell'ente">
+            </div>
+            
+            <div class="form-group">
+                <label for="motivo_sgombero">Motivo Sgombero</label>
+                <textarea id="motivo_sgombero" name="motivo_sgombero" class="form-control" rows="3"
+                          placeholder="Descrivi il motivo dello sgombero sanitario/veterinario"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="trasporto_a_cura">Trasporto a Cura di</label>
+                <select id="trasporto_a_cura" name="trasporto_a_cura" class="form-control">
+                    <option value="">-- Seleziona --</option>
+                    <option value="POLICLINICO MILITARE DI ROMA \"CELIO\"">Policlinico Militare di Roma "CELIO"</option>
+                    <option value="COMANDO MOUNTING">Comando Mounting</option>
+                </select>
+            </div>
+        </div>
+
         <!-- Sezione Località -->
         <div class="form-section">
-            <h3 class="section-title">Località</h3>
+            <h4 class="section-title">LOCALITÀ</h4>
             
             <div class="form-group">
                 <label for="partenza_id">Luogo Partenza</label>
@@ -259,11 +467,7 @@
                                     data-tipo="militare"
                                     data-codice="{{ ente.codice or '' }}"
                                     data-indirizzo="{{ ente.indirizzo or '' }}"
-                                    data-civico="{{ ente.civico or '' }}"
-                                    data-cap="{{ ente.cap or '' }}"
-                                    data-citta="{{ ente.citta or '' }}"
-                                    data-provincia="{{ ente.provincia or '' }}"
-                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})">
+                                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}">
                                 {{ ente.nome }}
                             </option>
                         {% endfor %}
@@ -273,12 +477,8 @@
                             <option value="civile-{{ ente.id }}"
                                     data-tipo="civile"
                                     data-indirizzo="{{ ente.indirizzo or '' }}"
-                                    data-civico="{{ ente.civico or '' }}"
-                                    data-cap="{{ ente.cap or '' }}"
-                                    data-citta="{{ ente.citta or '' }}"
-                                    data-provincia="{{ ente.provincia or '' }}"
-                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
-                                    data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}){% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}">
+                                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
+                                    data-details="{{ ente.indirizzo or '' }}{% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}">
                                 {{ ente.nome }}
                             </option>
                         {% endfor %}
@@ -297,11 +497,7 @@
                                     data-tipo="militare"
                                     data-codice="{{ ente.codice or '' }}"
                                     data-indirizzo="{{ ente.indirizzo or '' }}"
-                                    data-civico="{{ ente.civico or '' }}"
-                                    data-cap="{{ ente.cap or '' }}"
-                                    data-citta="{{ ente.citta or '' }}"
-                                    data-provincia="{{ ente.provincia or '' }}"
-                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})">
+                                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}">
                                 {{ ente.nome }}
                             </option>
                         {% endfor %}
@@ -311,12 +507,8 @@
                             <option value="civile-{{ ente.id }}"
                                     data-tipo="civile"
                                     data-indirizzo="{{ ente.indirizzo or '' }}"
-                                    data-civico="{{ ente.civico or '' }}"
-                                    data-cap="{{ ente.cap or '' }}"
-                                    data-citta="{{ ente.citta or '' }}"
-                                    data-provincia="{{ ente.provincia or '' }}"
-                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
-                                    data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}){% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}">
+                                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
+                                    data-details="{{ ente.indirizzo or '' }}{% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}">
                                 {{ ente.nome }}
                             </option>
                         {% endfor %}
@@ -327,7 +519,7 @@
         
         <!-- Sezione Risorse e Note -->
         <div class="form-section">
-            <h3 class="section-title">Risorse e Note</h3>
+            <h4 class="section-title">RISORSE E NOTE</h4>
             
             <div class="form-row personnel-row">
                 <div class="form-group">
@@ -367,11 +559,10 @@
             <button type="button" class="btn btn-secondary" id="btn-reset">
                 <i class="fas fa-undo"></i> Reset Form
             </button>
-            <a href="{{ url_for('attivita.lista_attivita') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-times"></i> Annulla
-            </a>
         </div>
     </form>
+    <br>
+    <a href="{{ url_for('attivita.lista_attivita') }}" class="cancel-link">Annulla</a>
 </div>
 {% endblock %}
 
@@ -387,6 +578,45 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Il modulo TalonInserimentoAttivita si auto-inizializza
     console.log('[Inserimento Attività] Pagina pronta');
+    
+    // Gestione ente_appartenenza per stratevac
+    const enteAppartenenzaSelect = document.getElementById('ente_appartenenza');
+    const enteAppartenenzaAltro = document.getElementById('ente_appartenenza_altro');
+    
+    if (enteAppartenenzaSelect && enteAppartenenzaAltro) {
+        enteAppartenenzaSelect.addEventListener('change', function() {
+            if (this.value === 'altro') {
+                enteAppartenenzaAltro.style.display = 'block';
+            } else {
+                enteAppartenenzaAltro.style.display = 'none';
+                document.getElementById('ente_appartenenza_testo').value = '';
+            }
+        });
+    }
+    
+    // Forza tutti i campi di testo in MAIUSCOLO
+    const textInputs = document.querySelectorAll('input[type="text"], textarea');
+    textInputs.forEach(function(input) {
+        // Escludi campi numerici o di data
+        if (input.type === 'number' || input.type === 'date' || input.id.includes('quantita') || input.id.includes('numero_') || input.id.includes('volume')) {
+            return;
+        }
+        
+        // Aggiungi stile CSS per indicare conversione maiuscolo
+        input.style.textTransform = 'uppercase';
+        
+        input.addEventListener('input', function() {
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            this.value = this.value.toUpperCase();
+            this.setSelectionRange(start, end);
+        });
+        
+        // Converti anche il valore iniziale se presente
+        if (input.value) {
+            input.value = input.value.toUpperCase();
+        }
+    });
 });
 
 </script>

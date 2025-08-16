@@ -10,14 +10,15 @@
 {% block content %}
 <div class="form-container attivita-form-container" id="modifica-attivita-container">
     <div class="form-header">
-        <h1>Modifica Attività #{{ attivita.id }}</h1>
+        <h3>MODIFICA:</h3>
+        <h4>{{ attivita.tipologia_nome or 'Attività' }}</h4>
     </div>
     
     <form action="{{ url_for('attivita.aggiorna_attivita', id=attivita.id) }}" method="POST" id="form-modifica-attivita" class="attivita-form">
         
         <!-- Sezione Dati Principali -->
         <div class="form-section">
-            <h3 class="section-title">Dati Principali</h3>
+            <h4 class="section-title">DATI PRINCIPALI</h4>
             
             <div class="form-group">
                 <label for="ente_svolgimento_id">Ente che svolge l'attività <span class="required">*</span></label>
@@ -28,11 +29,7 @@
                         <option value="{{ ente.id }}"
                                 data-codice="{{ ente.codice or '' }}"
                                 data-indirizzo="{{ ente.indirizzo or '' }}"
-                                data-civico="{{ ente.civico or '' }}"
-                                data-citta="{{ ente.citta or '' }}"
-                                data-provincia="{{ ente.provincia or '' }}"
-                                data-cap="{{ ente.cap or '' }}"
-                                data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})"
+                                data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}"
                                 {% if ente.id == attivita.ente_svolgimento_id %}selected{% endif %}>
                             {{ ente.nome }}
                         </option>
@@ -98,7 +95,7 @@
 
         <!-- SEZIONE DETTAGLI TRASPORTI -->
         <div id="dettagli-trasporti" class="form-section detail-section" style="display: none;" data-active="false">
-            <h3 class="section-title">Dettagli Movimenti e Trasporti</h3>
+            <h4 class="section-title">DETTAGLI MOVIMENTI E TRASPORTI</h4>
             
             <div class="form-group">
                 <label for="tipologia_carico">Tipologia di Carico</label>
@@ -133,7 +130,7 @@
         
         <!-- SEZIONE DETTAGLI MANTENIMENTO -->
         <div id="dettagli-mantenimento" class="form-section detail-section" style="display: none;" data-active="false">
-            <h3 class="section-title">Dettagli Mantenimento e Squadre a Contatto</h3>
+            <h4 class="section-title">DETTAGLI MANTENIMENTO E SQUADRE A CONTATTO</h4>
             
             <div class="form-group">
                 <label for="tipo_intervento">Tipo Intervento</label>
@@ -165,7 +162,7 @@
 
         <!-- SEZIONE DETTAGLI RIFORNIMENTI -->
         <div id="dettagli-rifornimenti" class="form-section detail-section" style="display: none;" data-active="false">
-            <h3 class="section-title">Dettagli Rifornimenti</h3>
+            <h4 class="section-title">DETTAGLI RIFORNIMENTI</h4>
             
             <div class="form-group">
                 <label for="tipologia_rifornimento">Tipologia di Rifornimento</label>
@@ -189,8 +186,8 @@
             <div class="form-row">
                 <div class="form-group flex-grow">
                     <label for="quantita_rifornimento">Quantità</label>
-                    <input type="number" step="any" id="quantita_rifornimento" name="quantita_rifornimento" class="form-control"
-                           value="{{ dettagli_rifornimenti.quantita or '' }}">
+                    <input type="number" id="quantita_rifornimento" name="quantita_rifornimento" class="form-control" min="0" step="1"
+                           value="{{ dettagli_rifornimenti.quantita|int if dettagli_rifornimenti.quantita else '' }}">
                 </div>
                 <div class="form-group">
                     <label for="unita_di_misura_rifornimento">Unità di Misura</label>
@@ -207,7 +204,7 @@
 
         <!-- SEZIONE DETTAGLI GETRA -->
         <div id="dettagli-getra" class="form-section detail-section" style="display: none;" data-active="false">
-            <h3 class="section-title">Dettagli Gestione Transito (GETRA)</h3>
+            <h4 class="section-title">DETTAGLI GESTIONE TRANSITO (GETRA)</h4>
 
             <div class="form-group">
                 <label for="tipo_vettore">Tipo Vettore</label>
@@ -255,9 +252,233 @@
             </div>
         </div>
 
+        <!-- SEZIONE DETTAGLI TRAINING ON THE JOB -->
+        <div id="dettagli-training-on-the-job" class="form-section detail-section" style="display: none;" data-active="false">
+            <h4 class="section-title">DETTAGLI TRAINING ON THE JOB</h4>
+            
+            <div class="form-group">
+                <label for="tipo_training">Tipo di Training</label>
+                <select id="tipo_training" name="tipo_training" class="form-control">
+                    <option value="" {% if not dettagli_training_on_the_job.tipo_training %}selected{% endif %}>-- Seleziona --</option>
+                    <option value="ADDESTRAMENTO OPERATIVO" {% if dettagli_training_on_the_job.tipo_training == 'ADDESTRAMENTO OPERATIVO' %}selected{% endif %}>Addestramento Operativo</option>
+                    <option value="ADDESTRAMENTO OPERATIVO SUL CAMPO" {% if dettagli_training_on_the_job.tipo_training == 'ADDESTRAMENTO OPERATIVO SUL CAMPO' %}selected{% endif %}>Addestramento Operativo sul Campo</option>
+                    <option value="ADDESTRAMENTO TECNICO" {% if dettagli_training_on_the_job.tipo_training == 'ADDESTRAMENTO TECNICO' %}selected{% endif %}>Addestramento Tecnico</option>
+                    <option value="ADDESTRAMENTO TATTICO" {% if dettagli_training_on_the_job.tipo_training == 'ADDESTRAMENTO TATTICO' %}selected{% endif %}>Addestramento Tattico</option>
+                    <option value="SIMULAZIONE" {% if dettagli_training_on_the_job.tipo_training == 'SIMULAZIONE' %}selected{% endif %}>Simulazione</option>
+                    <option value="AFFIANCAMENTO" {% if dettagli_training_on_the_job.tipo_training == 'AFFIANCAMENTO' %}selected{% endif %}>Affiancamento</option>
+                    <option value="ALTRO" {% if dettagli_training_on_the_job.tipo_training == 'ALTRO' %}selected{% endif %}>Altro</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- SEZIONE DETTAGLI FORMAZIONE -->
+        <div id="dettagli-formazione" class="form-section detail-section" style="display: none;" data-active="false">
+            <h4 class="section-title">DETTAGLI FORMAZIONE</h4>
+            
+            <div class="form-group">
+                <label for="tipo_formazione">Tipo di Formazione</label>
+                <select id="tipo_formazione" name="tipo_formazione" class="form-control">
+                    <option value="" {% if not dettagli_formazione.tipo_formazione %}selected{% endif %}>-- Seleziona --</option>
+                    <option value="CORSO BASE" {% if dettagli_formazione.tipo_formazione == 'CORSO BASE' %}selected{% endif %}>Corso Base</option>
+                    <option value="CORSO AVANZATO" {% if dettagli_formazione.tipo_formazione == 'CORSO AVANZATO' %}selected{% endif %}>Corso Avanzato</option>
+                    <option value="CORSO SPECIALIZZAZIONE" {% if dettagli_formazione.tipo_formazione == 'CORSO SPECIALIZZAZIONE' %}selected{% endif %}>Corso Specializzazione</option>
+                    <option value="SEMINARIO" {% if dettagli_formazione.tipo_formazione == 'SEMINARIO' %}selected{% endif %}>Seminario</option>
+                    <option value="WORKSHOP" {% if dettagli_formazione.tipo_formazione == 'WORKSHOP' %}selected{% endif %}>Workshop</option>
+                    <option value="CONFERENZA" {% if dettagli_formazione.tipo_formazione == 'CONFERENZA' %}selected{% endif %}>Conferenza</option>
+                    <option value="E-LEARNING" {% if dettagli_formazione.tipo_formazione == 'E-LEARNING' %}selected{% endif %}>E-Learning</option>
+                    <option value="ALTRO" {% if dettagli_formazione.tipo_formazione == 'ALTRO' %}selected{% endif %}>Altro</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="nome_corso">Nome del Corso</label>
+                <input type="text" id="nome_corso" name="nome_corso" class="form-control"
+                       value="{{ dettagli_formazione.nome_corso or '' }}"
+                       placeholder="Inserisci il nome del corso">
+            </div>
+        </div>
+
+        <!-- SEZIONE DETTAGLI ESERCITAZIONE -->
+        <div id="dettagli-esercitazione" class="form-section detail-section" style="display: none;" data-active="false">
+            <h4 class="section-title">DETTAGLI ESERCITAZIONE</h4>
+            
+            <div class="form-group">
+                <label for="tipo_esercitazione">Tipo di Esercitazione</label>
+                <select id="tipo_esercitazione" name="tipo_esercitazione" class="form-control">
+                    <option value="" {% if not dettagli_esercitazione.tipo_esercitazione %}selected{% endif %}>-- Seleziona --</option>
+                    <option value="ESERCITAZIONE NAZIONALE" {% if dettagli_esercitazione.tipo_esercitazione == 'ESERCITAZIONE NAZIONALE' %}selected{% endif %}>Esercitazione Nazionale</option>
+                    <option value="ESERCITAZIONE INTERNAZIONALE" {% if dettagli_esercitazione.tipo_esercitazione == 'ESERCITAZIONE INTERNAZIONALE' %}selected{% endif %}>Esercitazione Internazionale</option>
+                    <option value="ESERCITAZIONE NATO" {% if dettagli_esercitazione.tipo_esercitazione == 'ESERCITAZIONE NATO' %}selected{% endif %}>Esercitazione NATO</option>
+                    <option value="ESERCITAZIONE BILATERALE" {% if dettagli_esercitazione.tipo_esercitazione == 'ESERCITAZIONE BILATERALE' %}selected{% endif %}>Esercitazione Bilaterale</option>
+                    <option value="ESERCITAZIONE MULTILATERALE" {% if dettagli_esercitazione.tipo_esercitazione == 'ESERCITAZIONE MULTILATERALE' %}selected{% endif %}>Esercitazione Multilaterale</option>
+                    <option value="CPX" {% if dettagli_esercitazione.tipo_esercitazione == 'CPX' %}selected{% endif %}>CPX - Command Post Exercise</option>
+                    <option value="FTX" {% if dettagli_esercitazione.tipo_esercitazione == 'FTX' %}selected{% endif %}>FTX - Field Training Exercise</option>
+                    <option value="LIVEX" {% if dettagli_esercitazione.tipo_esercitazione == 'LIVEX' %}selected{% endif %}>LIVEX - Live Exercise</option>
+                    <option value="CAX" {% if dettagli_esercitazione.tipo_esercitazione == 'CAX' %}selected{% endif %}>CAX - Computer Assisted Exercise</option>
+                    <option value="ALTRO" {% if dettagli_esercitazione.tipo_esercitazione == 'ALTRO' %}selected{% endif %}>Altro</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="nome_esercitazione">Nome dell'Esercitazione</label>
+                <input type="text" id="nome_esercitazione" name="nome_esercitazione" class="form-control"
+                       value="{{ dettagli_esercitazione.nome_esercitazione or '' }}"
+                       placeholder="Es: NOBLE JUMP 2024, STEADFAST DEFENDER, etc.">
+            </div>
+            
+            <div class="form-group">
+                <label for="descrizione_esercitazione">Descrizione dell'Esercitazione</label>
+                <textarea id="descrizione_esercitazione" name="descrizione_esercitazione" class="form-control" rows="3"
+                          placeholder="Descrivi brevemente gli obiettivi e le attività dell'esercitazione">{{ dettagli_esercitazione.descrizione_esercitazione or '' }}</textarea>
+            </div>
+        </div>
+
+        <!-- SEZIONE DETTAGLI MEDICINA CURATIVA (nascosta di default) -->
+        <div id="dettagli-med-curativa" class="form-section detail-section" style="display: none;" data-active="false">
+            <h4 class="section-title">DETTAGLI MEDICINA CURATIVA</h4>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="num_interventi">Numero Interventi</label>
+                    <input type="number" id="num_interventi" name="num_interventi" class="form-control" min="0" value="{{ dettagli_med_curativa.num_interventi or '' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="a_favore">A Favore di</label>
+                    <select id="a_favore" name="a_favore" class="form-control">
+                        <option value="">-- Seleziona --</option>
+                        <option value="MILITARE" {% if dettagli_med_curativa.a_favore == 'MILITARE' %}selected{% endif %}>Militare</option>
+                        <option value="CIVILE AVENTE DIRITTO" {% if dettagli_med_curativa.a_favore == 'CIVILE AVENTE DIRITTO' %}selected{% endif %}>Civile avente diritto</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="tipo_intervento_med">Tipo Intervento</label>
+                <select id="tipo_intervento_med" name="tipo_intervento_med" class="form-control">
+                    <option value="">-- Seleziona --</option>
+                    <option value="CHIRURGIA GENERALE" {% if dettagli_med_curativa.tipo_intervento == 'CHIRURGIA GENERALE' %}selected{% endif %}>Chirurgia Generale</option>
+                    <option value="CHIRURGIA PLASTICA" {% if dettagli_med_curativa.tipo_intervento == 'CHIRURGIA PLASTICA' %}selected{% endif %}>Chirurgia Plastica</option>
+                    <option value="CHIRURGIA PROCTOLOGICA" {% if dettagli_med_curativa.tipo_intervento == 'CHIRURGIA PROCTOLOGICA' %}selected{% endif %}>Chirurgia Proctologica</option>
+                    <option value="CHIRURGIA VASCOLARE" {% if dettagli_med_curativa.tipo_intervento == 'CHIRURGIA VASCOLARE' %}selected{% endif %}>Chirurgia Vascolare</option>
+                    <option value="GINECOLOGIA" {% if dettagli_med_curativa.tipo_intervento == 'GINECOLOGIA' %}selected{% endif %}>Ginecologia</option>
+                    <option value="NEUROCHIRURGIA" {% if dettagli_med_curativa.tipo_intervento == 'NEUROCHIRURGIA' %}selected{% endif %}>Neurochirurgia</option>
+                    <option value="OCULISTICA" {% if dettagli_med_curativa.tipo_intervento == 'OCULISTICA' %}selected{% endif %}>Oculistica</option>
+                    <option value="ORTOPEDIA" {% if dettagli_med_curativa.tipo_intervento == 'ORTOPEDIA' %}selected{% endif %}>Ortopedia</option>
+                    <option value="OTORINOLARINGOIATRIA" {% if dettagli_med_curativa.tipo_intervento == 'OTORINOLARINGOIATRIA' %}selected{% endif %}>Otorinolaringoiatria</option>
+                    <option value="UROLOGIA" {% if dettagli_med_curativa.tipo_intervento == 'UROLOGIA' %}selected{% endif %}>Urologia</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- SEZIONE DETTAGLI STRATEVAC (nascosta di default) -->
+        <div id="dettagli-stratevac" class="form-section detail-section" style="display: none;" data-active="false">
+            <h4 class="section-title">DETTAGLI SGOMBERI SANITARI/VETERINARI</h4>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="priorita">Priorità <span class="required">*</span></label>
+                    <select id="priorita" name="priorita" class="form-control">
+                        <option value="" {% if not dettagli_stratevac.priorita %}selected{% endif %}>-- Seleziona --</option>
+                        <option value="PRIORITÀ 1" {% if dettagli_stratevac.priorita == 'PRIORITÀ 1' %}selected{% endif %}>Priorità 1</option>
+                        <option value="PRIORITÀ 2" {% if dettagli_stratevac.priorita == 'PRIORITÀ 2' %}selected{% endif %}>Priorità 2</option>
+                        <option value="PRIORITÀ 3" {% if dettagli_stratevac.priorita == 'PRIORITÀ 3' %}selected{% endif %}>Priorità 3</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="num_unita">Numero Unità</label>
+                    <input type="number" id="num_unita" name="num_unita" class="form-control" min="0"
+                           value="{{ dettagli_stratevac.num_unita or '' }}">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="tipo_vettore_stratevac">Tipo Vettore</label>
+                    <div class="searchable-select" data-select-id="tipo_vettore_stratevac"></div>
+                    <select id="tipo_vettore_stratevac" name="tipo_vettore_stratevac" style="display: none;">
+                        <option value="">-- Seleziona Vettore --</option>
+                        {% include 'attivita/includes/_vettori_getra.html' %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="seriale_vettore_stratevac">Seriale / Targa / Nominativo</label>
+                    <input type="text" id="seriale_vettore_stratevac" name="seriale_vettore_stratevac" class="form-control"
+                           value="{{ dettagli_stratevac.seriale_vettore or '' }}">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="grado">Grado</label>
+                    <input type="text" id="grado" name="grado" class="form-control"
+                           value="{{ dettagli_stratevac.grado or '' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label for="forza_armata">Forza Armata</label>
+                    <select id="forza_armata" name="forza_armata" class="form-control">
+                        <option value="" {% if not dettagli_stratevac.forza_armata %}selected{% endif %}>-- Seleziona --</option>
+                        <option value="ESERCITO ITALIANO" {% if dettagli_stratevac.forza_armata == 'ESERCITO ITALIANO' %}selected{% endif %}>Esercito Italiano</option>
+                        <option value="AERONAUTICA MILITARE" {% if dettagli_stratevac.forza_armata == 'AERONAUTICA MILITARE' %}selected{% endif %}>Aeronautica Militare</option>
+                        <option value="MARINA MILITARE" {% if dettagli_stratevac.forza_armata == 'MARINA MILITARE' %}selected{% endif %}>Marina Militare</option>
+                        <option value="CARABINIERI" {% if dettagli_stratevac.forza_armata == 'CARABINIERI' %}selected{% endif %}>Carabinieri</option>
+                        <option value="GUARDIA DI FINANZA" {% if dettagli_stratevac.forza_armata == 'GUARDIA DI FINANZA' %}selected{% endif %}>Guardia di Finanza</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="ente_appartenenza">Ente di Appartenenza</label>
+                <div class="searchable-select" data-select-id="ente_appartenenza"></div>
+                <select name="ente_appartenenza" id="ente_appartenenza" style="display: none;">
+                    <option value="">-- Seleziona (opzionale) --</option>
+                    <optgroup label="ENTI MILITARI">
+                        {% for ente in enti_militari %}
+                            <option value="militare-{{ ente.id }}"
+                                    data-tipo="militare"
+                                    data-codice="{{ ente.codice or '' }}"
+                                    data-indirizzo="{{ ente.indirizzo or '' }}"
+                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}"
+                                    {% if dettagli_stratevac.ente_appartenenza == 'militare-' + ente.id|string %}selected{% endif %}>
+                                {{ ente.nome }}
+                            </option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="ALTRI ENTI">
+                        <option value="altro" {% if dettagli_stratevac.ente_appartenenza and not dettagli_stratevac.ente_appartenenza.startswith('militare-') %}selected{% endif %}>Altro (testo libero)</option>
+                    </optgroup>
+                </select>
+            </div>
+            
+            <div class="form-group" id="ente_appartenenza_altro" {% if not (dettagli_stratevac.ente_appartenenza and not dettagli_stratevac.ente_appartenenza.startswith('militare-')) %}style="display: none;"{% endif %}>
+                <label for="ente_appartenenza_testo">Specifica Altro Ente</label>
+                <input type="text" id="ente_appartenenza_testo" name="ente_appartenenza_testo" class="form-control" 
+                       placeholder="Inserisci il nome dell'ente"
+                       value="{% if dettagli_stratevac.ente_appartenenza and not dettagli_stratevac.ente_appartenenza.startswith('militare-') %}{{ dettagli_stratevac.ente_appartenenza }}{% endif %}">
+            </div>
+            
+            <div class="form-group">
+                <label for="motivo_sgombero">Motivo Sgombero</label>
+                <textarea id="motivo_sgombero" name="motivo_sgombero" class="form-control" rows="3"
+                          placeholder="Descrivi il motivo dello sgombero sanitario/veterinario">{{ dettagli_stratevac.motivo_sgombero or '' }}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="trasporto_a_cura">Trasporto a Cura di</label>
+                <select id="trasporto_a_cura" name="trasporto_a_cura" class="form-control">
+                    <option value="" {% if not dettagli_stratevac.trasporto_a_cura %}selected{% endif %}>-- Seleziona --</option>
+                    <option value="POLICLINICO MILITARE DI ROMA \"CELIO\"" {% if dettagli_stratevac.trasporto_a_cura == 'POLICLINICO MILITARE DI ROMA "CELIO"' %}selected{% endif %}>Policlinico Militare di Roma "CELIO"</option>
+                    <option value="COMANDO MOUNTING" {% if dettagli_stratevac.trasporto_a_cura == 'COMANDO MOUNTING' %}selected{% endif %}>Comando Mounting</option>
+                </select>
+            </div>
+        </div>
+
         <!-- Sezione Località -->
         <div class="form-section">
-            <h3 class="section-title">Località</h3>
+            <h4 class="section-title">LOCALITÀ</h4>
             
             <div class="form-group">
                 <label for="partenza_id">Luogo Partenza</label>
@@ -270,11 +491,7 @@
                                     data-tipo="militare"
                                     data-codice="{{ ente.codice or '' }}"
                                     data-indirizzo="{{ ente.indirizzo or '' }}"
-                                    data-civico="{{ ente.civico or '' }}"
-                                    data-cap="{{ ente.cap or '' }}"
-                                    data-citta="{{ ente.citta or '' }}"
-                                    data-provincia="{{ ente.provincia or '' }}"
-                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})"
+                                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}"
                                     {% if ente.id == attivita.partenza_militare_id %}selected{% endif %}>
                                 {{ ente.nome }}
                             </option>
@@ -285,12 +502,8 @@
                             <option value="civile-{{ ente.id }}"
                                     data-tipo="civile"
                                     data-indirizzo="{{ ente.indirizzo or '' }}"
-                                    data-civico="{{ ente.civico or '' }}"
-                                    data-cap="{{ ente.cap or '' }}"
-                                    data-citta="{{ ente.citta or '' }}"
-                                    data-provincia="{{ ente.provincia or '' }}"
-                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
-                                    data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}){% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}"
+                                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
+                                    data-details="{{ ente.indirizzo or '' }}{% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}"
                                     {% if ente.id == attivita.partenza_civile_id %}selected{% endif %}>
                                 {{ ente.nome }}
                             </option>
@@ -310,11 +523,7 @@
                                     data-tipo="militare"
                                     data-codice="{{ ente.codice or '' }}"
                                     data-indirizzo="{{ ente.indirizzo or '' }}"
-                                    data-civico="{{ ente.civico or '' }}"
-                                    data-cap="{{ ente.cap or '' }}"
-                                    data-citta="{{ ente.citta or '' }}"
-                                    data-provincia="{{ ente.provincia or '' }}"
-                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }})"
+                                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}"
                                     {% if ente.id == attivita.destinazione_militare_id %}selected{% endif %}>
                                 {{ ente.nome }}
                             </option>
@@ -325,12 +534,8 @@
                             <option value="civile-{{ ente.id }}"
                                     data-tipo="civile"
                                     data-indirizzo="{{ ente.indirizzo or '' }}"
-                                    data-civico="{{ ente.civico or '' }}"
-                                    data-cap="{{ ente.cap or '' }}"
-                                    data-citta="{{ ente.citta or '' }}"
-                                    data-provincia="{{ ente.provincia or '' }}"
-                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
-                                    data-details="{{ ente.indirizzo or '' }} {{ ente.civico or '' }} - {{ ente.cap or '' }} {{ ente.citta or '' }} ({{ ente.provincia or '' }}){% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}"
+                                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
+                                    data-details="{{ ente.indirizzo or '' }}{% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}"
                                     {% if ente.id == attivita.destinazione_civile_id %}selected{% endif %}>
                                 {{ ente.nome }}
                             </option>
@@ -342,7 +547,7 @@
 
         <!-- Sezione Risorse e Note -->
         <div class="form-section">
-            <h3 class="section-title">Risorse e Note</h3>
+            <h4 class="section-title">RISORSE E NOTE</h4>
             
             <div class="form-row personnel-row">
                 <div class="form-group">
@@ -374,49 +579,18 @@
             </div>
         </div>
 
-        <!-- Informazioni di sistema (solo visualizzazione) -->
-        <div class="form-section" style="background-color: #f8f9fa;">
-            <h3 class="section-title">Informazioni Sistema</h3>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="text-muted">Creata il:</label>
-                    <p class="form-control-plaintext">
-                        {{ attivita.data_creazione.strftime('%d/%m/%Y %H:%M') if attivita.data_creazione else 'N/D' }}
-                    </p>
-                </div>
-                <div class="form-group">
-                    <label class="text-muted">Creata da:</label>
-                    <p class="form-control-plaintext">
-                        {{ attivita.creato_da_nome if attivita.creato_da_nome else 'N/D' }}
-                    </p>
-                </div>
-                {% if attivita.data_modifica %}
-                <div class="form-group">
-                    <label class="text-muted">Ultima modifica:</label>
-                    <p class="form-control-plaintext">
-                        {{ attivita.data_modifica.strftime('%d/%m/%Y %H:%M') }}
-                    </p>
-                </div>
-                <div class="form-group">
-                    <label class="text-muted">Modificata da:</label>
-                    <p class="form-control-plaintext">
-                        {{ attivita.modificato_da_nome if attivita.modificato_da_nome else 'N/D' }}
-                    </p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
         <!-- Pulsanti azione -->
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-save"></i> Salva Modifiche
             </button>
-            <a href="{{ url_for('attivita.visualizza_attivita', id=attivita.id) }}" class="btn btn-outline-secondary">
-                <i class="fas fa-times"></i> Annulla
-            </a>
+            <button type="button" class="btn btn-secondary" id="btn-reset">
+                <i class="fas fa-undo"></i> Reset Form
+            </button>
         </div>
     </form>
+    <br>
+    <a href="{{ url_for('attivita.lista_attivita') }}" class="cancel-link">Annulla</a>
 </div>
 
 <!-- Indicatore modifiche non salvate (gestito da JS) -->
@@ -435,6 +609,79 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Il modulo TalonModificaAttivita si auto-inizializza
     console.log('[Modifica Attività] Pagina pronta per attività #{{ attivita.id }}');
+    
+    // Mostra sezione dettagli corretta basata sulla tipologia corrente
+    setTimeout(function() {
+        if (window.TalonAttivitaForms) {
+            window.TalonAttivitaForms.toggleActivityDetails('tipologia_id');
+            console.log('[Modifica Attività] Sezioni dettagli inizializzate per tipologia: {{ attivita.tipologia_nome }}');
+            
+            // Debug: verifica se i dettagli training sono presenti
+            var trainingDetails = {{ dettagli_training_on_the_job|tojson }};
+            console.log('[Modifica Attività] Dettagli training on the job:', trainingDetails);
+            
+            // Verifica visibilità sezione
+            var trainingSection = document.getElementById('dettagli-training-on-the-job');
+            if (trainingSection) {
+                console.log('[Modifica Attività] Sezione training trovata, display:', trainingSection.style.display, 'data-active:', trainingSection.getAttribute('data-active'));
+            }
+        }
+    }, 300);
+    
+    // Gestione pulsante Reset Form
+    const btnReset = document.getElementById('btn-reset');
+    if (btnReset) {
+        btnReset.addEventListener('click', function() {
+            if (confirm('Sei sicuro di voler annullare tutte le modifiche e ripristinare i valori originali?')) {
+                // Usa la funzione del modulo TalonModificaAttivita se disponibile
+                if (window.TalonModificaAttivita && window.TalonModificaAttivita.resetToOriginal) {
+                    window.TalonModificaAttivita.resetToOriginal();
+                } else {
+                    // Fallback: ricarica la pagina
+                    window.location.reload();
+                }
+            }
+        });
+    }
+    
+    // Gestione ente_appartenenza per stratevac
+    const enteAppartenenzaSelect = document.getElementById('ente_appartenenza');
+    const enteAppartenenzaAltro = document.getElementById('ente_appartenenza_altro');
+    
+    if (enteAppartenenzaSelect && enteAppartenenzaAltro) {
+        enteAppartenenzaSelect.addEventListener('change', function() {
+            if (this.value === 'altro') {
+                enteAppartenenzaAltro.style.display = 'block';
+            } else {
+                enteAppartenenzaAltro.style.display = 'none';
+                document.getElementById('ente_appartenenza_testo').value = '';
+            }
+        });
+    }
+    
+    // Forza tutti i campi di testo in MAIUSCOLO
+    const textInputs = document.querySelectorAll('input[type="text"], textarea');
+    textInputs.forEach(function(input) {
+        // Escludi campi numerici o di data
+        if (input.type === 'number' || input.type === 'date' || input.id.includes('quantita') || input.id.includes('numero_') || input.id.includes('volume')) {
+            return;
+        }
+        
+        // Aggiungi stile CSS per indicare conversione maiuscolo
+        input.style.textTransform = 'uppercase';
+        
+        input.addEventListener('input', function() {
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            this.value = this.value.toUpperCase();
+            this.setSelectionRange(start, end);
+        });
+        
+        // Converti anche il valore iniziale se presente
+        if (input.value) {
+            input.value = input.value.toUpperCase();
+        }
+    });
 });
 
 
@@ -444,5 +691,37 @@ window.currentAttivita = {
     tipologia_id: {{ attivita.tipologia_id or 'null' }},
     ente_svolgimento_id: {{ attivita.ente_svolgimento_id or 'null' }}
 };
+
+// Dati dettagli specifici per preselezionare i valori
+window.dettagliAttivita = {
+    getra: {
+        tipo_vettore: '{{ dettagli_getra.tipo_vettore or '' }}'
+    },
+    stratevac: {
+        tipo_vettore: '{{ dettagli_stratevac.tipo_vettore or '' }}'
+    }
+};
+
+// Gestione preselezzione tipo vettore GETRA  
+setTimeout(function() {
+    if (window.dettagliAttivita.getra.tipo_vettore) {
+        const selectVettore = document.getElementById('tipo_vettore');
+        if (selectVettore) {
+            selectVettore.value = window.dettagliAttivita.getra.tipo_vettore;
+            // Trigger change per aggiornare searchable select se necessario
+            selectVettore.dispatchEvent(new Event('change'));
+        }
+    }
+    
+    // Gestione preselezzione tipo vettore STRATEVAC
+    if (window.dettagliAttivita.stratevac.tipo_vettore) {
+        const selectVettoreStratevac = document.getElementById('tipo_vettore_stratevac');
+        if (selectVettoreStratevac) {
+            selectVettoreStratevac.value = window.dettagliAttivita.stratevac.tipo_vettore;
+            // Trigger change per aggiornare searchable select se necessario
+            selectVettoreStratevac.dispatchEvent(new Event('change'));
+        }
+    }
+}, 500); // Aspetta che i componenti searchable select siano inizializzati
 </script>
 {% endblock %}

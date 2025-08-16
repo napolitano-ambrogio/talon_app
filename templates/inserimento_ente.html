@@ -2,6 +2,11 @@
 
 {% block title %}Inserisci Ente Militare - TALON{% endblock %}
 
+{% block head %}
+<!-- CSS specifico per form attività (per avere stessi stili) -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/form_attivita.css') }}?v={{ cache_buster }}">
+{% endblock %}
+
 {% block extra_css %}
 <style>
 /* Rimuovi frecce native dal select nascosto */
@@ -14,16 +19,9 @@ select[name="parent_id"] {
     background: none !important;
 }
 
-/* NON aggiungere pseudo-elementi ::after che creerebbero doppie frecce */
-.searchable-select-display::after,
-.searchable-select-display::before {
+/* Nascondi SVG duplicato e mantieni solo l'icona CSS del form attività */
+.searchable-select-display .display-icon svg {
     display: none !important;
-    content: none !important;
-}
-
-/* Mantieni solo la freccia SVG del componente */
-.searchable-select-display {
-    background-image: none !important;
 }
 </style>
 {% endblock %}

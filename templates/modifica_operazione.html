@@ -3,7 +3,7 @@
 {% block content %}
 <div class="form-container">
     <h1>Modifica Operazione: {{ operazione.nome_missione }}</h1>
-    <form action="{{ url_for('operazioni.aggiorna_operazione', id=operazione.id) }}" method="POST">
+    <form action="{{ url_for('operazioni.aggiorna_operazione', id=operazione.id) }}" method="POST" enctype="multipart/form-data">
         <div class="form-group">
             <label for="nome_missione">Nome Missione:</label>
             <input type="text" id="nome_missione" name="nome_missione" value="{{ operazione.nome_missione }}" required>
@@ -32,6 +32,56 @@
             <label for="descrizione">Descrizione:</label>
             <textarea id="descrizione" name="descrizione" rows="4">{{ operazione.descrizione or '' }}</textarea>
         </div>
+        
+        <hr>
+        <h3>Georeferenziazione</h3>
+        <div class="form-group">
+            <label for="coordinate">Coordinate (Latitudine, Longitudine):</label>
+            <input type="text" id="coordinate" name="coordinate" 
+                   value="{{ operazione.coordinate_formatted if operazione.coordinate else '' }}"
+                   placeholder="es: 33.8626, 35.5163 (Beirut, Libano)"
+                   pattern="^-?([1-8]?[0-9]\.{1}\d+|90\.{1}0+),\s*-?(180\.{1}0+|((1[0-7][0-9])|([1-9]?[0-9]))\.{1}\d+)$">
+            <small style="color: #666; font-size: 0.9em;">
+                Inserisci le coordinate nel formato: latitudine, longitudine (es: 41.9028, 12.4964 per Roma).
+                <br>Utilizza il <a href="/geocoding" target="_blank" style="color: #3182ce;">Geocoding Interattivo</a> per trovare le coordinate precise.
+            </small>
+        </div>
+        
+        <hr>
+        <h3>Immagine Operazione</h3>
+        {% if operazione.immagine_path %}
+        <div class="form-group">
+            <label>Immagine attuale:</label>
+            <div style="margin: 0.5rem 0;">
+                <img src="{{ operazione.immagine_path }}" alt="Immagine operazione" style="max-width: 300px; max-height: 200px; border: 1px solid #ddd; border-radius: 4px;">
+                <br>
+                <small style="color: #666;">
+                    {{ operazione.immagine_nome }}
+                    {% if operazione.immagine_size %} ({{ (operazione.immagine_size / 1024 / 1024) | round(2) }} MB){% endif %}
+                </small>
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="form-group">
+            <label for="immagine">{% if operazione.immagine_path %}Sostituisci immagine:{% else %}Aggiungi immagine (opzionale):{% endif %}</label>
+            <input type="file" id="immagine" name="immagine" accept="image/jpeg,image/jpg,image/png,image/gif">
+            <small style="color: #666; font-size: 0.9em; display: block; margin-top: 0.5rem;">
+                Formati supportati: JPG, PNG, GIF. Dimensione massima: 5MB.
+                <br>L'immagine verrà automaticamente ridimensionata e ottimizzata.
+                {% if operazione.immagine_path %}<br><strong>Nota:</strong> Caricando una nuova immagine, quella attuale verrà sostituita.{% endif %}
+            </small>
+        </div>
+        
+        {% if operazione.immagine_path %}
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="rimuovi_immagine" value="1">
+                Rimuovi immagine esistente
+            </label>
+        </div>
+        {% endif %}
+        
         <button type="submit">Aggiorna Operazione</button>
     </form>
     <br>

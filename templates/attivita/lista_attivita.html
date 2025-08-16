@@ -63,7 +63,7 @@
                         </td>
                         <td>{{ attivita.tipologia_nome }}</td>
                         <td>{{ attivita.ente_nome }}</td>
-                        <td>{{ attivita.operazione_nome or 'N/D' }}</td>
+                        <td>{{ attivita.operazione_nome or 'NAZIONALE' }}</td>
                         <td title="{{ attivita.descrizione or 'Nessuna descrizione' }}">
                             {{ (attivita.descrizione or 'Nessuna descrizione')[:80] }}{% if (attivita.descrizione or '')|length > 80 %}...{% endif %}
                         </td>

@@ -736,95 +736,88 @@ def create_app():
             app.logger.error(f"Errore pre-auth Superset: {e}")
             return jsonify({'error': 'Errore verifica autenticazione'}), 500
 
-    @app.route('/superset-proxy')
-    @login_required 
-    def superset_proxy():
+    # Endpoint superset-proxy rimosso - sostituito con versione migliorata più avanti nel file
+
+    @app.route('/superset-guest-token')
+    @login_required
+    def get_superset_guest_token():
         """
-        Endpoint che effettua login diretto a Superset e restituisce la pagina autenticata
+        Genera un guest token per Superset usando l'API
         """
         try:
-            # Ottieni le credenziali dell'utente corrente
             user_info = get_current_user_info()
             if not user_info:
-                flash('Errore: utente non trovato', 'error')
-                return redirect(url_for('main.dashboard'))
+                return jsonify({'error': 'Utente non autenticato'}), 401
             
-            username = user_info['username']
-            password = "admin123"  # Password standard per tutti gli utenti
-            
-            app.logger.info(f"Effettuo login diretto a Superset per: {username}")
-            
-            # Effettua login diretto e restituisce la pagina autenticata
             import requests
             
-            # Crea una sessione per il login
-            s = requests.Session()
-            
-            # 1. Ottieni pagina di login
-            login_page = s.get('http://127.0.0.1:8088/login/', timeout=10)
-            
-            if login_page.status_code != 200:
-                app.logger.error(f"Impossibile accedere a Superset: {login_page.status_code}")
-                return redirect('http://127.0.0.1:8088/login/')
-            
-            # 2. Effettua login
-            login_data = {
-                'username': username,
-                'password': password
+            # Step 1: Login su Superset per ottenere access token
+            login_payload = {
+                "username": "ambrogio.napolitano@esercito.difesa.it",
+                "password": "admin123",
+                "provider": "db",
+                "refresh": True
             }
             
-            login_response = s.post(
-                'http://127.0.0.1:8088/login/',
-                data=login_data,
-                allow_redirects=False,
+            login_response = requests.post(
+                'http://127.0.0.1:8088/api/v1/security/login',
+                json=login_payload,
                 timeout=10
             )
             
-            if login_response.status_code in [302, 303]:
-                app.logger.info(f"Login Superset riuscito per {username}")
-                
-                # 3. Ottieni la pagina welcome autenticata
-                welcome_response = s.get('http://127.0.0.1:8088/superset/welcome/', timeout=10)
-                
-                if welcome_response.status_code == 200:
-                    # Crea una risposta che include la pagina autenticata
-                    content = welcome_response.text
-                    
-                    # Modifica il contenuto per includere un messaggio di successo
-                    content = content.replace(
-                        '<body',
-                        '<script>console.log("Autenticato tramite Talon SSO");</script><body'
-                    )
-                    
-                    response = Response(content, status=200, headers={
-                        'Content-Type': 'text/html',
-                        'X-Frame-Options': 'ALLOWALL',
-                        'Content-Security-Policy': 'frame-ancestors *'
-                    })
-                    
-                    # Copia i cookie di sessione
-                    for cookie in s.cookies:
-                        response.set_cookie(
-                            cookie.name,
-                            cookie.value,
-                            domain=cookie.domain,
-                            path=cookie.path,
-                            secure=cookie.secure,
-                            httponly=cookie.get_nonstandard_attr('httponly', False)
-                        )
-                    
-                    return response
-                else:
-                    app.logger.error(f"Errore accesso welcome page: {welcome_response.status_code}")
-            else:
-                app.logger.error(f"Login fallito: {login_response.status_code}")
+            if login_response.status_code != 200:
+                app.logger.error(f"Login Superset fallito: {login_response.status_code}")
+                return jsonify({'error': 'Login Superset fallito'}), 500
             
-            # Fallback
-            return redirect('http://127.0.0.1:8088/login/')
-                
+            access_token = login_response.json().get('access_token')
+            if not access_token:
+                app.logger.error("Access token non ricevuto")
+                return jsonify({'error': 'Access token non ricevuto'}), 500
+            
+            # Step 2: Genera guest token per l'utente TALON
+            guest_token_payload = {
+                "resources": [
+                    {
+                        "type": "dashboard",
+                        "id": "1"  # ID dashboard predefinito
+                    }
+                ],
+                "rls": [],
+                "user": {
+                    "username": user_info['username'],
+                    "first_name": user_info.get('nome', 'User'),
+                    "last_name": user_info.get('cognome', 'TALON')
+                }
+            }
+            
+            guest_token_response = requests.post(
+                'http://127.0.0.1:8088/api/v1/security/guest_token',
+                json=guest_token_payload,
+                headers={'Authorization': f'Bearer {access_token}'},
+                timeout=10
+            )
+            
+            if guest_token_response.status_code != 200:
+                app.logger.error(f"Guest token fallito: {guest_token_response.status_code}")
+                app.logger.error(f"Response: {guest_token_response.text}")
+                return jsonify({'error': 'Guest token generazione fallita'}), 500
+            
+            guest_token = guest_token_response.json().get('token')
+            if not guest_token:
+                app.logger.error("Guest token non ricevuto")
+                return jsonify({'error': 'Guest token non ricevuto'}), 500
+            
+            app.logger.info(f"Guest token generato per {user_info['username']}")
+            
+            return jsonify({
+                'success': True,
+                'guest_token': guest_token,
+                'user': user_info['username']
+            })
+            
         except Exception as e:
-            app.logger.error(f"Errore proxy Superset: {e}")
-            return redirect('http://127.0.0.1:8088/login/')
+            app.logger.error(f"Errore generazione guest token: {e}")
+            return jsonify({'error': str(e)}), 500
 
     @app.route('/superset-login')
     @login_required 
@@ -859,9 +852,9 @@ def create_app():
                 )
                 
                 if login_response.status_code in [302, 303]:
-                    # Login riuscito, reindirizza alla welcome page
+                    # Login riuscito, reindirizza alla home page
                     app.logger.info(f"Login iframe Superset riuscito per {username}")
-                    return redirect('http://127.0.0.1:8088/superset/welcome/')
+                    return redirect('http://127.0.0.1:8088/')
             
             # HTML che auto-sottomette il form di login (per nuova scheda)
             html = f"""
@@ -912,6 +905,433 @@ def create_app():
         except Exception as e:
             app.logger.error(f"Errore login Superset: {e}")
             return redirect('http://127.0.0.1:8088/login/')
+
+    @app.route('/superset-session-token')
+    @login_required
+    def get_superset_session_token():
+        """
+        Genera un token di sessione semplificato per accesso generale a Superset
+        """
+        try:
+            user_info = get_current_user_info()
+            if not user_info:
+                return jsonify({'error': 'Utente non autenticato'}), 401
+            
+            import requests
+            import base64
+            import json
+            from datetime import datetime
+            
+            # Effettua login su Superset per ottenere cookies di sessione
+            login_payload = {
+                "username": "ambrogio.napolitano@esercito.difesa.it",
+                "password": "admin123"
+            }
+            
+            # Usa requests.Session per mantenere i cookies
+            session_requests = requests.Session()
+            login_response = session_requests.post(
+                'http://127.0.0.1:8088/login/',
+                data=login_payload,
+                allow_redirects=False,
+                timeout=10
+            )
+            
+            if login_response.status_code in [302, 303]:
+                # Login riuscito, ottieni i cookies di sessione
+                superset_cookies = session_requests.cookies.get_dict()
+                
+                if superset_cookies:
+                    app.logger.info(f"Token di sessione Superset generato per: {user_info['username']}")
+                    
+                    # Crea un token semplificato che contiene i cookie di sessione
+                    token_data = {
+                        'user': user_info['username'],
+                        'cookies': superset_cookies,
+                        'timestamp': datetime.now().isoformat()
+                    }
+                    
+                    # Codifica il token in base64 per trasporto sicuro
+                    token_string = base64.b64encode(json.dumps(token_data).encode()).decode()
+                    
+                    return jsonify({
+                        'success': True,
+                        'session_token': token_string,
+                        'user': user_info['username'],
+                        'cookies': superset_cookies
+                    })
+            
+            app.logger.error(f"Login Superset fallito per token di sessione: {login_response.status_code}")
+            return jsonify({'error': 'Login Superset fallito'}), 500
+            
+        except Exception as e:
+            app.logger.error(f"Errore token di sessione: {e}")
+            return jsonify({'error': 'Errore interno server'}), 500
+
+    @app.route('/superset-proxy-frame')
+    @login_required
+    def superset_proxy_frame():
+        """
+        Proxy frame che mantiene la sessione SSO attiva
+        """
+        try:
+            user_info = get_current_user_info()
+            if not user_info:
+                app.logger.error("PROXY FRAME: Utente non autenticato, redirect a login")
+                return redirect('http://127.0.0.1:8088/login/')
+            
+            app.logger.info(f"PROXY FRAME: Caricamento per utente {user_info['username']}")
+            app.logger.info(f"PROXY FRAME: Headers ricevuti: {dict(request.headers)}")
+            app.logger.info(f"PROXY FRAME: Cookies ricevuti: {request.cookies}")
+            
+            # HTML che crea un proxy frame con sessione condivisa
+            html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Superset - TALON</title>
+                <meta charset="utf-8">
+                <style>
+                    body, html {{
+                        margin: 0;
+                        padding: 0;
+                        width: 100%;
+                        height: 100%;
+                        overflow: hidden;
+                    }}
+                    #superset-frame {{
+                        width: 100%;
+                        height: 100vh;
+                        border: none;
+                        display: block;
+                    }}
+                </style>
+            </head>
+            <body>
+                <iframe id="superset-frame" src="/superset-proxy" 
+                        allow="fullscreen">
+                </iframe>
+                
+                <script>
+                console.log('[TALON] Proxy frame caricato per utente: {user_info["username"]}');
+                
+                // Gestione eventi iframe
+                const iframe = document.getElementById('superset-frame');
+                
+                iframe.onload = function() {{
+                    console.log('[TALON] Superset caricato nel proxy frame');
+                    
+                    // Prova a vedere se Superset è effettivamente autenticato
+                    try {{
+                        // Monitora l'URL dell'iframe per vedere se cambia verso login
+                        const checkUrl = () => {{
+                            try {{
+                                const iframeSrc = iframe.contentWindow.location.href;
+                                console.log('[TALON] Monitoring SSO - URL iframe:', iframeSrc);
+                                if (iframeSrc.includes('/login')) {{
+                                    console.error('[TALON] PROBLEMA: Iframe reindirizzato al login!');
+                                }}
+                            }} catch (e) {{
+                                console.log('[TALON] Cross-origin, impossibile leggere URL iframe');
+                            }}
+                        }};
+                        
+                        // Controlla URL solo 2 volte: subito e dopo 3 secondi
+                        checkUrl(); // Controllo immediato
+                        setTimeout(checkUrl, 3000); // Controllo dopo 3 secondi
+                    }} catch (e) {{
+                        console.log('[TALON] Errore monitoring iframe:', e);
+                    }}
+                }};
+                
+                iframe.onerror = function() {{
+                    console.error('[TALON] Errore caricamento iframe Superset');
+                }};
+                </script>
+            </body>
+            </html>
+            """
+            
+            response = Response(html, mimetype='text/html')
+            response.headers['X-Frame-Options'] = 'ALLOWALL'
+            response.headers['Content-Security-Policy'] = 'frame-ancestors *'
+            return response
+                
+        except Exception as e:
+            app.logger.error(f"Errore proxy frame: {e}")
+            return redirect('http://127.0.0.1:8088/')
+
+    @app.route('/debug-superset-status')
+    @login_required
+    def debug_superset_status():
+        """
+        Endpoint per debug dello stato Superset
+        """
+        try:
+            user_info = get_current_user_info()
+            if not user_info:
+                return jsonify({'error': 'Non autenticato'}), 401
+            
+            import requests
+            
+            # Test 1: Accesso diretto a Superset home
+            try:
+                response = requests.get('http://127.0.0.1:8088/', timeout=5)
+                home_status = {
+                    'status_code': response.status_code,
+                    'headers': dict(response.headers),
+                    'cookies': dict(response.cookies),
+                    'is_login_page': '/login' in response.text or 'Sign In' in response.text
+                }
+            except Exception as e:
+                home_status = {'error': str(e)}
+            
+            # Test 2: Prova login programmatico
+            try:
+                session = requests.Session()
+                login_response = session.post(
+                    'http://127.0.0.1:8088/login/',
+                    data={'username': 'ambrogio.napolitano@esercito.difesa.it', 'password': 'admin123'},
+                    allow_redirects=False,
+                    timeout=5
+                )
+                login_status = {
+                    'status_code': login_response.status_code,
+                    'headers': dict(login_response.headers),
+                    'cookies': dict(session.cookies),
+                    'location': login_response.headers.get('Location', 'N/A')
+                }
+            except Exception as e:
+                login_status = {'error': str(e)}
+            
+            app.logger.info(f"DEBUG SUPERSET - Home: {home_status}")
+            app.logger.info(f"DEBUG SUPERSET - Login: {login_status}")
+            
+            from datetime import datetime
+            
+            return jsonify({
+                'user': user_info['username'],
+                'timestamp': datetime.now().isoformat(),
+                'superset_home_test': home_status,
+                'superset_login_test': login_status
+            })
+            
+        except Exception as e:
+            app.logger.error(f"Errore debug Superset: {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/test-superset-iframe')
+    @login_required
+    def test_superset_iframe():
+        """
+        Test che simula esattamente cosa succede nell'iframe
+        """
+        try:
+            user_info = get_current_user_info()
+            app.logger.info(f"TEST IFRAME: Utente {user_info['username']} testa accesso Superset")
+            
+            import requests
+            
+            # Simula esattamente quello che fa l'iframe:
+            # 1. Accesso a Superset home senza cookie
+            session = requests.Session()
+            
+            app.logger.info("TEST IFRAME: Step 1 - Accesso iniziale a Superset home")
+            response1 = session.get('http://127.0.0.1:8088/', allow_redirects=False)
+            app.logger.info(f"TEST IFRAME: Response 1 - Status: {response1.status_code}")
+            app.logger.info(f"TEST IFRAME: Response 1 - Headers: {dict(response1.headers)}")
+            app.logger.info(f"TEST IFRAME: Response 1 - Cookies ricevuti: {dict(session.cookies)}")
+            
+            # 2. Se viene reindirizzato, segui il redirect
+            if response1.status_code in [301, 302, 303]:
+                redirect_url = response1.headers.get('Location', '')
+                app.logger.info(f"TEST IFRAME: Redirect a: {redirect_url}")
+                
+                if redirect_url:
+                    response2 = session.get(f"http://127.0.0.1:8088{redirect_url}", allow_redirects=False)
+                    app.logger.info(f"TEST IFRAME: Response 2 - Status: {response2.status_code}")
+                    app.logger.info(f"TEST IFRAME: Response 2 - Headers: {dict(response2.headers)}")
+                    
+                    # Controlla se è la pagina di login
+                    is_login_page = '/login' in redirect_url or 'login' in response2.text.lower()
+                    app.logger.info(f"TEST IFRAME: È pagina di login? {is_login_page}")
+                    
+                    return jsonify({
+                        'step': 'redirect_followed',
+                        'redirect_url': redirect_url,
+                        'is_login_page': is_login_page,
+                        'final_status': response2.status_code,
+                        'cookies': dict(session.cookies)
+                    })
+            
+            # 3. Controlla se la risposta iniziale è login
+            is_login_page = 'login' in response1.text.lower() or 'sign in' in response1.text.lower()
+            app.logger.info(f"TEST IFRAME: Pagina diretta è login? {is_login_page}")
+            
+            return jsonify({
+                'step': 'direct_access',
+                'status_code': response1.status_code,
+                'is_login_page': is_login_page,
+                'cookies': dict(session.cookies),
+                'content_snippet': response1.text[:500] if response1.text else 'No content'
+            })
+            
+        except Exception as e:
+            app.logger.error(f"TEST IFRAME: Errore {e}")
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/superset-proxy', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
+    @app.route('/superset-proxy/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
+    @login_required
+    def superset_full_proxy(path=''):
+        """
+        Proxy HTTP completo per Superset con SSO automatico
+        """
+        try:
+            user_info = get_current_user_info()
+            if not user_info:
+                return redirect('/auth/login')
+            
+            import requests
+            
+            # 1. Prima effettua login per ottenere cookie validi
+            login_session = requests.Session()
+            login_response = login_session.post(
+                'http://127.0.0.1:8088/login/',
+                data={'username': 'ambrogio.napolitano@esercito.difesa.it', 'password': 'admin123'},
+                allow_redirects=False
+            )
+            
+            if login_response.status_code not in [302, 303]:
+                app.logger.error(f"PROXY: Login fallito: {login_response.status_code}")
+                return "Errore autenticazione Superset", 500
+            
+            app.logger.info(f"PROXY: Login riuscito, cookie: {dict(login_session.cookies)}")
+            
+            # 2. Costruisci URL target
+            target_url = f"http://127.0.0.1:8088/{path}"
+            app.logger.info(f"PROXY: Richiesta a {target_url} per {user_info['username']}")
+            
+            # 3. Proxy della richiesta con cookie di autenticazione
+            # Rimuovi Accept-Encoding per evitare compressione
+            proxy_headers = {k: v for k, v in request.headers 
+                           if k.lower() not in ['host', 'connection', 'accept-encoding']}
+            
+            # Proxy la richiesta usando il metodo HTTP corretto
+            if request.method == 'GET':
+                response = login_session.get(
+                    target_url,
+                    params=request.args,
+                    headers=proxy_headers,
+                    allow_redirects=True
+                )
+            elif request.method == 'POST':
+                response = login_session.post(
+                    target_url,
+                    params=request.args,
+                    data=request.form,
+                    json=request.get_json() if request.is_json else None,
+                    headers=proxy_headers,
+                    allow_redirects=True
+                )
+            else:
+                # Altri metodi HTTP
+                response = login_session.request(
+                    request.method,
+                    target_url,
+                    params=request.args,
+                    data=request.get_data(),
+                    headers=proxy_headers,
+                    allow_redirects=True
+                )
+            
+            app.logger.info(f"PROXY: Response {response.status_code} da Superset")
+            
+            # 4. Proxy della risposta
+            excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
+            headers = [(name, value) for (name, value) in response.headers.items()
+                      if name.lower() not in excluded_headers]
+            
+            # Forza X-Frame-Options per permettere iframe
+            headers.append(('X-Frame-Options', 'ALLOWALL'))
+            headers.append(('Content-Security-Policy', 'frame-ancestors *'))
+            
+            from flask import Response
+            return Response(response.content, response.status_code, headers)
+            
+        except Exception as e:
+            app.logger.error(f"PROXY: Errore {e}")
+            return f"Errore proxy: {e}", 500
+
+    @app.route('/api/v1/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
+    @app.route('/superset/log/<path:path>', methods=['GET', 'POST'])
+    @login_required
+    def superset_api_proxy(path):
+        """
+        Proxy per file statici e API di Superset
+        """
+        try:
+            user_info = get_current_user_info()
+            if not user_info:
+                return redirect('/auth/login')
+            
+            import requests
+            
+            # Determina l'URL base dalla richiesta
+            if request.path.startswith('/api/v1/'):
+                base_url = 'http://127.0.0.1:8088/api/v1/'
+                target_path = path
+            elif request.path.startswith('/superset/log/'):
+                base_url = 'http://127.0.0.1:8088/superset/log/'
+                target_path = path
+            else:
+                return "Percorso non supportato", 404
+            
+            # Login su Superset per ottenere cookie validi
+            login_session = requests.Session()
+            login_response = login_session.post(
+                'http://127.0.0.1:8088/login/',
+                data={'username': 'ambrogio.napolitano@esercito.difesa.it', 'password': 'admin123'},
+                allow_redirects=False
+            )
+            
+            if login_response.status_code not in [302, 303]:
+                return f"Errore autenticazione: {login_response.status_code}", 500
+            
+            # Proxy della richiesta
+            target_url = f"{base_url}{target_path}"
+            proxy_headers = {k: v for k, v in request.headers 
+                           if k.lower() not in ['host', 'connection', 'accept-encoding']}
+            
+            if request.method == 'GET':
+                response = login_session.get(target_url, params=request.args, headers=proxy_headers)
+            elif request.method == 'POST':
+                response = login_session.post(
+                    target_url, 
+                    params=request.args, 
+                    data=request.form,
+                    json=request.get_json() if request.is_json else None,
+                    headers=proxy_headers
+                )
+            else:
+                response = login_session.request(
+                    request.method, target_url, 
+                    params=request.args, 
+                    data=request.get_data(),
+                    headers=proxy_headers
+                )
+            
+            # Proxy della risposta
+            excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
+            headers = [(name, value) for (name, value) in response.headers.items()
+                      if name.lower() not in excluded_headers]
+            
+            from flask import Response
+            return Response(response.content, response.status_code, headers)
+            
+        except Exception as e:
+            app.logger.error(f"STATIC PROXY: Errore {e}")
+            return f"Errore static proxy: {e}", 500
 
     @app.route('/logout', methods=['GET', 'POST'])
     @app.route('/auth/logout', methods=['GET', 'POST'])
@@ -1304,6 +1724,164 @@ def create_app():
             print(f"   Database: {PG_DB}")
             print(f"   User: {PG_USER}")
     
+    # ===========================================
+    # PROXY SUPERSET PER SSO
+    # ===========================================
+    @app.route('/superset-static/<path:filename>', endpoint='superset_static_proxy_v2')
+    def superset_static_proxy(filename):
+        """
+        Proxy dedicato per le risorse statiche di Superset
+        """
+        try:
+            import requests
+            static_url = f"http://127.0.0.1:8088/static/{filename}"
+            response = requests.get(static_url, timeout=10)
+            
+            # Determina il content-type basato sull'estensione
+            content_type = 'text/plain'
+            if filename.endswith('.css'):
+                content_type = 'text/css'
+            elif filename.endswith('.js'):
+                content_type = 'application/javascript'
+            elif filename.endswith('.png'):
+                content_type = 'image/png'
+            elif filename.endswith('.jpg') or filename.endswith('.jpeg'):
+                content_type = 'image/jpeg'
+            elif filename.endswith('.svg'):
+                content_type = 'image/svg+xml'
+            elif filename.endswith('.woff') or filename.endswith('.woff2'):
+                content_type = 'font/woff'
+            elif filename.endswith('.ttf'):
+                content_type = 'font/ttf'
+            
+            # Correggi i percorsi nei file CSS e JS anche qui
+            content = response.content
+            if content_type == 'text/css':
+                try:
+                    css_content = content.decode('utf-8')
+                    css_content = css_content.replace('/static/', '/superset-static/')
+                    content = css_content.encode('utf-8')
+                except:
+                    pass
+            elif content_type == 'application/javascript':
+                try:
+                    js_content = content.decode('utf-8')
+                    js_content = js_content.replace('/static/', '/superset-static/')
+                    content = js_content.encode('utf-8')
+                except:
+                    pass
+                
+            return Response(
+                content,
+                status=response.status_code,
+                headers={'Content-Type': content_type}
+            )
+        except Exception as e:
+            app.logger.error(f"Errore proxy static Superset {filename}: {e}")
+            return Response(status=404)
+    
+    @app.route('/static/appbuilder/<path:filename>')
+    def superset_appbuilder_proxy(filename):
+        """
+        Proxy specifico per file /static/appbuilder/ di Superset
+        """
+        try:
+            import requests
+            # Costruisci URL corretto per appbuilder
+            static_url = f"http://127.0.0.1:8088/static/appbuilder/{filename}"
+            app.logger.info(f"APPBUILDER PROXY: {static_url}")
+            response = requests.get(static_url, timeout=10)
+            
+            if response.status_code != 200:
+                app.logger.warning(f"APPBUILDER PROXY: File non trovato {static_url} - Status: {response.status_code}")
+                return Response(status=404)
+            
+            # Determina il content-type basato sull'estensione  
+            content_type = 'text/plain'
+            if filename.endswith('.css'):
+                content_type = 'text/css'
+            elif filename.endswith('.js'):
+                content_type = 'application/javascript'
+            elif filename.endswith('.png'):
+                content_type = 'image/png'
+            elif filename.endswith('.jpg') or filename.endswith('.jpeg'):
+                content_type = 'image/jpeg'
+            elif filename.endswith('.svg'):
+                content_type = 'image/svg+xml'
+            elif filename.endswith('.woff') or filename.endswith('.woff2'):
+                content_type = 'font/woff'
+            elif filename.endswith('.ttf'):
+                content_type = 'font/ttf'
+            
+            # Crea risposta
+            headers = [('Content-Type', content_type)]
+            
+            # Aggiungi cache headers per performance
+            if any(filename.endswith(ext) for ext in ['.css', '.js', '.png', '.jpg', '.jpeg', '.svg', '.woff', '.woff2', '.ttf']):
+                headers.append(('Cache-Control', 'public, max-age=31536000'))
+            
+            return Response(response.content, 200, headers)
+            
+        except Exception as e:
+            app.logger.error(f"Errore proxy appbuilder {filename}: {e}")
+            return Response(status=404)
+    
+    @app.route('/static/assets/<path:filename>')
+    def catch_superset_assets(filename):
+        """
+        Cattura le richieste /static/assets/ che non vengono gestite dal proxy principale
+        e le reindirizza al proxy Superset
+        """
+        return superset_static_proxy(f"assets/{filename}")
+
+    @app.route('/superset/log/', methods=['GET', 'POST', 'HEAD'])
+    @app.route('/superset/log/<path:path>', methods=['GET', 'POST', 'HEAD'])
+    def superset_log_proxy(path=''):
+        """
+        Proxy per endpoint di logging di Superset
+        """
+        try:
+            import requests
+            
+            # Costruisci URL target
+            if path:
+                target_url = f"http://127.0.0.1:8088/superset/log/{path}"
+            else:
+                target_url = "http://127.0.0.1:8088/superset/log/"
+            
+            # Aggiungi parametri query se presenti
+            if request.query_string:
+                target_url += f"?{request.query_string.decode()}"
+            
+            app.logger.info(f"LOG PROXY: Richiesta {request.method} a {target_url}")
+            
+            # Proxy la richiesta
+            if request.method == 'GET':
+                response = requests.get(target_url, timeout=10)
+            elif request.method == 'HEAD':
+                response = requests.head(target_url, timeout=10)
+            elif request.method == 'POST':
+                response = requests.post(
+                    target_url,
+                    data=request.get_data(),
+                    headers={'Content-Type': request.content_type or 'application/json'},
+                    timeout=10
+                )
+            else:
+                # Per altri metodi, restituisci 405 Method Not Allowed
+                return Response("Method not allowed", 405)
+            
+            # Crea risposta proxy
+            excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
+            headers = [(name, value) for (name, value) in response.headers.items()
+                      if name.lower() not in excluded_headers]
+            
+            return Response(response.content, response.status_code, headers)
+            
+        except Exception as e:
+            app.logger.error(f"Errore log proxy: {e}")
+            return "Log proxy error", 500
+
     return app
 
 def main():

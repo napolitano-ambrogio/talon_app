@@ -121,8 +121,12 @@ class GeocodingInterattivo {
             
             // Aggiorna interfaccia
             document.getElementById('ente-nome').textContent = enteData.nome;
-            document.getElementById('ente-indirizzo').textContent = enteData.indirizzo || 'Indirizzo non specificato';
-            document.getElementById('ente-tipo').textContent = enteData.tipo.toUpperCase();
+            const tipoDisplay = enteData.tipo === 'operazione' ? 'OPERAZIONE' : enteData.tipo.toUpperCase();
+            const indirizzoLabel = enteData.tipo === 'operazione' ? 
+                (enteData.indirizzo || 'Teatro operativo non specificato') : 
+                (enteData.indirizzo || 'Indirizzo non specificato');
+            document.getElementById('ente-indirizzo').textContent = indirizzoLabel;
+            document.getElementById('ente-tipo').textContent = tipoDisplay;
             document.getElementById('ente-progressivo').textContent = 'Manuale';
             
             // Aggiorna campo di modifica indirizzo
@@ -165,8 +169,12 @@ class GeocodingInterattivo {
         
         // Aggiorna info ente
         document.getElementById('ente-nome').textContent = this.enteCorrente.nome;
-        document.getElementById('ente-indirizzo').textContent = this.enteCorrente.indirizzo || 'Indirizzo non specificato';
-        document.getElementById('ente-tipo').textContent = this.enteCorrente.tipo.toUpperCase();
+        const tipoDisplay = this.enteCorrente.tipo === 'operazione' ? 'OPERAZIONE' : this.enteCorrente.tipo.toUpperCase();
+        const indirizzoLabel = this.enteCorrente.tipo === 'operazione' ? 
+            (this.enteCorrente.indirizzo || 'Teatro operativo non specificato') : 
+            (this.enteCorrente.indirizzo || 'Indirizzo non specificato');
+        document.getElementById('ente-indirizzo').textContent = indirizzoLabel;
+        document.getElementById('ente-tipo').textContent = tipoDisplay;
         document.getElementById('ente-progressivo').textContent = `${this.indiceCorrente + 1}/${this.entiDaGeocodificare.length}`;
         
         // Aggiorna campo di modifica indirizzo
@@ -400,7 +408,8 @@ class GeocodingInterattivo {
             const result = await response.json();
             
             if (result.success) {
-                this.mostraMessaggio(`Coordinate salvate per ${this.enteCorrente.nome}`, 'success');
+                const tipoEntita = this.enteCorrente.tipo === 'operazione' ? 'operazione' : 'ente';
+                this.mostraMessaggio(`Coordinate salvate per ${tipoEntita} ${this.enteCorrente.nome}`, 'success');
                 
                 // In modalità automatica, passa al prossimo ente
                 if (this.modalita === 'automatica') {
@@ -453,7 +462,8 @@ class GeocodingInterattivo {
             return;
         }
         
-        const conferma = confirm(`Aggiornare l'indirizzo di "${this.enteCorrente.nome}" da:\n"${this.enteCorrente.indirizzo}"\na:\n"${nuovoIndirizzo}"?`);
+        const tipoLocalizzazione = this.enteCorrente.tipo === 'operazione' ? 'teatro operativo' : 'indirizzo';
+        const conferma = confirm(`Aggiornare il ${tipoLocalizzazione} di "${this.enteCorrente.nome}" da:\n"${this.enteCorrente.indirizzo}"\na:\n"${nuovoIndirizzo}"?`);
         
         if (!conferma) return;
         
@@ -476,7 +486,8 @@ class GeocodingInterattivo {
             const result = await response.json();
             
             if (result.success) {
-                this.mostraMessaggio(`Indirizzo aggiornato per ${this.enteCorrente.nome}`, 'success');
+                const tipoLocalizzazione = this.enteCorrente.tipo === 'operazione' ? 'Teatro operativo' : 'Indirizzo';
+                this.mostraMessaggio(`${tipoLocalizzazione} aggiornato per ${this.enteCorrente.nome}`, 'success');
                 
                 // Aggiorna l'ente corrente
                 this.enteCorrente.indirizzo = nuovoIndirizzo;

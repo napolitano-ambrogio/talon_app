@@ -5,6 +5,7 @@ from auth import (
     admin_required, operatore_or_admin_required,
     log_user_action, get_user_accessible_entities, get_current_user_info,
     is_admin, is_operatore_or_above, get_user_role,
+    clear_user_cache,
     ROLE_ADMIN, ROLE_OPERATORE, ROLE_VISUALIZZATORE
 )
 import os
@@ -426,7 +427,7 @@ def salva_militare():
         # Campi civico, cap, citta, provincia eliminati dallo schema
         telefono = request.form.get('telefono', '').strip()
         email = request.form.get('email', '').strip().lower()
-        note = request.form.get('note', '').upper().strip()
+        # Campo note non esiste nella tabella enti_militari
 
         if parent_id:
             parent_id = int(parent_id)
@@ -443,13 +444,13 @@ def salva_militare():
             """
             INSERT INTO enti_militari
                 (nome, codice, parent_id, indirizzo,
-                 telefono, email, note, creato_da, data_creazione)
+                 telefono, email, creato_da, data_creazione)
             VALUES
-                (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                (%s, %s, %s, %s, %s, %s, %s, NOW())
             RETURNING id
             """,
             (nome, codice, parent_id, indirizzo,
-             telefono, email, note, user_id),
+             telefono, email, user_id),
             return_lastrowid=True
         )
 
@@ -460,6 +461,9 @@ def salva_militare():
             'ente_militare',
             new_id
         )
+
+        # Invalida cache enti per tutti gli utenti dopo creazione
+        clear_user_cache()
 
         flash(f'Ente militare "{nome}" creato con successo.', 'success')
         return redirect(url_for('enti_militari.visualizza_ente', id=new_id))
@@ -619,7 +623,7 @@ def aggiorna_militare(id):
         # Campi civico, cap, citta, provincia eliminati dallo schema
         telefono = request.form.get('telefono', '').strip()
         email = request.form.get('email', '').strip().lower()
-        note = request.form.get('note', '').upper().strip()
+        # Campo note non esiste nella tabella enti_militari
 
         existing = query_one('SELECT nome, codice FROM enti_militari WHERE id = %s', (id,))
         if not existing:
@@ -654,13 +658,13 @@ def aggiorna_militare(id):
         execute(
             """
             UPDATE enti_militari
-               SET nome=%s, codice=%s, parent_id=%s, indirizzo=%s, civico=%s, cap=%s,
-                   citta=%s, provincia=%s, telefono=%s, email=%s, note=%s,
+               SET nome=%s, codice=%s, parent_id=%s, indirizzo=%s,
+                   telefono=%s, email=%s,
                    modificato_da=%s, data_modifica=NOW()
              WHERE id = %s
             """,
             (nome, codice, parent_id, indirizzo,
-             telefono, email, note, user_id, id)
+             telefono, email, user_id, id)
         )
 
         log_user_action(
@@ -670,6 +674,9 @@ def aggiorna_militare(id):
             'ente_militare',
             id
         )
+
+        # Invalida cache enti per tutti gli utenti dopo aggiornamento
+        clear_user_cache()
 
         flash(f'Ente militare "{nome}" aggiornato con successo.', 'success')
         return redirect(url_for('enti_militari.visualizza_ente', id=id))
@@ -714,6 +721,9 @@ def elimina_militare(id):
             'ente_militare',
             id
         )
+
+        # Invalida cache enti per tutti gli utenti dopo eliminazione
+        clear_user_cache()
 
         flash(f'Ente militare "{nome_ente}" eliminato con successo.', 'success')
 

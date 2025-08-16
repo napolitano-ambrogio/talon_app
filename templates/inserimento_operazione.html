@@ -3,7 +3,7 @@
 {% block content %}
 <div class="form-container">
     <h1>Nuova Operazione</h1>
-    <form action="{{ url_for('operazioni.salva_operazione') }}" method="POST">
+    <form action="{{ url_for('operazioni.salva_operazione') }}" method="POST" enctype="multipart/form-data">
         <div class="form-group">
             <label for="nome_missione">Nome Missione (es. UNIFIL):</label>
             <input type="text" id="nome_missione" name="nome_missione" required>
@@ -32,6 +32,31 @@
             <label for="descrizione">Descrizione:</label>
             <textarea id="descrizione" name="descrizione" rows="4"></textarea>
         </div>
+        
+        <hr>
+        <h3>Georeferenziazione</h3>
+        <div class="form-group">
+            <label for="coordinate">Coordinate (Latitudine, Longitudine):</label>
+            <input type="text" id="coordinate" name="coordinate" 
+                   placeholder="es: 33.8626, 35.5163 (Beirut, Libano)"
+                   pattern="^-?([1-8]?[0-9]\.{1}\d+|90\.{1}0+),\s*-?(180\.{1}0+|((1[0-7][0-9])|([1-9]?[0-9]))\.{1}\d+)$">
+            <small style="color: #666; font-size: 0.9em;">
+                Inserisci le coordinate nel formato: latitudine, longitudine (es: 41.9028, 12.4964 per Roma).
+                <br>Utilizza il <a href="/geocoding" target="_blank" style="color: #3182ce;">Geocoding Interattivo</a> per trovare le coordinate precise.
+            </small>
+        </div>
+        
+        <hr>
+        <h3>Immagine Operazione</h3>
+        <div class="form-group">
+            <label for="immagine">Immagine rappresentativa (opzionale):</label>
+            <input type="file" id="immagine" name="immagine" accept="image/jpeg,image/jpg,image/png,image/gif">
+            <small style="color: #666; font-size: 0.9em; display: block; margin-top: 0.5rem;">
+                Formati supportati: JPG, PNG, GIF. Dimensione massima: 5MB.
+                <br>L'immagine verrà automaticamente ridimensionata e ottimizzata.
+            </small>
+        </div>
+        
         <button type="submit">Salva Operazione</button>
     </form>
     <br>

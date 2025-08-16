@@ -22,7 +22,12 @@
         'MOVIMENTI E TRASPORTI': 'dettagli-trasporti',
         'MANTENIMENTO E SQUADRE A CONTATTO': 'dettagli-mantenimento',
         'RIFORNIMENTI': 'dettagli-rifornimenti',
-        'GESTIONE TRANSITO': 'dettagli-getra'
+        'GESTIONE TRANSITO': 'dettagli-getra',
+        'ATTIVITÀ DI TRAINING ON THE JOB': 'dettagli-training-on-the-job',
+        'CORSI DI FORMAZIONE': 'dettagli-formazione',
+        'ESERCITAZIONI': 'dettagli-esercitazione',
+        'MEDICINA CURATIVA': 'dettagli-med-curativa',
+        'SGOMBERI SANITARI/VETERINARI': 'dettagli-stratevac'
     };
 
     // Flag per tracking inizializzazione

@@ -2015,3 +2015,9 @@ input:checked + .talon-slider:before {
     font-size: 18px;
     line-height: 1;
 }
+
+/* ===== FIX ICONA DUPLICATA SEARCHABLE SELECT ===== */
+#form-inserimento-attivita .searchable-select-display .display-icon,
+#form-modifica-attivita .searchable-select-display .display-icon {
+    display: none !important;
+}

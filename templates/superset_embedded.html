@@ -154,59 +154,26 @@ document.addEventListener('DOMContentLoaded', function() {
         console.info('[TALON] Modalità sviluppo: eventuali warning di Superset sono normali e non influenzano il funzionamento');
     }
     
-    // Carica Superset nell'iframe dopo che la pagina è caricata
+    // Carica Superset usando Guest Token (SSO corretto)
     setTimeout(function() {
         const container = document.getElementById('supersetContainer');
         
-        // Crea iframe che punta al nostro endpoint di login automatico
+        // Usa proxy frame TALON che mantiene la sessione SSO
+        console.log('[TALON] Caricamento Superset tramite proxy frame...');
+        
         const iframe = document.createElement('iframe');
-        iframe.src = '/superset-login';
+        iframe.src = '/superset-proxy-frame';  // Endpoint proxy che mantiene SSO
         iframe.className = 'superset-iframe';
         iframe.frameBorder = '0';
         iframe.allowFullscreen = true;
-        iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox';
         
         // Gestione eventi iframe
         iframe.onload = function() {
-            console.log('Superset caricato con successo');
-            
-            // Tenta di filtrare errori nell'iframe (limitato da cross-origin)
-            try {
-                const iframeWindow = iframe.contentWindow;
-                if (iframeWindow && iframeWindow.console) {
-                    // Backup originali
-                    const originalError = iframeWindow.console.error;
-                    const originalWarn = iframeWindow.console.warn;
-                    
-                    // Override con filtri
-                    iframeWindow.console.error = function(...args) {
-                        const message = args.join(' ');
-                        if (message.includes('configure') || message.includes('entry.js')) {
-                            console.debug('[Iframe Filtered Error]:', message);
-                            return;
-                        }
-                        originalError.apply(iframeWindow.console, args);
-                    };
-                    
-                    iframeWindow.console.warn = function(...args) {
-                        const message = args.join(' ');
-                        if (message.includes('configure') || message.includes('entry.js')) {
-                            console.debug('[Iframe Filtered Warning]:', message);
-                            return;
-                        }
-                        originalWarn.apply(iframeWindow.console, args);
-                    };
-                    
-                    console.log('[TALON] Filtro iframe applicato');
-                }
-            } catch(e) {
-                // Errori cross-origin sono normali e attesi
-                console.debug('[TALON] Cross-origin iframe - filtro non applicabile');
-            }
+            console.log('[TALON] Proxy frame Superset caricato');
         };
         
         iframe.onerror = function() {
-            console.warn('Errore nel caricamento Superset');
+            console.error('[TALON] Errore caricamento proxy frame');
             container.innerHTML = `
                 <div class="alert alert-warning text-center">
                     <h5>Errore di caricamento</h5>
@@ -277,11 +244,12 @@ window.reloadSuperset = function() {
     
     setTimeout(function() {
         const iframe = document.createElement('iframe');
-        iframe.src = `/superset-login?t=${Date.now()}`;
+        iframe.src = `/superset-proxy-frame?t=${Date.now()}`;
         iframe.className = 'superset-iframe';
         iframe.frameBorder = '0';
         iframe.allowFullscreen = true;
-        iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox';
+        // Rimosso sandbox per permettere l'SSO corretto
+        // iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox';
         
         iframe.onload = function() {
             console.log('Superset ricaricato con successo');

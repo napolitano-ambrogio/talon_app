@@ -77,6 +77,34 @@ def get_location_name(conn, militare_id, civile_id):
             return r['nome'] if r else None
     return None
 
+def resolve_ente_appartenenza_name(conn, ente_appartenenza_value):
+    """
+    Risolve il nome dell'ente di appartenenza dal valore salvato nel database.
+    
+    Args:
+        conn: Connessione database
+        ente_appartenenza_value: Valore dal database (formato "militare-id" o testo libero)
+        
+    Returns:
+        str: Nome dell'ente o testo originale
+    """
+    if not ente_appartenenza_value:
+        return None
+        
+    # Se è un riferimento a un ente militare
+    if ente_appartenenza_value.startswith('militare-'):
+        try:
+            militare_id = int(ente_appartenenza_value.split('-', 1)[1])
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute('SELECT nome FROM enti_militari WHERE id = %s', (militare_id,))
+                r = cur.fetchone()
+                return r['nome'] if r else ente_appartenenza_value
+        except (ValueError, IndexError):
+            return ente_appartenenza_value
+    
+    # Se è testo libero, restituisce il valore originale
+    return ente_appartenenza_value
+
 def validate_activity_access(user_id, activity_id, accessible_entities):
     """
     Valida che l'utente abbia accesso all'attività.
@@ -193,21 +221,31 @@ def save_activity_details(conn, activity_id, tipologia_nome, form_data):
                 ) VALUES (%s, %s, %s, %s)
             """, (
                 activity_id,
-                form_data.get('tipo_intervento'),
-                form_data.get('attivita_svolta'),
+                (form_data.get('tipo_intervento') or '').upper(),
+                (form_data.get('attivita_svolta') or '').upper(),
                 (form_data.get('piattaforma_materiale') or '').upper()
             ))
 
         elif tipologia_nome == 'RIFORNIMENTI':
+            # Converti quantità in intero se presente
+            quantita_rifornimento = form_data.get('quantita_rifornimento')
+            if quantita_rifornimento:
+                try:
+                    quantita_rifornimento = int(float(quantita_rifornimento))
+                except (ValueError, TypeError):
+                    quantita_rifornimento = None
+            else:
+                quantita_rifornimento = None
+                
             cur.execute("""
                 INSERT INTO dettagli_rifornimenti (
                     attivita_id, tipologia_rifornimento, dettaglio_materiale, quantita, unita_di_misura
                 ) VALUES (%s, %s, %s, %s, %s)
             """, (
                 activity_id,
-                form_data.get('tipologia_rifornimento'),
+                (form_data.get('tipologia_rifornimento') or '').upper(),
                 (form_data.get('dettaglio_materiale') or '').upper(),
-                form_data.get('quantita_rifornimento') or None,
+                quantita_rifornimento,
                 (form_data.get('unita_di_misura_rifornimento') or '').upper()
             ))
 
@@ -227,6 +265,91 @@ def save_activity_details(conn, activity_id, tipologia_nome, form_data):
                 (form_data.get('unita_di_misura_getra') or '').upper()
             ))
 
+        elif tipologia_nome == 'ATTIVITÀ DI TRAINING ON THE JOB':
+            cur.execute("""
+                INSERT INTO dettagli_training_on_the_job (
+                    attivita_id, tipo_training
+                ) VALUES (%s, %s)
+            """, (
+                activity_id,
+                (form_data.get('tipo_training') or '').upper()
+            ))
+
+        elif tipologia_nome == 'SGOMBERI SANITARI/VETERINARI':
+            # Gestione ente_appartenenza
+            ente_appartenenza = form_data.get('ente_appartenenza')
+            if ente_appartenenza == 'altro':
+                ente_appartenenza = (form_data.get('ente_appartenenza_testo') or '').upper()
+            else:
+                ente_appartenenza = ente_appartenenza or None
+                
+            cur.execute("""
+                INSERT INTO dettagli_stratevac (
+                    attivita_id, priorita, tipo_vettore, seriale_vettore,
+                    num_unita, grado, ente_appartenenza, forza_armata,
+                    motivo_sgombero, trasporto_a_cura
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                activity_id,
+                form_data.get('priorita') or None,
+                (form_data.get('tipo_vettore_stratevac') or '').upper() or None,
+                (form_data.get('seriale_vettore_stratevac') or '').upper() or None,
+                form_data.get('num_unita') or None,
+                (form_data.get('grado') or '').upper() or None,
+                ente_appartenenza,
+                form_data.get('forza_armata') or None,
+                (form_data.get('motivo_sgombero') or '').upper() or None,
+                form_data.get('trasporto_a_cura') or None
+            ))
+
+        elif tipologia_nome == 'CORSI DI FORMAZIONE':
+            cur.execute("""
+                INSERT INTO dettagli_formazione (
+                    attivita_id, tipo_formazione, nome_corso
+                ) VALUES (%s, %s, %s)
+            """, (
+                activity_id,
+                (form_data.get('tipo_formazione') or '').upper(),
+                (form_data.get('nome_corso') or '').upper()
+            ))
+
+        elif tipologia_nome == 'MEDICINA CURATIVA':
+            # Gestione corretta dei valori vuoti
+            tipo_intervento = form_data.get('tipo_intervento_med')
+            if tipo_intervento and tipo_intervento.strip():
+                tipo_intervento = tipo_intervento.strip()
+            else:
+                tipo_intervento = None
+                
+            a_favore = form_data.get('a_favore')
+            if a_favore and a_favore.strip():
+                a_favore = a_favore.strip()
+            else:
+                a_favore = None
+                
+            cur.execute("""
+                INSERT INTO dettagli_med_curativa (
+                    attivita_id, num_interventi, tipo_intervento, a_favore
+                ) VALUES (%s, %s, %s, %s)
+            """, (
+                activity_id,
+                form_data.get('num_interventi') or None,
+                tipo_intervento,
+                a_favore
+            ))
+
+        elif tipologia_nome == 'ESERCITAZIONI':
+            cur.execute("""
+                INSERT INTO dettagli_esercitazione (
+                    attivita_id, tipo_esercitazione, nome_esercitazione, descrizione_esercitazione
+                ) VALUES (%s, %s, %s, %s)
+            """, (
+                activity_id,
+                (form_data.get('tipo_esercitazione') or '').upper(),
+                (form_data.get('nome_esercitazione') or '').upper(),
+                (form_data.get('descrizione_esercitazione') or '').upper()
+            ))
+
 def get_activity_details(conn, activity_id, tipologia_nome):
     """
     Recupera i dettagli specifici dell'attività.
@@ -240,18 +363,56 @@ def get_activity_details(conn, activity_id, tipologia_nome):
         dict: Dettagli specifici o dizionario vuoto
     """
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        # MOVIMENTI E TRASPORTI (ID 4)
         if tipologia_nome == 'MOVIMENTI E TRASPORTI':
             cur.execute('SELECT * FROM dettagli_trasporti WHERE attivita_id = %s', (activity_id,))
-            return cur.fetchone()
+            return cur.fetchone() or {}
+        
+        # MANTENIMENTO E SQUADRE A CONTATTO (ID 3)
         elif tipologia_nome == 'MANTENIMENTO E SQUADRE A CONTATTO':
             cur.execute('SELECT * FROM dettagli_mantenimento WHERE attivita_id = %s', (activity_id,))
-            return cur.fetchone()
+            return cur.fetchone() or {}
+        
+        # RIFORNIMENTI (ID 2)
         elif tipologia_nome == 'RIFORNIMENTI':
             cur.execute('SELECT * FROM dettagli_rifornimenti WHERE attivita_id = %s', (activity_id,))
-            return cur.fetchone()
+            return cur.fetchone() or {}
+        
+        # GESTIONE TRANSITO (ID 15) - GETRA
         elif tipologia_nome == 'GESTIONE TRANSITO':
             cur.execute('SELECT * FROM dettagli_getra WHERE attivita_id = %s', (activity_id,))
-            return cur.fetchone()
+            return cur.fetchone() or {}
+        
+        # ESERCITAZIONI (ID 23)
+        elif tipologia_nome == 'ESERCITAZIONI':
+            cur.execute('SELECT * FROM dettagli_esercitazione WHERE attivita_id = %s', (activity_id,))
+            return cur.fetchone() or {}
+        
+        # CORSI DI FORMAZIONE (ID 20)
+        elif tipologia_nome == 'CORSI DI FORMAZIONE':
+            cur.execute('SELECT * FROM dettagli_formazione WHERE attivita_id = %s', (activity_id,))
+            return cur.fetchone() or {}
+        
+        # ATTIVITÀ DI TRAINING ON THE JOB (ID 21)
+        elif tipologia_nome == 'ATTIVITÀ DI TRAINING ON THE JOB':
+            cur.execute('SELECT * FROM dettagli_training_on_the_job WHERE attivita_id = %s', (activity_id,))
+            return cur.fetchone() or {}
+        
+        # MEDICINA CURATIVA
+        elif tipologia_nome == 'MEDICINA CURATIVA':
+            cur.execute('SELECT * FROM dettagli_med_curativa WHERE attivita_id = %s', (activity_id,))
+            return cur.fetchone() or {}
+        
+        # SGOMBERI SANITARI/VETERINARI (ID 12)
+        elif tipologia_nome == 'SGOMBERI SANITARI/VETERINARI':
+            cur.execute('SELECT * FROM dettagli_stratevac WHERE attivita_id = %s', (activity_id,))
+            dettagli = cur.fetchone()
+            if dettagli and dettagli.get('ente_appartenenza'):
+                # Risolvi il nome dell'ente di appartenenza
+                dettagli = dict(dettagli)  # Converti in dict modificabile
+                dettagli['ente_appartenenza'] = resolve_ente_appartenenza_name(conn, dettagli['ente_appartenenza'])
+            return dettagli or {}
+            
     return {}
 
 def get_enti_form_data(conn, accessible_entities=None):
@@ -270,8 +431,7 @@ def get_enti_form_data(conn, accessible_entities=None):
         if accessible_entities:
             placeholders, params = _build_in_clause(accessible_entities)
             cur.execute(
-                f'''SELECT id, nome, codice, indirizzo, civico, 
-                          cap, citta, provincia
+                f'''SELECT id, nome, codice, indirizzo
                    FROM enti_militari
                    WHERE id IN ({placeholders}) 
                    ORDER BY nome''',
@@ -279,8 +439,7 @@ def get_enti_form_data(conn, accessible_entities=None):
             )
         else:
             cur.execute(
-                '''SELECT id, nome, codice, indirizzo, civico, 
-                          cap, citta, provincia
+                '''SELECT id, nome, codice, indirizzo
                    FROM enti_militari
                    ORDER BY nome'''
             )
@@ -288,7 +447,7 @@ def get_enti_form_data(conn, accessible_entities=None):
 
         # Enti civili - tutti disponibili
         cur.execute(
-            '''SELECT id, nome, indirizzo, civico, cap, citta, provincia, nazione 
+            '''SELECT id, nome, indirizzo, nazione
                FROM enti_civili 
                ORDER BY nome'''
         )
@@ -683,9 +842,9 @@ def modifica_attivita_form(id):
     user_id = request.current_user['user_id']
     accessible_entities = get_user_accessible_entities(user_id)
 
-    # Verifica accesso
-    attivita = validate_activity_access(user_id, id, accessible_entities)
-    if not attivita:
+    # Verifica accesso di base
+    basic_access = validate_activity_access(user_id, id, accessible_entities)
+    if not basic_access:
         error_msg = 'Attività non trovata o non modificabile.'
         flash(error_msg, 'error')
         log_user_action(
@@ -702,6 +861,37 @@ def modifica_attivita_form(id):
 
     try:
         with conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Recupera attività completa con tipologia_nome
+                cur.execute('''
+                    SELECT a.*, ta.nome AS tipologia_nome,
+                           em_svolgimento.nome AS ente_svolgimento_nome,
+                           em_partenza.nome AS partenza_militare_nome,
+                           ec_partenza.nome AS partenza_civile_nome,
+                           em_destinazione.nome AS destinazione_militare_nome,
+                           ec_destinazione.nome AS destinazione_civile_nome,
+                           o.nome_missione AS operazione_nome,
+                           u_creato.username AS creato_da_nome,
+                           u_modificato.username AS modificato_da_nome
+                    FROM attivita a
+                    JOIN tipologie_attivita ta ON a.tipologia_id = ta.id
+                    LEFT JOIN enti_militari em_svolgimento ON a.ente_svolgimento_id = em_svolgimento.id
+                    LEFT JOIN enti_militari em_partenza ON a.partenza_militare_id = em_partenza.id
+                    LEFT JOIN enti_civili ec_partenza ON a.partenza_civile_id = ec_partenza.id
+                    LEFT JOIN enti_militari em_destinazione ON a.destinazione_militare_id = em_destinazione.id
+                    LEFT JOIN enti_civili ec_destinazione ON a.destinazione_civile_id = ec_destinazione.id
+                    LEFT JOIN operazioni o ON a.operazione_id = o.id
+                    LEFT JOIN utenti u_creato ON a.creato_da = u_creato.id
+                    LEFT JOIN utenti u_modificato ON a.modificato_da = u_modificato.id
+                    WHERE a.id = %s
+                ''', (id,))
+                attivita = cur.fetchone()
+                
+                if not attivita:
+                    error_msg = 'Attività non trovata.'
+                    flash(error_msg, 'error')
+                    return redirect(url_for('attivita.lista_attivita'))
+
             # Recupera dati per il form
             enti_militari, enti_civili = get_enti_form_data(conn, accessible_entities)
 
@@ -721,7 +911,12 @@ def modifica_attivita_form(id):
                     'trasporti': None, 
                     'mantenimento': None, 
                     'rifornimenti': None, 
-                    'getra': None
+                    'getra': None,
+                    'training_on_the_job': None,
+                    'formazione': None,
+                    'esercitazione': None,
+                    'med_curativa': None,
+                    'stratevac': None
                 }
                 
                 cur.execute('SELECT * FROM dettagli_trasporti WHERE attivita_id = %s', (id,))
@@ -735,6 +930,23 @@ def modifica_attivita_form(id):
                 
                 cur.execute('SELECT * FROM dettagli_getra WHERE attivita_id = %s', (id,))
                 dettagli['getra'] = cur.fetchone()
+                
+                cur.execute('SELECT * FROM dettagli_training_on_the_job WHERE attivita_id = %s', (id,))
+                dettagli['training_on_the_job'] = cur.fetchone()
+                
+                cur.execute('SELECT * FROM dettagli_formazione WHERE attivita_id = %s', (id,))
+                dettagli['formazione'] = cur.fetchone()
+                
+                cur.execute('SELECT * FROM dettagli_esercitazione WHERE attivita_id = %s', (id,))
+                dettagli['esercitazione'] = cur.fetchone()
+                
+                cur.execute('SELECT * FROM dettagli_med_curativa WHERE attivita_id = %s', (id,))
+                dettagli['med_curativa'] = cur.fetchone()
+                
+                cur.execute('SELECT * FROM dettagli_stratevac WHERE attivita_id = %s', (id,))
+                dettagli_stratevac = cur.fetchone()
+                # Per la modifica, manteniamo il valore originale "militare-id" per il form
+                dettagli['stratevac'] = dettagli_stratevac
 
     except Exception as e:
         error_msg = f'Errore nel caricamento dei dati: {str(e)}'
@@ -759,6 +971,11 @@ def modifica_attivita_form(id):
         dettagli_mantenimento=dettagli['mantenimento'] or {},
         dettagli_rifornimenti=dettagli['rifornimenti'] or {},
         dettagli_getra=dettagli['getra'] or {},
+        dettagli_training_on_the_job=dettagli['training_on_the_job'] or {},
+        dettagli_formazione=dettagli['formazione'] or {},
+        dettagli_esercitazione=dettagli['esercitazione'] or {},
+        dettagli_med_curativa=dettagli['med_curativa'] or {},
+        dettagli_stratevac=dettagli['stratevac'] or {},
         enti_militari=enti_militari,
         enti_civili=enti_civili,
         operazioni=operazioni,
@@ -856,7 +1073,8 @@ def aggiorna_attivita(id):
                 ))
 
                 # Elimina dettagli esistenti
-                for table in ['dettagli_trasporti', 'dettagli_mantenimento', 'dettagli_rifornimenti', 'dettagli_getra']:
+                for table in ['dettagli_trasporti', 'dettagli_mantenimento', 'dettagli_rifornimenti', 'dettagli_getra', 
+                             'dettagli_training_on_the_job', 'dettagli_formazione', 'dettagli_esercitazione', 'dettagli_stratevac', 'dettagli_med_curativa']:
                     cur.execute(f'DELETE FROM {table} WHERE attivita_id = %s', (id,))
 
                 # Inserisci nuovi dettagli
@@ -925,7 +1143,8 @@ def elimina_attivita(id):
                 info_attivita = cur.fetchone()
 
                 # Elimina dettagli correlati
-                for table in ['dettagli_trasporti', 'dettagli_mantenimento', 'dettagli_rifornimenti', 'dettagli_getra']:
+                for table in ['dettagli_trasporti', 'dettagli_mantenimento', 'dettagli_rifornimenti', 'dettagli_getra',
+                             'dettagli_training_on_the_job', 'dettagli_formazione', 'dettagli_esercitazione', 'dettagli_stratevac']:
                     cur.execute(f'DELETE FROM {table} WHERE attivita_id = %s', (id,))
 
                 # Elimina attività principale
@@ -1027,7 +1246,7 @@ def export_attivita():
         writer.writerow([
             a['id'], a['data_inizio'], a['data_fine'],
             a['descrizione'], a['ente_nome'], a['tipologia_nome'],
-            a['operazione_nome'] or '', a['personale_ufficiali'],
+            a['operazione_nome'] or 'NAZIONALE', a['personale_ufficiali'],
             a['personale_sottufficiali'], a['personale_graduati'],
             a['personale_civili'], a['note'], a['data_creazione']
         ])

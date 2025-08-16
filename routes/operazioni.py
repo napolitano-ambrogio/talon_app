@@ -8,9 +8,14 @@ from auth import (
     ROLE_ADMIN, ROLE_OPERATORE, ROLE_VISUALIZZATORE
 )
 import os
+import sys
 from datetime import datetime
 import psycopg2
 import psycopg2.extras
+
+# Import per gestione immagini
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'utils'))
+from image_manager import ImageManager
 
 # ===========================================
 # CONFIGURAZIONE DATABASE (PostgreSQL)
@@ -23,6 +28,10 @@ PG_CFG = {
     "user": os.environ.get("TALON_PG_USER", "talon"),
     "password": os.environ.get("TALON_PG_PASS", "TalonDB!2025"),
 }
+
+# Configurazione upload immagini
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'static', 'uploads', 'operazioni')
+image_manager = ImageManager(UPLOAD_FOLDER)
 
 def get_db_connection():
     """Connessione a PostgreSQL con cursore dict-like"""
@@ -80,16 +89,27 @@ def get_operazione_stato(operazione):
     if not operazione.get('data_inizio'):
         return 'pianificata'
     try:
+        from datetime import date
+        
         inizio = operazione['data_inizio']
         if isinstance(inizio, str):
-            inizio = datetime.strptime(inizio, '%Y-%m-%d')
-        oggi = datetime.now()
+            inizio = datetime.strptime(inizio, '%Y-%m-%d').date()
+        elif hasattr(inizio, 'date'):  # datetime object
+            inizio = inizio.date()
+        # Se è già un date object, rimane così
+        
+        oggi = date.today()
+        
         if inizio > oggi:
             return 'pianificata'
         elif operazione.get('data_fine'):
             fine = operazione['data_fine']
             if isinstance(fine, str):
-                fine = datetime.strptime(fine, '%Y-%m-%d')
+                fine = datetime.strptime(fine, '%Y-%m-%d').date()
+            elif hasattr(fine, 'date'):  # datetime object
+                fine = fine.date()
+            # Se è già un date object, rimane così
+            
             return 'conclusa' if fine < oggi else 'attiva'
         else:
             return 'attiva'
@@ -203,6 +223,18 @@ def salva_operazione():
         data_inizio = request.form.get('data_inizio') or None
         data_fine = request.form.get('data_fine') or None
         descrizione = request.form.get('descrizione', '').upper().strip()
+        
+        # Gestione coordinate
+        coordinate_str = request.form.get('coordinate', '').strip()
+        coordinate_geom = None
+        if coordinate_str:
+            try:
+                # Parse delle coordinate in formato "lat, lon"
+                lat, lon = map(float, coordinate_str.split(','))
+                coordinate_geom = f'POINT({lon} {lat})'  # PostGIS usa lon, lat
+            except (ValueError, TypeError):
+                flash('Formato coordinate non valido. Usa: latitudine, longitudine', 'error')
+                return redirect(url_for('operazioni.inserisci_operazione_form'))
 
         conn = get_db_connection()
         with conn:
@@ -210,18 +242,92 @@ def salva_operazione():
                 if check_duplicate_operazione(conn, nome_missione, nome_breve):
                     raise ValueError("DUPLICATO")
 
-                cur.execute(
-                    '''
-                    INSERT INTO operazioni
-                      (nome_missione, nome_breve, teatro_operativo, nazione,
-                       data_inizio, data_fine, descrizione, creato_da, data_creazione)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
-                    RETURNING id
-                    ''',
-                    (nome_missione, nome_breve, teatro, nazione,
-                     data_inizio, data_fine, descrizione, user_id)
-                )
+                if coordinate_geom:
+                    cur.execute(
+                        '''
+                        INSERT INTO operazioni
+                          (nome_missione, nome_breve, teatro_operativo, nazione,
+                           data_inizio, data_fine, descrizione, coordinate, creato_da, data_creazione)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, ST_GeomFromText(%s, 4326), %s, NOW())
+                        RETURNING id
+                        ''',
+                        (nome_missione, nome_breve, teatro, nazione,
+                         data_inizio, data_fine, descrizione, coordinate_geom, user_id)
+                    )
+                    new_id = cur.fetchone()['id']
+                    
+                    # Gestione upload immagine
+                    if 'immagine' in request.files:
+                        file = request.files['immagine']
+                        if file and file.filename:
+                            upload_result = image_manager.process_and_save_image(
+                                file, new_id, nome_breve or nome_missione
+                            )
+                            
+                            if upload_result['success']:
+                                # Aggiorna l'operazione con i dati dell'immagine
+                                cur.execute('''
+                                    UPDATE operazioni SET 
+                                        immagine_path = %s,
+                                        immagine_nome = %s,
+                                        immagine_tipo = %s,
+                                        immagine_size = %s
+                                    WHERE id = %s
+                                ''', (
+                                    upload_result['url_path'],
+                                    upload_result['original_filename'],
+                                    upload_result['image_type'],
+                                    upload_result['file_size'],
+                                    new_id
+                                ))
+                                flash(f'Immagine caricata con successo per l\'operazione "{nome_missione}".', 'success')
+                            else:
+                                # Log errori ma non interrompere il salvataggio dell'operazione
+                                error_msg = '; '.join(upload_result['errors'])
+                                flash(f'Operazione salvata ma errore nell\'upload immagine: {error_msg}', 'warning')
+                else:
+                    cur.execute(
+                        '''
+                        INSERT INTO operazioni
+                          (nome_missione, nome_breve, teatro_operativo, nazione,
+                           data_inizio, data_fine, descrizione, creato_da, data_creazione)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                        RETURNING id
+                        ''',
+                        (nome_missione, nome_breve, teatro, nazione,
+                         data_inizio, data_fine, descrizione, user_id)
+                    )
                 new_id = cur.fetchone()['id']
+                
+                # Gestione upload immagine
+                if 'immagine' in request.files:
+                    file = request.files['immagine']
+                    if file and file.filename:
+                        upload_result = image_manager.process_and_save_image(
+                            file, new_id, nome_breve or nome_missione
+                        )
+                        
+                        if upload_result['success']:
+                            # Aggiorna l'operazione con i dati dell'immagine
+                            cur.execute('''
+                                UPDATE operazioni SET 
+                                    immagine_path = %s,
+                                    immagine_nome = %s,
+                                    immagine_tipo = %s,
+                                    immagine_size = %s
+                                WHERE id = %s
+                            ''', (
+                                upload_result['url_path'],
+                                upload_result['original_filename'],
+                                upload_result['image_type'],
+                                upload_result['file_size'],
+                                new_id
+                            ))
+                            flash(f'Immagine caricata con successo per l\'operazione "{nome_missione}".', 'success')
+                        else:
+                            # Log errori ma non interrompere il salvataggio dell'operazione
+                            error_msg = '; '.join(upload_result['errors'])
+                            flash(f'Operazione salvata ma errore nell\'upload immagine: {error_msg}', 'warning')
 
         log_user_action(
             user_id,
@@ -258,7 +364,12 @@ def visualizza_operazione(id):
                 '''
                 SELECT o.*,
                        u_creato.username AS creato_da_username, u_creato.nome AS creato_da_nome,
-                       u_modificato.username AS modificato_da_username, u_modificato.nome AS modificato_da_nome
+                       u_modificato.username AS modificato_da_username, u_modificato.nome AS modificato_da_nome,
+                       CASE 
+                           WHEN o.coordinate IS NOT NULL THEN 
+                               ST_Y(o.coordinate) || ', ' || ST_X(o.coordinate)
+                           ELSE NULL
+                       END AS coordinate_formatted
                 FROM operazioni o
                 LEFT JOIN utenti u_creato    ON o.creato_da    = u_creato.id
                 LEFT JOIN utenti u_modificato ON o.modificato_da = u_modificato.id
@@ -299,7 +410,19 @@ def modifica_operazione_form(id):
     try:
         conn = get_db_connection()
         with conn, conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute('SELECT * FROM operazioni WHERE id = %s', (id,))
+            cur.execute(
+                '''
+                SELECT *,
+                       CASE 
+                           WHEN coordinate IS NOT NULL THEN 
+                               ST_Y(coordinate) || ', ' || ST_X(coordinate)
+                           ELSE NULL
+                       END AS coordinate_formatted
+                FROM operazioni 
+                WHERE id = %s
+                ''', 
+                (id,)
+            )
             operazione = cur.fetchone()
 
         if not operazione:
@@ -341,6 +464,18 @@ def aggiorna_operazione(id):
         data_inizio = request.form.get('data_inizio') or None
         data_fine = request.form.get('data_fine') or None
         descrizione = request.form.get('descrizione', '').upper().strip()
+        
+        # Gestione coordinate
+        coordinate_str = request.form.get('coordinate', '').strip()
+        coordinate_geom = None
+        if coordinate_str:
+            try:
+                # Parse delle coordinate in formato "lat, lon"
+                lat, lon = map(float, coordinate_str.split(','))
+                coordinate_geom = f'POINT({lon} {lat})'  # PostGIS usa lon, lat
+            except (ValueError, TypeError):
+                flash('Formato coordinate non valido. Usa: latitudine, longitudine', 'error')
+                return redirect(url_for('operazioni.modifica_operazione_form', id=id))
 
         conn = get_db_connection()
         with conn:
@@ -355,17 +490,101 @@ def aggiorna_operazione(id):
                 if check_duplicate_operazione(conn, nome_missione, nome_breve, id):
                     raise ValueError("DUPLICATO")
 
-                cur.execute(
-                    '''
-                    UPDATE operazioni
-                    SET nome_missione=%s, nome_breve=%s, teatro_operativo=%s, nazione=%s,
-                        data_inizio=%s, data_fine=%s, descrizione=%s,
-                        modificato_da=%s, data_modifica=NOW()
-                    WHERE id = %s
-                    ''',
-                    (nome_missione, nome_breve, teatro, nazione,
-                     data_inizio, data_fine, descrizione, user_id, id)
-                )
+                if coordinate_geom:
+                    cur.execute(
+                        '''
+                        UPDATE operazioni
+                        SET nome_missione=%s, nome_breve=%s, teatro_operativo=%s, nazione=%s,
+                            data_inizio=%s, data_fine=%s, descrizione=%s, coordinate=ST_GeomFromText(%s, 4326),
+                            modificato_da=%s, data_modifica=NOW()
+                        WHERE id = %s
+                        ''',
+                        (nome_missione, nome_breve, teatro, nazione,
+                         data_inizio, data_fine, descrizione, coordinate_geom, user_id, id)
+                    )
+                else:
+                    cur.execute(
+                        '''
+                        UPDATE operazioni
+                        SET nome_missione=%s, nome_breve=%s, teatro_operativo=%s, nazione=%s,
+                            data_inizio=%s, data_fine=%s, descrizione=%s, coordinate=NULL,
+                            modificato_da=%s, data_modifica=NOW()
+                        WHERE id = %s
+                        ''',
+                        (nome_missione, nome_breve, teatro, nazione,
+                         data_inizio, data_fine, descrizione, user_id, id)
+                    )
+                
+                # Gestione rimozione immagine
+                if request.form.get('rimuovi_immagine') == '1':
+                    # Ottieni percorso immagine attuale
+                    cur.execute('SELECT immagine_path FROM operazioni WHERE id = %s', (id,))
+                    current_image = cur.fetchone()
+                    
+                    if current_image and current_image['immagine_path']:
+                        # Costruisci percorso fisico
+                        image_filename = current_image['immagine_path'].split('/')[-1]
+                        image_filepath = os.path.join(UPLOAD_FOLDER, image_filename)
+                        
+                        # Rimuovi file fisico
+                        image_manager.delete_image(image_filepath)
+                        
+                        # Pulisci campi database
+                        cur.execute('''
+                            UPDATE operazioni SET 
+                                immagine_path = NULL,
+                                immagine_nome = NULL,
+                                immagine_tipo = NULL,
+                                immagine_size = NULL,
+                                modificato_da = %s,
+                                data_modifica = NOW()
+                            WHERE id = %s
+                        ''', (user_id, id))
+                        
+                        flash('Immagine rimossa con successo.', 'success')
+                
+                # Gestione upload nuova immagine
+                elif 'immagine' in request.files:
+                    file = request.files['immagine']
+                    if file and file.filename:
+                        # Rimuovi immagine precedente se esiste
+                        cur.execute('SELECT immagine_path FROM operazioni WHERE id = %s', (id,))
+                        current_image = cur.fetchone()
+                        
+                        if current_image and current_image['immagine_path']:
+                            image_filename = current_image['immagine_path'].split('/')[-1]
+                            image_filepath = os.path.join(UPLOAD_FOLDER, image_filename)
+                            image_manager.delete_image(image_filepath)
+                        
+                        # Upload nuova immagine
+                        upload_result = image_manager.process_and_save_image(
+                            file, id, nome_breve or nome_missione
+                        )
+                        
+                        if upload_result['success']:
+                            # Aggiorna operazione con nuova immagine
+                            cur.execute('''
+                                UPDATE operazioni SET 
+                                    immagine_path = %s,
+                                    immagine_nome = %s,
+                                    immagine_tipo = %s,
+                                    immagine_size = %s,
+                                    modificato_da = %s,
+                                    data_modifica = NOW()
+                                WHERE id = %s
+                            ''', (
+                                upload_result['url_path'],
+                                upload_result['original_filename'],
+                                upload_result['image_type'],
+                                upload_result['file_size'],
+                                user_id,
+                                id
+                            ))
+                            flash(f'Immagine aggiornata con successo per l\'operazione "{nome_missione}".', 'success')
+                        else:
+                            # Log errori ma non interrompere l'aggiornamento dell'operazione
+                            error_msg = '; '.join(upload_result['errors'])
+                            flash(f'Operazione aggiornata ma errore nell\'upload immagine: {error_msg}', 'warning')
 
         log_user_action(
             user_id,

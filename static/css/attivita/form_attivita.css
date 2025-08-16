@@ -51,6 +51,27 @@
     font-weight: 600;
 }
 
+/* Layout titolo modifica su due righe */
+#modifica-attivita-container .form-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+}
+
+#modifica-attivita-container .form-header h3 {
+    margin: 0;
+    color: #666;
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+#modifica-attivita-container .form-header h4 {
+    margin: 0;
+    color: #333;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
 .form-actions-top {
     display: flex;
     gap: 10px;
