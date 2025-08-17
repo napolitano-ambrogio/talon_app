@@ -1,0 +1,48 @@
+{% extends "_base.html" %}
+{% block title %}Dettaglio Operazione - TALON{% endblock %}
+{% block content %}
+    <div class="detail-card">
+        <div class="detail-header">
+            <h3>Dettaglio Operazione</h3>
+            <a href="{{ url_for('operazioni.lista_operazioni') }}" class="cancel-link" style="font-size: 0.9em;">&larr; Torna all'elenco</a>
+        </div>
+        <dl class="detail-grid">
+            <div>
+                <div class="detail-item"><dt>Nome Breve (Acronimo)</dt><dd>{{ operazione.nome_breve or 'N/D' }}</dd></div>
+                <div class="detail-item"><dt>Nome Missione</dt><dd>{{ operazione.nome_missione }}</dd></div>
+                <div class="detail-item"><dt>Teatro Operativo</dt><dd>{{ operazione.teatro_operativo or 'N/D' }}</dd></div>
+                <div class="detail-item"><dt>Nazione</dt><dd>{{ operazione.nazione or 'N/D' }}</dd></div>
+            </div>
+            <div>
+                <div class="detail-item"><dt>Periodo Mandato</dt><dd>Dal: {{ operazione.data_inizio.strftime('%d/%m/%Y') if operazione.data_inizio else 'N/D' }}<br>Al: {{ operazione.data_fine.strftime('%d/%m/%Y') if operazione.data_fine else 'In corso' }}</dd></div>
+                <div class="detail-item"><dt>Coordinate</dt><dd>{{ operazione.coordinate_formatted if operazione.coordinate_formatted else 'Non georeferenziata' }}</dd></div>
+                <div class="detail-item"><dt>Descrizione</dt><dd>{{ operazione.descrizione or 'Nessuna' }}</dd></div>
+            </div>
+        </dl>
+        
+        {% if operazione.immagine_path %}
+        <hr style="margin-top: 20px; margin-bottom: 15px;">
+        <div class="detail-item">
+            <dt style="font-weight: 600; margin-bottom: 0.5rem;">Immagine Operazione:</dt>
+            <dd style="margin: 0;">
+                <div style="text-align: center; margin: 1rem 0;">
+                    <img src="{{ operazione.immagine_path }}" alt="Immagine operazione {{ operazione.nome_missione }}" 
+                         style="max-width: 100%; max-height: 400px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                </div>
+                <small style="color: #666; font-size: 0.9em;">
+                    File: {{ operazione.immagine_nome }}
+                    {% if operazione.immagine_size %} | Dimensione: {{ (operazione.immagine_size / 1024 / 1024) | round(2) }} MB{% endif %}
+                    {% if operazione.data_modifica %} | Ultima modifica: {{ operazione.data_modifica.strftime('%d/%m/%Y') }}{% endif %}
+                </small>
+            </dd>
+        </div>
+        {% endif %}
+        <hr style="margin-top: 30px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+            <a href="{{ url_for('operazioni.modifica_operazione_form', id=operazione.id) }}" class="btn-modifica">Modifica</a>
+            <form action="{{ url_for('operazioni.elimina_operazione', id=operazione.id) }}" method="POST" onsubmit="return confirm('Sei sicuro di voler eliminare questa operazione?') && confirm('ATTENZIONE: Confermi definitivamente l\'eliminazione?');" style="margin: 0;">
+                <button type="submit" style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">Elimina</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
