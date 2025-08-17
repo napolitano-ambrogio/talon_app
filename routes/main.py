@@ -1103,3 +1103,681 @@ def superset_embedded():
     return render_template('superset_embedded.html', 
                              user_info=user_info,
                              page_title="Dashboard di Analisi")
+
+# ===========================================
+# GESTIONE FEEDBACK
+# ===========================================
+
+@main_bp.route('/api/feedback', methods=['POST'])
+@login_required
+def create_feedback():
+    """
+    Crea un nuovo feedback dall'utente corrente.
+    """
+    try:
+        data = request.get_json()
+        
+        # Validazione dati
+        if not data:
+            return jsonify({'success': False, 'error': 'Nessun dato ricevuto'}), 400
+        
+        required_fields = ['tipo', 'messaggio']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'error': f'Campo {field} richiesto'}), 400
+        
+        # Validazione tipo
+        valid_types = ['bug', 'feature', 'improvement', 'general']
+        if data['tipo'] not in valid_types:
+            return jsonify({'success': False, 'error': 'Tipo feedback non valido'}), 400
+        
+        user_id = request.current_user['user_id']
+        
+        # Genera titolo automatico se non fornito
+        titolo = data.get('titolo')
+        if not titolo:
+            tipo_labels = {
+                'bug': 'Segnalazione Bug',
+                'feature': 'Richiesta Funzionalità', 
+                'improvement': 'Proposta Miglioramento',
+                'general': 'Feedback Generale'
+            }
+            titolo = f"{tipo_labels.get(data['tipo'], 'Feedback')} - {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        
+        conn = get_db_connection()
+        with conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Inserisci feedback
+                cur.execute('''
+                    INSERT INTO feedback (
+                        utente_id, tipo, titolo, messaggio, categoria,
+                        ip_address, user_agent, pagina_origine, 
+                        creato_da, data_creazione
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                    RETURNING id
+                ''', (
+                    user_id,
+                    data['tipo'],
+                    titolo,
+                    data['messaggio'],
+                    data.get('categoria'),
+                    request.remote_addr,
+                    request.headers.get('User-Agent', ''),
+                    data.get('pagina_origine', request.referrer or 'N/A'),
+                    user_id
+                ))
+                
+                feedback_id = cur.fetchone()['id']
+        
+        # Log azione
+        log_user_action(
+            user_id,
+            'CREATE_FEEDBACK',
+            f'Nuovo feedback creato: {data["tipo"]} - {titolo}',
+            'feedback'
+        )
+        
+        return jsonify({
+            'success': True, 
+            'feedback_id': feedback_id,
+            'message': 'Feedback inviato con successo'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Errore nella creazione feedback: {str(e)}'}), 500
+
+@main_bp.route('/api/feedback', methods=['GET'])
+@admin_required
+def get_feedback_list():
+    """
+    Ottiene la lista di tutti i feedback (solo admin).
+    """
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        stato = request.args.get('stato')
+        tipo = request.args.get('tipo')
+        
+        offset = (page - 1) * per_page
+        
+        # Costruisci query con filtri
+        where_conditions = []
+        params = []
+        
+        if stato:
+            where_conditions.append('f.stato = %s')
+            params.append(stato)
+        
+        if tipo:
+            where_conditions.append('f.tipo = %s')
+            params.append(tipo)
+        
+        where_clause = 'WHERE ' + ' AND '.join(where_conditions) if where_conditions else ''
+        
+        conn = get_db_connection()
+        with conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Conta totale feedback
+                count_query = f"SELECT COUNT(*) as total FROM feedback f {where_clause}"
+                cur.execute(count_query, params)
+                total_feedback = cur.fetchone()['total']
+                
+                # Ottieni feedback paginati
+                feedback_query = f'''
+                    SELECT 
+                        f.*,
+                        u.nome || ' ' || u.cognome as utente_nome,
+                        u.username as utente_email,
+                        r.nome as utente_ruolo,
+                        admin_u.nome || ' ' || admin_u.cognome as risposta_da_nome
+                    FROM feedback f
+                    LEFT JOIN utenti u ON u.id = f.utente_id
+                    LEFT JOIN ruoli r ON r.id = u.ruolo_id
+                    LEFT JOIN utenti admin_u ON admin_u.id = f.risposta_da
+                    {where_clause}
+                    ORDER BY f.data_creazione DESC
+                    LIMIT %s OFFSET %s
+                '''
+                
+                params.extend([per_page, offset])
+                cur.execute(feedback_query, params)
+                feedback_list = cur.fetchall()
+        
+        total_pages = (total_feedback + per_page - 1) // per_page
+        
+        return jsonify({
+            'success': True,
+            'feedback': [dict(fb) for fb in feedback_list],
+            'pagination': {
+                'current_page': page,
+                'total_pages': total_pages,
+                'total_feedback': total_feedback,
+                'per_page': per_page
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Errore nel recupero feedback: {str(e)}'}), 500
+
+@main_bp.route('/api/feedback/<int:feedback_id>', methods=['PUT'])
+@admin_required
+def update_feedback(feedback_id):
+    """
+    Aggiorna stato e risposta di un feedback (solo admin).
+    """
+    try:
+        data = request.get_json()
+        
+        # Validazione stato
+        if 'stato' in data:
+            valid_states = ['aperto', 'in_lavorazione', 'risolto', 'chiuso', 'rifiutato']
+            if data['stato'] not in valid_states:
+                return jsonify({'success': False, 'error': 'Stato non valido'}), 400
+        
+        # Validazione priorità
+        if 'priorita' in data:
+            valid_priorities = ['bassa', 'media', 'alta', 'critica']
+            if data['priorita'] not in valid_priorities:
+                return jsonify({'success': False, 'error': 'Priorità non valida'}), 400
+        
+        admin_user_id = request.current_user['user_id']
+        
+        conn = get_db_connection()
+        with conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Verifica che il feedback esista
+                cur.execute('SELECT * FROM feedback WHERE id = %s', (feedback_id,))
+                feedback = cur.fetchone()
+                if not feedback:
+                    return jsonify({'success': False, 'error': 'Feedback non trovato'}), 404
+                
+                # Prepara campi da aggiornare
+                update_fields = []
+                update_values = []
+                
+                # Campi aggiornabili
+                updatable_fields = ['stato', 'priorita', 'categoria']
+                for field in updatable_fields:
+                    if field in data:
+                        update_fields.append(f'{field} = %s')
+                        update_values.append(data[field])
+                
+                # Gestione risposta admin
+                if 'risposta_admin' in data and data['risposta_admin']:
+                    update_fields.append('risposta_admin = %s')
+                    update_values.append(data['risposta_admin'])
+                    update_fields.append('risposta_da = %s')
+                    update_values.append(admin_user_id)
+                    update_fields.append('risposta_timestamp = NOW()')
+                
+                if update_fields:
+                    # Aggiungi campi di audit
+                    update_fields.append('data_modifica = NOW()')
+                    update_fields.append('modificato_da = %s')
+                    update_values.append(admin_user_id)
+                    
+                    # Esegui update
+                    update_query = f"UPDATE feedback SET {', '.join(update_fields)} WHERE id = %s"
+                    update_values.append(feedback_id)
+                    
+                    cur.execute(update_query, update_values)
+        
+        # Log azione
+        log_user_action(
+            admin_user_id,
+            'UPDATE_FEEDBACK',
+            f'Feedback ID: {feedback_id} aggiornato',
+            'feedback'
+        )
+        
+        return jsonify({'success': True, 'message': 'Feedback aggiornato con successo'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Errore nell\'aggiornamento feedback: {str(e)}'}), 500
+
+@main_bp.route('/api/feedback/stats', methods=['GET'])
+@admin_required
+def get_feedback_stats():
+    """
+    Ottiene statistiche sui feedback (solo admin).
+    """
+    try:
+        conn = get_db_connection()
+        with conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Conteggi per stato
+                cur.execute('''
+                    SELECT stato, COUNT(*) as count 
+                    FROM feedback 
+                    GROUP BY stato 
+                    ORDER BY count DESC
+                ''')
+                stats_by_state = cur.fetchall()
+                
+                # Conteggi per tipo
+                cur.execute('''
+                    SELECT tipo, COUNT(*) as count 
+                    FROM feedback 
+                    GROUP BY tipo 
+                    ORDER BY count DESC
+                ''')
+                stats_by_type = cur.fetchall()
+                
+                # Conteggi per priorità
+                cur.execute('''
+                    SELECT priorita, COUNT(*) as count 
+                    FROM feedback 
+                    GROUP BY priorita 
+                    ORDER BY 
+                        CASE priorita 
+                            WHEN 'critica' THEN 1 
+                            WHEN 'alta' THEN 2 
+                            WHEN 'media' THEN 3 
+                            WHEN 'bassa' THEN 4 
+                        END
+                ''')
+                stats_by_priority = cur.fetchall()
+                
+                # Feedback recenti (ultimi 7 giorni)
+                cur.execute('''
+                    SELECT COUNT(*) as count
+                    FROM feedback 
+                    WHERE data_creazione >= NOW() - INTERVAL '7 days'
+                ''')
+                recent_feedback = cur.fetchone()['count']
+                
+                # Feedback risolti questo mese
+                cur.execute('''
+                    SELECT COUNT(*) as count
+                    FROM feedback 
+                    WHERE stato = 'risolto' 
+                      AND data_modifica >= DATE_TRUNC('month', NOW())
+                ''')
+                resolved_this_month = cur.fetchone()['count']
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'by_state': [dict(stat) for stat in stats_by_state],
+                'by_type': [dict(stat) for stat in stats_by_type],
+                'by_priority': [dict(stat) for stat in stats_by_priority],
+                'recent_feedback': recent_feedback,
+                'resolved_this_month': resolved_this_month
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Errore nel recupero statistiche: {str(e)}'}), 500
+
+@main_bp.route('/admin/feedback')
+@admin_required
+def admin_feedback_page():
+    """
+    Pagina amministrazione feedback (solo admin).
+    """
+    user_info = get_current_user_info()
+    
+    # Log accesso
+    log_user_action(
+        request.current_user['user_id'],
+        'VIEW_FEEDBACK_ADMIN',
+        'Accesso pagina amministrazione feedback',
+        'feedback'
+    )
+    
+    return render_template('admin/feedback.html', user_info=user_info)
+
+# ===========================================
+# SISTEMA BACKUP ENTERPRISE
+# ===========================================
+
+@main_bp.route('/admin/backup')
+@admin_required
+def backup_dashboard():
+    """
+    Dashboard sistema backup enterprise
+    """
+    from backup_manager import backup_manager
+    
+    try:
+        user_info = get_current_user_info()
+        
+        # Ottieni statistiche sistema backup
+        backup_status = backup_manager.get_system_status()
+        db_stats = backup_manager.get_database_stats()
+        recent_backups = backup_manager.list_backups(limit=10)
+        
+        # Log accesso
+        log_user_action(
+            request.current_user['user_id'],
+            'ACCESS_BACKUP_DASHBOARD',
+            'Accesso dashboard backup enterprise',
+            'backup'
+        )
+        
+        return render_template(
+            'admin/backup_dashboard.html',
+            user_info=user_info,
+            backup_status=backup_status,
+            db_stats=db_stats,
+            recent_backups=recent_backups
+        )
+    except Exception as e:
+        flash(f'Errore caricamento dashboard backup: {str(e)}', 'error')
+        return redirect(url_for('main.dashboard_admin'))
+
+@main_bp.route('/api/backup/create', methods=['POST'])
+@admin_required
+def api_create_backup():
+    """
+    API per creare un nuovo backup
+    """
+    from backup_manager import backup_manager
+    
+    try:
+        data = request.get_json() or {}
+        backup_type = data.get('backup_type', 'full')
+        method = data.get('method', 'manual')
+        user_id = str(request.current_user['user_id'])
+        
+        # Validazione tipo backup
+        valid_types = ['full', 'data_only', 'schema_only']
+        if backup_type not in valid_types:
+            return jsonify({
+                'success': False, 
+                'error': f'Tipo backup non valido. Usa: {", ".join(valid_types)}'
+            }), 400
+        
+        # Crea backup
+        result = backup_manager.create_backup(
+            backup_type=backup_type,
+            method=method,
+            user_id=user_id
+        )
+        
+        # Log operazione
+        if result['success']:
+            log_user_action(
+                request.current_user['user_id'],
+                'CREATE_BACKUP',
+                f'Backup {backup_type} creato: {result["backup_id"]}',
+                'backup',
+                result['backup_id']
+            )
+        else:
+            log_user_action(
+                request.current_user['user_id'],
+                'CREATE_BACKUP_FAILED',
+                f'Backup {backup_type} fallito: {result.get("error", "Errore sconosciuto")}',
+                'backup'
+            )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Errore API create backup: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Errore interno: {str(e)}'
+        }), 500
+
+@main_bp.route('/api/backup/list')
+@admin_required
+def api_list_backups():
+    """
+    API per listare backup disponibili
+    """
+    from backup_manager import backup_manager
+    
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        status = request.args.get('status')
+        
+        backups = backup_manager.list_backups(limit=limit, status=status)
+        
+        return jsonify({
+            'success': True,
+            'backups': backups
+        })
+        
+    except Exception as e:
+        logger.error(f"Errore API list backups: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Errore interno: {str(e)}'
+        }), 500
+
+@main_bp.route('/api/backup/<backup_id>')
+@admin_required
+def api_backup_details(backup_id):
+    """
+    API per dettagli backup specifico
+    """
+    from backup_manager import backup_manager
+    
+    try:
+        backup = backup_manager.get_backup_details(backup_id)
+        
+        if not backup:
+            return jsonify({
+                'success': False,
+                'error': 'Backup non trovato'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'backup': backup
+        })
+        
+    except Exception as e:
+        logger.error(f"Errore API backup details: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Errore interno: {str(e)}'
+        }), 500
+
+@main_bp.route('/api/backup/<backup_id>/restore', methods=['POST'])
+@admin_required
+def api_restore_backup(backup_id):
+    """
+    API per ripristinare un backup
+    """
+    from backup_manager import backup_manager
+    
+    try:
+        data = request.get_json() or {}
+        restore_type = data.get('restore_type', 'full')
+        target_db = data.get('target_db')
+        user_id = str(request.current_user['user_id'])
+        
+        # Validazione
+        valid_restore_types = ['full', 'selective', 'point_in_time']
+        if restore_type not in valid_restore_types:
+            return jsonify({
+                'success': False,
+                'error': f'Tipo ripristino non valido. Usa: {", ".join(valid_restore_types)}'
+            }), 400
+        
+        # Ripristina backup
+        result = backup_manager.restore_backup(
+            backup_id=backup_id,
+            restore_type=restore_type,
+            target_db=target_db,
+            user_id=user_id
+        )
+        
+        # Log operazione
+        if result['success']:
+            log_user_action(
+                request.current_user['user_id'],
+                'RESTORE_BACKUP',
+                f'Ripristino {restore_type} da backup {backup_id}: {result["restore_id"]}',
+                'backup',
+                backup_id
+            )
+        else:
+            log_user_action(
+                request.current_user['user_id'],
+                'RESTORE_BACKUP_FAILED',
+                f'Ripristino {restore_type} da backup {backup_id} fallito: {result.get("error", "Errore sconosciuto")}',
+                'backup',
+                backup_id
+            )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Errore API restore backup: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Errore interno: {str(e)}'
+        }), 500
+
+@main_bp.route('/api/backup/<backup_id>/delete', methods=['DELETE'])
+@admin_required
+def api_delete_backup(backup_id):
+    """
+    API per eliminare un backup
+    """
+    from backup_manager import backup_manager
+    
+    try:
+        user_id = str(request.current_user['user_id'])
+        
+        # Elimina backup
+        success = backup_manager.delete_backup(backup_id, user_id)
+        
+        if success:
+            log_user_action(
+                request.current_user['user_id'],
+                'DELETE_BACKUP',
+                f'Backup eliminato: {backup_id}',
+                'backup',
+                backup_id
+            )
+            
+            return jsonify({
+                'success': True,
+                'message': 'Backup eliminato con successo'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Backup non trovato o errore eliminazione'
+            }), 404
+        
+    except Exception as e:
+        logger.error(f"Errore API delete backup: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Errore interno: {str(e)}'
+        }), 500
+
+@main_bp.route('/api/backup/cleanup', methods=['POST'])
+@admin_required
+def api_cleanup_backups():
+    """
+    API per pulizia backup scaduti
+    """
+    from backup_manager import backup_manager
+    
+    try:
+        user_id = request.current_user['user_id']
+        
+        # Esegui pulizia
+        result = backup_manager.cleanup_expired_backups()
+        
+        # Log operazione
+        log_user_action(
+            user_id,
+            'CLEANUP_BACKUPS',
+            f'Pulizia backup: {result["deleted_count"]} eliminati',
+            'backup'
+        )
+        
+        return jsonify({
+            'success': True,
+            'deleted_count': result['deleted_count'],
+            'errors': result['errors']
+        })
+        
+    except Exception as e:
+        logger.error(f"Errore API cleanup backups: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Errore interno: {str(e)}'
+        }), 500
+
+@main_bp.route('/api/backup/status')
+@admin_required
+def api_backup_status():
+    """
+    API per stato generale sistema backup
+    """
+    from backup_manager import backup_manager
+    
+    try:
+        status = backup_manager.get_system_status()
+        db_stats = backup_manager.get_database_stats()
+        
+        return jsonify({
+            'success': True,
+            'backup_status': status,
+            'database_stats': db_stats
+        })
+        
+    except Exception as e:
+        logger.error(f"Errore API backup status: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Errore interno: {str(e)}'
+        }), 500
+
+@main_bp.route('/api/backup/config', methods=['GET', 'POST'])
+@admin_required
+def api_backup_config():
+    """
+    API per gestione configurazione backup
+    """
+    from backup_manager import backup_manager
+    
+    try:
+        if request.method == 'GET':
+            # Ottieni configurazione attuale
+            return jsonify({
+                'success': True,
+                'config': backup_manager.config
+            })
+        
+        elif request.method == 'POST':
+            # Aggiorna configurazione
+            data = request.get_json() or {}
+            user_id = request.current_user['user_id']
+            
+            # Aggiorna config
+            success = backup_manager.update_config(data)
+            
+            if success:
+                log_user_action(
+                    user_id,
+                    'UPDATE_BACKUP_CONFIG',
+                    'Configurazione backup aggiornata',
+                    'backup_config'
+                )
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Configurazione aggiornata'
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Errore aggiornamento configurazione'
+                }), 500
+        
+    except Exception as e:
+        logger.error(f"Errore API backup config: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Errore interno: {str(e)}'
+        }), 500

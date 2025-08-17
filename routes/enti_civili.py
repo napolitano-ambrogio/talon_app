@@ -274,7 +274,12 @@ def visualizza_civile(id):
                 cur.execute(
                     '''SELECT ec.*,
                               u_creato.username AS creato_da_username, u_creato.nome AS creato_da_nome,
-                              u_modificato.username AS modificato_da_username, u_modificato.nome AS modificato_da_nome
+                              u_modificato.username AS modificato_da_username, u_modificato.nome AS modificato_da_nome,
+                              CASE 
+                                  WHEN ec.coordinate IS NOT NULL THEN 
+                                      ST_Y(ec.coordinate) || ', ' || ST_X(ec.coordinate)
+                                  ELSE NULL
+                              END AS coordinate_formatted
                        FROM enti_civili ec
                        LEFT JOIN utenti u_creato ON ec.creato_da = u_creato.id
                        LEFT JOIN utenti u_modificato ON ec.modificato_da = u_modificato.id

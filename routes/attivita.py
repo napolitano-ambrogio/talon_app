@@ -1,5 +1,5 @@
 # routes/attivita.py - Blueprint per gestione attività
-from flask import Blueprint, render_template, request, redirect, url_for, flash, Response
+from flask import Blueprint, render_template, request, redirect, url_for, flash, Response, jsonify
 from datetime import datetime, date
 from psycopg2.extras import RealDictCursor
 import csv
@@ -1181,6 +1181,87 @@ def elimina_attivita(id):
         conn.close()
 
     return redirect(url_for('attivita.lista_attivita'))
+
+# ===========================================
+# API ROUTES
+# ===========================================
+
+@attivita_bp.route('/api/attivita/delete/<int:id>', methods=['DELETE'])
+@admin_required
+def api_elimina_attivita(id):
+    """
+    API per eliminare attività - Solo ADMIN.
+    Restituisce JSON response per chiamate AJAX.
+    """
+    user_id = request.current_user['user_id']
+    accessible_entities = get_user_accessible_entities(user_id)
+
+    # Verifica che l'attività esista
+    attivita = validate_activity_access(user_id, id, accessible_entities)
+    if not attivita:
+        return jsonify({
+            'success': False,
+            'error': 'Attività non trovata.'
+        }), 404
+
+    conn = get_db_connection()
+
+    try:
+        with conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Ottieni info attività per il log
+                cur.execute('''
+                    SELECT a.descrizione, em.nome as ente_nome
+                    FROM attivita a
+                    LEFT JOIN enti_militari em ON em.id = a.ente_svolgimento_id
+                    WHERE a.id = %s
+                ''', (id,))
+                info_attivita = cur.fetchone()
+
+                # Elimina prima i dettagli collegati
+                cur.execute('DELETE FROM dettagli_medicina_curativa WHERE attivita_id = %s', (id,))
+                cur.execute('DELETE FROM dettagli_getra WHERE attivita_id = %s', (id,))
+                cur.execute('DELETE FROM dettagli_stratevac WHERE attivita_id = %s', (id,))
+
+                # Elimina attività principale
+                cur.execute('DELETE FROM attivita WHERE id = %s', (id,))
+
+        # Prepara info per il log
+        descrizione = (info_attivita['descrizione'][:50] if info_attivita and info_attivita.get('descrizione') else f'ID {id}')
+        ente_nome = info_attivita['ente_nome'] if info_attivita and info_attivita.get('ente_nome') else 'N/A'
+
+        # Log eliminazione
+        log_user_action(
+            user_id,
+            'DELETE_ATTIVITA',
+            f'Eliminata attività "{descrizione}" dell\'ente {ente_nome}',
+            'attivita',
+            id
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Attività eliminata con successo.'
+        })
+
+    except Exception as e:
+        error_msg = f'Errore durante l\'eliminazione: {str(e)}'
+        log_user_action(
+            user_id,
+            'DELETE_ATTIVITA_ERROR',
+            f'Errore eliminazione attività {id}: {str(e)}',
+            'attivita',
+            id,
+            result='FAILED'
+        )
+        
+        return jsonify({
+            'success': False,
+            'error': error_msg
+        }), 500
+            
+    finally:
+        conn.close()
 
 # ===========================================
 # ROUTE AGGIUNTIVE E UTILITÀ

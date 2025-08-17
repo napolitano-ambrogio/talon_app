@@ -469,7 +469,7 @@
         {% endif %}
         
         {% if can_delete %}
-        <form action="#" method="POST" onsubmit="return confirm('Confermare l\'eliminazione dell\'attività?');" style="margin: 0;">
+        <form action="{{ url_for('attivita.elimina_attivita', id=attivita.id) }}" method="POST" onsubmit="return confirm('Confermare l\'eliminazione dell\'attività?');" style="margin: 0;">
             <button type="submit" style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">Elimina</button>
         </form>
         {% endif %}

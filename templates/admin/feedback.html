@@ -1,0 +1,594 @@
+{% extends "_base.html" %}
+
+{% block title %}Gestione Feedback - {{ super() }}{% endblock %}
+
+{% block additional_css %}
+<style>
+    .feedback-card {
+        border-left: 4px solid #dee2e6;
+        transition: all 0.3s ease;
+    }
+    
+    .feedback-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .feedback-card.priority-critica {
+        border-left-color: #dc3545;
+    }
+    
+    .feedback-card.priority-alta {
+        border-left-color: #fd7e14;
+    }
+    
+    .feedback-card.priority-media {
+        border-left-color: #ffc107;
+    }
+    
+    .feedback-card.priority-bassa {
+        border-left-color: #28a745;
+    }
+    
+    .stato-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .feedback-stats .card {
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease;
+    }
+    
+    .feedback-stats .card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .feedback-filters {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .response-form {
+        background: #f1f3f4;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        background: #007bff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-comments"></i> Gestione Feedback</h2>
+            <p class="text-muted">Amministrazione feedback degli utenti</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-primary" onclick="refreshStats()">
+                <i class="fas fa-sync-alt"></i> Aggiorna
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistiche Feedback -->
+    <div class="feedback-stats mb-4">
+        <div class="row" id="feedbackStatsContainer">
+            <div class="col-md-2 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-inbox fa-2x text-primary mb-2"></i>
+                        <h5 class="card-title mb-0" id="statTotal">-</h5>
+                        <p class="card-text text-muted">Totale</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                        <h5 class="card-title mb-0" id="statAperti">-</h5>
+                        <p class="card-text text-muted">Aperti</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-tools fa-2x text-info mb-2"></i>
+                        <h5 class="card-title mb-0" id="statInLavorazione">-</h5>
+                        <p class="card-text text-muted">In Lavorazione</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                        <h5 class="card-title mb-0" id="statRisolti">-</h5>
+                        <p class="card-text text-muted">Risolti</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-calendar-week fa-2x text-secondary mb-2"></i>
+                        <h5 class="card-title mb-0" id="statRecenti">-</h5>
+                        <p class="card-text text-muted">Ultimi 7gg</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-chart-line fa-2x text-success mb-2"></i>
+                        <h5 class="card-title mb-0" id="statMese">-</h5>
+                        <p class="card-text text-muted">Risolti Mese</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtri -->
+    <div class="feedback-filters">
+        <div class="row align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Stato</label>
+                <select class="form-select" id="filterStato" onchange="loadFeedback()">
+                    <option value="">Tutti gli stati</option>
+                    <option value="aperto">Aperto</option>
+                    <option value="in_lavorazione">In Lavorazione</option>
+                    <option value="risolto">Risolto</option>
+                    <option value="chiuso">Chiuso</option>
+                    <option value="rifiutato">Rifiutato</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tipo</label>
+                <select class="form-select" id="filterTipo" onchange="loadFeedback()">
+                    <option value="">Tutti i tipi</option>
+                    <option value="bug">Segnalazione Bug</option>
+                    <option value="feature">Richiesta Funzionalità</option>
+                    <option value="improvement">Miglioramento</option>
+                    <option value="general">Feedback Generale</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Elementi per pagina</label>
+                <select class="form-select" id="perPage" onchange="loadFeedback()">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">
+                    <i class="fas fa-times"></i> Reset Filtri
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista Feedback -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-list"></i> Feedback degli Utenti
+                <span class="badge bg-secondary ms-2" id="feedbackCount">0</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            <div id="feedbackList">
+                <!-- Contenuto caricato dinamicamente -->
+                <div class="text-center p-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Caricamento...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Caricamento feedback...</p>
+                </div>
+            </div>
+            
+            <!-- Paginazione -->
+            <nav aria-label="Paginazione feedback" class="mt-3">
+                <ul class="pagination justify-content-center" id="feedbackPagination">
+                    <!-- Paginazione dinamica -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Dettagli Feedback -->
+<div class="modal fade" id="feedbackModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-comment-dots"></i> Dettagli Feedback
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="feedbackModalBody">
+                <!-- Contenuto dinamico -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                <button type="button" class="btn btn-primary" onclick="saveFeedbackChanges()">
+                    <i class="fas fa-save"></i> Salva Modifiche
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block additional_js %}
+<script>
+let currentPage = 1;
+let currentFeedback = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadStats();
+    loadFeedback();
+});
+
+async function loadStats() {
+    try {
+        const response = await fetch('/api/feedback/stats');
+        const data = await response.json();
+        
+        if (data.success) {
+            const stats = data.stats;
+            
+            // Calcola totale
+            let total = 0;
+            let aperti = 0, inLavorazione = 0, risolti = 0;
+            
+            stats.by_state.forEach(stat => {
+                total += stat.count;
+                if (stat.stato === 'aperto') aperti = stat.count;
+                else if (stat.stato === 'in_lavorazione') inLavorazione = stat.count;
+                else if (stat.stato === 'risolto') risolti = stat.count;
+            });
+            
+            // Aggiorna UI
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statAperti').textContent = aperti;
+            document.getElementById('statInLavorazione').textContent = inLavorazione;
+            document.getElementById('statRisolti').textContent = risolti;
+            document.getElementById('statRecenti').textContent = stats.recent_feedback;
+            document.getElementById('statMese').textContent = stats.resolved_this_month;
+        }
+    } catch (error) {
+        console.error('Errore caricamento statistiche:', error);
+    }
+}
+
+async function loadFeedback(page = 1) {
+    try {
+        currentPage = page;
+        
+        const stato = document.getElementById('filterStato').value;
+        const tipo = document.getElementById('filterTipo').value;
+        const perPage = document.getElementById('perPage').value;
+        
+        const params = new URLSearchParams({
+            page: page,
+            per_page: perPage
+        });
+        
+        if (stato) params.append('stato', stato);
+        if (tipo) params.append('tipo', tipo);
+        
+        const response = await fetch(`/api/feedback?${params}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            renderFeedbackList(data.feedback);
+            renderPagination(data.pagination);
+            document.getElementById('feedbackCount').textContent = data.pagination.total_feedback;
+        } else {
+            document.getElementById('feedbackList').innerHTML = 
+                '<div class="alert alert-danger">Errore caricamento feedback: ' + data.error + '</div>';
+        }
+    } catch (error) {
+        console.error('Errore caricamento feedback:', error);
+        document.getElementById('feedbackList').innerHTML = 
+            '<div class="alert alert-danger">Errore di connessione</div>';
+    }
+}
+
+function renderFeedbackList(feedbackList) {
+    const container = document.getElementById('feedbackList');
+    
+    if (feedbackList.length === 0) {
+        container.innerHTML = '<div class="text-center p-4 text-muted">Nessun feedback trovato</div>';
+        return;
+    }
+    
+    const html = feedbackList.map(feedback => {
+        const dataCreazione = new Date(feedback.data_creazione).toLocaleString('it-IT');
+        const priorityClass = `priority-${feedback.priorita}`;
+        const initials = feedback.utente_nome ? feedback.utente_nome.split(' ').map(n => n[0]).join('') : 'U';
+        
+        return `
+            <div class="feedback-card ${priorityClass} card mb-3" onclick="openFeedbackModal(${feedback.id})">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-start mb-2">
+                                <div class="user-avatar me-3">${initials}</div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">${feedback.titolo || 'Feedback senza titolo'}</h6>
+                                    <p class="text-muted mb-1">
+                                        <small>
+                                            <i class="fas fa-user"></i> ${feedback.utente_nome} (${feedback.utente_ruolo}) 
+                                            <span class="mx-2">•</span>
+                                            <i class="fas fa-clock"></i> ${dataCreazione}
+                                        </small>
+                                    </p>
+                                </div>
+                            </div>
+                            <p class="mb-2">${feedback.messaggio.substring(0, 200)}${feedback.messaggio.length > 200 ? '...' : ''}</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <div class="mb-2">
+                                ${getStatoBadge(feedback.stato)}
+                                ${getTipoBadge(feedback.tipo)}
+                            </div>
+                            <div class="mb-2">
+                                ${getPrioritaBadge(feedback.priorita)}
+                            </div>
+                            ${feedback.risposta_admin ? '<small class="text-success"><i class="fas fa-reply"></i> Risposta presente</small>' : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = html;
+}
+
+function renderPagination(pagination) {
+    const container = document.getElementById('feedbackPagination');
+    
+    if (pagination.total_pages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = '';
+    
+    // Precedente
+    if (pagination.current_page > 1) {
+        html += `<li class="page-item"><a class="page-link" href="#" onclick="loadFeedback(${pagination.current_page - 1})">Precedente</a></li>`;
+    }
+    
+    // Pagine
+    for (let i = Math.max(1, pagination.current_page - 2); i <= Math.min(pagination.total_pages, pagination.current_page + 2); i++) {
+        const active = i === pagination.current_page ? 'active' : '';
+        html += `<li class="page-item ${active}"><a class="page-link" href="#" onclick="loadFeedback(${i})">${i}</a></li>`;
+    }
+    
+    // Successiva
+    if (pagination.current_page < pagination.total_pages) {
+        html += `<li class="page-item"><a class="page-link" href="#" onclick="loadFeedback(${pagination.current_page + 1})">Successiva</a></li>`;
+    }
+    
+    container.innerHTML = html;
+}
+
+function getStatoBadge(stato) {
+    const badges = {
+        'aperto': '<span class="badge bg-warning stato-badge">Aperto</span>',
+        'in_lavorazione': '<span class="badge bg-info stato-badge">In Lavorazione</span>',
+        'risolto': '<span class="badge bg-success stato-badge">Risolto</span>',
+        'chiuso': '<span class="badge bg-secondary stato-badge">Chiuso</span>',
+        'rifiutato': '<span class="badge bg-danger stato-badge">Rifiutato</span>'
+    };
+    return badges[stato] || '<span class="badge bg-light stato-badge">Sconosciuto</span>';
+}
+
+function getTipoBadge(tipo) {
+    const badges = {
+        'bug': '<span class="badge bg-danger stato-badge">Bug</span>',
+        'feature': '<span class="badge bg-primary stato-badge">Feature</span>',
+        'improvement': '<span class="badge bg-success stato-badge">Miglioramento</span>',
+        'general': '<span class="badge bg-secondary stato-badge">Generale</span>'
+    };
+    return badges[tipo] || '<span class="badge bg-light stato-badge">Altro</span>';
+}
+
+function getPrioritaBadge(priorita) {
+    const badges = {
+        'critica': '<span class="badge bg-danger stato-badge">Critica</span>',
+        'alta': '<span class="badge bg-warning stato-badge">Alta</span>',
+        'media': '<span class="badge bg-info stato-badge">Media</span>',
+        'bassa': '<span class="badge bg-success stato-badge">Bassa</span>'
+    };
+    return badges[priorita] || '<span class="badge bg-secondary stato-badge">-</span>';
+}
+
+async function openFeedbackModal(feedbackId) {
+    try {
+        // Trova il feedback nella lista corrente
+        const response = await fetch(`/api/feedback?per_page=1000`); // Carica tutti per trovare quello specifico
+        const data = await response.json();
+        
+        if (data.success) {
+            const feedback = data.feedback.find(f => f.id === feedbackId);
+            if (feedback) {
+                currentFeedback = feedback;
+                renderFeedbackModal(feedback);
+                new bootstrap.Modal(document.getElementById('feedbackModal')).show();
+            }
+        }
+    } catch (error) {
+        console.error('Errore apertura modal:', error);
+        if (window.TalonApp && window.TalonApp.showToast) {
+            TalonApp.showToast('Errore apertura dettagli feedback', 'error');
+        }
+    }
+}
+
+function renderFeedbackModal(feedback) {
+    const dataCreazione = new Date(feedback.data_creazione).toLocaleString('it-IT');
+    const dataModifica = feedback.data_modifica ? new Date(feedback.data_modifica).toLocaleString('it-IT') : 'N/A';
+    const initials = feedback.utente_nome ? feedback.utente_nome.split(' ').map(n => n[0]).join('') : 'U';
+    
+    const html = `
+        <div class="row">
+            <div class="col-md-8">
+                <h6><i class="fas fa-info-circle"></i> Informazioni Feedback</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>ID:</strong></td><td>#${feedback.id}</td></tr>
+                    <tr><td><strong>Utente:</strong></td><td>
+                        <div class="d-flex align-items-center">
+                            <div class="user-avatar me-2">${initials}</div>
+                            ${feedback.utente_nome} (${feedback.utente_ruolo})
+                        </div>
+                    </td></tr>
+                    <tr><td><strong>Email:</strong></td><td>${feedback.utente_email}</td></tr>
+                    <tr><td><strong>Tipo:</strong></td><td>${getTipoBadge(feedback.tipo)}</td></tr>
+                    <tr><td><strong>Creato:</strong></td><td>${dataCreazione}</td></tr>
+                    <tr><td><strong>Modificato:</strong></td><td>${dataModifica}</td></tr>
+                    <tr><td><strong>IP:</strong></td><td>${feedback.ip_address || 'N/A'}</td></tr>
+                    <tr><td><strong>Pagina:</strong></td><td>${feedback.pagina_origine || 'N/A'}</td></tr>
+                </table>
+                
+                <h6><i class="fas fa-comment"></i> Messaggio</h6>
+                <div class="border p-3 bg-light rounded">
+                    <strong>${feedback.titolo || 'Senza titolo'}</strong>
+                    <hr>
+                    ${feedback.messaggio.replace(/\n/g, '<br>')}
+                </div>
+                
+                ${feedback.risposta_admin ? `
+                    <h6 class="mt-3"><i class="fas fa-reply"></i> Risposta Amministratore</h6>
+                    <div class="border p-3 bg-success bg-opacity-10 rounded">
+                        <small class="text-muted">
+                            Risposta di ${feedback.risposta_da_nome || 'Admin'} 
+                            il ${new Date(feedback.risposta_timestamp).toLocaleString('it-IT')}
+                        </small>
+                        <hr>
+                        ${feedback.risposta_admin.replace(/\n/g, '<br>')}
+                    </div>
+                ` : ''}
+            </div>
+            <div class="col-md-4">
+                <h6><i class="fas fa-tools"></i> Gestione</h6>
+                <div class="mb-3">
+                    <label class="form-label">Stato</label>
+                    <select class="form-select" id="modalStato">
+                        <option value="aperto" ${feedback.stato === 'aperto' ? 'selected' : ''}>Aperto</option>
+                        <option value="in_lavorazione" ${feedback.stato === 'in_lavorazione' ? 'selected' : ''}>In Lavorazione</option>
+                        <option value="risolto" ${feedback.stato === 'risolto' ? 'selected' : ''}>Risolto</option>
+                        <option value="chiuso" ${feedback.stato === 'chiuso' ? 'selected' : ''}>Chiuso</option>
+                        <option value="rifiutato" ${feedback.stato === 'rifiutato' ? 'selected' : ''}>Rifiutato</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Priorità</label>
+                    <select class="form-select" id="modalPriorita">
+                        <option value="bassa" ${feedback.priorita === 'bassa' ? 'selected' : ''}>Bassa</option>
+                        <option value="media" ${feedback.priorita === 'media' ? 'selected' : ''}>Media</option>
+                        <option value="alta" ${feedback.priorita === 'alta' ? 'selected' : ''}>Alta</option>
+                        <option value="critica" ${feedback.priorita === 'critica' ? 'selected' : ''}>Critica</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Categoria</label>
+                    <input type="text" class="form-control" id="modalCategoria" 
+                           value="${feedback.categoria || ''}" placeholder="Es: UI, Performance, Sicurezza">
+                </div>
+                
+                <div class="response-form">
+                    <label class="form-label"><i class="fas fa-reply"></i> Risposta Amministratore</label>
+                    <textarea class="form-control" id="modalRisposta" rows="4" 
+                              placeholder="Scrivi una risposta al feedback...">${feedback.risposta_admin || ''}</textarea>
+                    <small class="text-muted">La risposta sarà visibile all'utente che ha inviato il feedback</small>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('feedbackModalBody').innerHTML = html;
+}
+
+async function saveFeedbackChanges() {
+    if (!currentFeedback) return;
+    
+    try {
+        const data = {
+            stato: document.getElementById('modalStato').value,
+            priorita: document.getElementById('modalPriorita').value,
+            categoria: document.getElementById('modalCategoria').value,
+            risposta_admin: document.getElementById('modalRisposta').value
+        };
+        
+        const response = await fetch(`/api/feedback/${currentFeedback.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            if (window.TalonApp && window.TalonApp.showToast) {
+                TalonApp.showToast('Feedback aggiornato con successo', 'success');
+            }
+            bootstrap.Modal.getInstance(document.getElementById('feedbackModal')).hide();
+            loadFeedback(currentPage);
+            loadStats();
+        } else {
+            if (window.TalonApp && window.TalonApp.showToast) {
+                TalonApp.showToast('Errore: ' + result.error, 'error');
+            }
+        }
+    } catch (error) {
+        console.error('Errore salvataggio:', error);
+        if (window.TalonApp && window.TalonApp.showToast) {
+            TalonApp.showToast('Errore di connessione', 'error');
+        }
+    }
+}
+
+function resetFilters() {
+    document.getElementById('filterStato').value = '';
+    document.getElementById('filterTipo').value = '';
+    document.getElementById('perPage').value = '20';
+    loadFeedback(1);
+}
+
+function refreshStats() {
+    loadStats();
+    loadFeedback(currentPage);
+}
+</script>
+{% endblock %}

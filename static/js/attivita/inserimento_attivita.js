@@ -23,14 +23,11 @@
         initialized: false,
         form: null,
         eventHandlers: new Map(),
-        autoSaveTimeout: null,
         notificationTimeout: null,
         loader: null
     };
 
     const config = {
-        AUTOSAVE_KEY: 'talon_inserimento_attivita_draft',
-        AUTOSAVE_DELAY: 2000,
         NOTIFICATION_DURATION: 3000,
         DEBUG: false
     };
@@ -89,9 +86,6 @@
         // Listener per submit form
         setupFormSubmitHandler();
         
-        // Auto-save bozza
-        setupAutoSave();
-        
         // Inizializza searchable selects
         initializeSearchableSelects();
 
@@ -110,10 +104,6 @@
         log('[InserimentoAttivita] Cleanup in corso...');
 
         // Clear timeouts
-        if (state.autoSaveTimeout) {
-            clearTimeout(state.autoSaveTimeout);
-            state.autoSaveTimeout = null;
-        }
 
         if (state.notificationTimeout) {
             clearTimeout(state.notificationTimeout);
@@ -291,8 +281,6 @@
                 return false;
             }
 
-            // Pulisci auto-save
-            clearAutoSave();
             
             // Mostra loader
             showLoader();
@@ -302,124 +290,8 @@
     }
 
     // ========================================
-    // AUTO-SAVE FUNCTIONALITY
+    // REMOVED AUTO-SAVE FUNCTIONALITY
     // ========================================
-    
-    function setupAutoSave() {
-        if (!state.form) return;
-
-        // Carica bozza se presente
-        loadDraft();
-
-        // Handler per auto-save
-        const inputHandler = function() {
-            clearTimeout(state.autoSaveTimeout);
-            state.autoSaveTimeout = setTimeout(() => {
-                saveDraft();
-            }, config.AUTOSAVE_DELAY);
-        };
-
-        const changeHandler = function() {
-            clearTimeout(state.autoSaveTimeout);
-            state.autoSaveTimeout = setTimeout(() => {
-                saveDraft();
-            }, 1000);
-        };
-
-        saveEventHandler(state.form, 'input', inputHandler);
-        saveEventHandler(state.form, 'change', changeHandler);
-    }
-
-    function saveDraft() {
-        if (!state.form) return;
-
-        const formData = new FormData(state.form);
-        const draft = {};
-        
-        formData.forEach((value, key) => {
-            if (draft[key]) {
-                if (!Array.isArray(draft[key])) {
-                    draft[key] = [draft[key]];
-                }
-                draft[key].push(value);
-            } else {
-                draft[key] = value;
-            }
-        });
-
-        // Aggiungi informazioni sulla sezione attiva
-        const activeSection = document.querySelector('[data-active="true"]');
-        if (activeSection) {
-            draft._activeSection = activeSection.id;
-        }
-
-        try {
-            localStorage.setItem(config.AUTOSAVE_KEY, JSON.stringify(draft));
-            log('[InserimentoAttivita] Bozza salvata automaticamente');
-            showInfo('Bozza salvata', 1000);
-        } catch (e) {
-            console.error('[InserimentoAttivita] Errore salvataggio bozza:', e);
-        }
-    }
-
-    function loadDraft() {
-        const savedDraft = localStorage.getItem(config.AUTOSAVE_KEY);
-        if (!savedDraft || !state.form) return;
-
-        if (confirm('È presente una bozza salvata. Vuoi recuperarla?')) {
-            try {
-                const draft = JSON.parse(savedDraft);
-                
-                // Ripristina i valori
-                Object.keys(draft).forEach(key => {
-                    if (key === '_activeSection') return;
-                    
-                    const field = state.form.elements[key];
-                    if (field) {
-                        if (field instanceof RadioNodeList) {
-                            // Radio o checkbox multipli
-                            if (Array.isArray(draft[key])) {
-                                draft[key].forEach(value => {
-                                    const input = state.form.querySelector(`[name="${key}"][value="${value}"]`);
-                                    if (input) input.checked = true;
-                                });
-                            } else {
-                                const input = state.form.querySelector(`[name="${key}"][value="${draft[key]}"]`);
-                                if (input) input.checked = true;
-                            }
-                        } else if (field.type === 'checkbox') {
-                            field.checked = draft[key] === 'on';
-                        } else {
-                            field.value = draft[key];
-                        }
-                    }
-                });
-
-                // Ripristina sezione attiva
-                if (draft._activeSection) {
-                    const tipologiaSelect = document.getElementById('tipologia_id');
-                    if (tipologiaSelect) {
-                        // Trigger change per mostrare la sezione corretta
-                        tipologiaSelect.dispatchEvent(new Event('change'));
-                    }
-                }
-
-                showSuccess('Bozza recuperata con successo');
-                log('[InserimentoAttivita] Bozza caricata');
-            } catch (e) {
-                console.error('[InserimentoAttivita] Errore caricamento bozza:', e);
-                localStorage.removeItem(config.AUTOSAVE_KEY);
-            }
-        } else {
-            // Utente ha rifiutato, elimina bozza
-            localStorage.removeItem(config.AUTOSAVE_KEY);
-        }
-    }
-
-    function clearAutoSave() {
-        localStorage.removeItem(config.AUTOSAVE_KEY);
-        log('[InserimentoAttivita] Auto-save pulito');
-    }
 
     // ========================================
     // UI FEEDBACK
@@ -575,10 +447,7 @@
         initialize: initialize,
         cleanup: cleanup,
         
-        // Form methods
-        saveDraft: saveDraft,
-        loadDraft: loadDraft,
-        clearAutoSave: clearAutoSave,
+        // Form methods (draft functionality removed)
         
         // UI methods
         showSuccess: showSuccess,

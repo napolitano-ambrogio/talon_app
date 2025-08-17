@@ -246,6 +246,17 @@
                             <i class="fas fa-chevron-right"></i>
                         </a>
                         
+                        <a href="{{ url_for('main.admin_feedback_page') }}" class="action-card">
+                            <div class="action-icon" style="background: #2196f3;">
+                                <i class="fas fa-comments"></i>
+                            </div>
+                            <div class="action-content">
+                                <h6>Gestione Feedback</h6>
+                                <small>Visualizza e rispondi ai feedback</small>
+                            </div>
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                        
                         <a href="{{ url_for('main.info_sistema') }}" class="action-card">
                             <div class="action-icon" style="background: #607d8b;">
                                 <i class="fas fa-server"></i>
@@ -257,15 +268,15 @@
                             <i class="fas fa-chevron-right"></i>
                         </a>
                         
-                        <a href="#" class="action-card" onclick="showComingSoon(); return false;">
-                            <div class="action-icon" style="background: #5d4037;">
+                        <a href="{{ url_for('main.backup_dashboard') }}" class="action-card">
+                            <div class="action-icon" style="background: #2e7d32;">
                                 <i class="fas fa-database"></i>
                             </div>
                             <div class="action-content">
                                 <h6>Backup Database</h6>
-                                <small>In sviluppo</small>
+                                <small>Sistema Enterprise</small>
                             </div>
-                            <i class="fas fa-lock"></i>
+                            <i class="fas fa-arrow-right"></i>
                         </a>
                         
                         <a href="#" class="action-card" onclick="showComingSoon(); return false;">

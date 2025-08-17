@@ -206,23 +206,23 @@
                 username: "{{ session.get('username', 'Utente') }}",
                 fullName: "{{ (session.get('nome','') ~ ' ' ~ session.get('cognome','')).strip() or session.get('username','Utente') }}",
                 email: "{{ session.get('email', '') }}",
-                isLoggedIn: {{ 'true' if session.get('logged_in') else 'false' }},
+                isLoggedIn: {{ session.get('logged_in')|lower }},
                 permissions: {{ session.get('permissions', [])|tojson|safe }}
             },
             // Info applicazione
             app: {
-                name: "{{ app_name or 'TALON System' }}",
-                version: "{{ app_version or '2.0.0' }}",
-                year: {{ current_year or 2025 }},
-                ssoEnabled: {{ 'true' if sso_enabled else 'false' }},
+                name: "{{ app_name|default('TALON System') }}",
+                version: "{{ app_version|default('2.0.0') }}",
+                year: {{ current_year|default(2025) }},
+                ssoEnabled: {{ sso_enabled|lower }},
                 offlineMode: true,
                 spaEnabled: false,
-                cacheBuster: "{{ cache_buster }}"
+                cacheBuster: "{{ cache_buster|default('') }}"
             },
             // Flag debug
             debug: {
-                enabled: {{ 'true' if debug_mode else 'false' }},
-                isDebug: {{ 'true' if is_debug else 'false' }}
+                enabled: {{ debug_mode|lower }},
+                isDebug: {{ is_debug|lower }}
             },
             // URLs API e Routes
             api: {
@@ -261,12 +261,6 @@
                         <p class="talon-subtitle">Task Analysis & Logistics Operations Node</p>
                     </div>
                     
-                    <!-- Quick Actions nella header -->
-                    <div class="header-actions">
-                        <button class="btn btn-sm btn-light me-2" id="fullscreen-btn" title="Schermo intero">
-                            <i class="fas fa-expand"></i>
-                        </button>
-                    </div>
                 </div>
             </header>
             {% endif %}
@@ -302,7 +296,13 @@
             <footer class="bg-light border-top py-2 px-3 mt-auto" id="page-footer">
                 <div class="d-flex justify-content-between align-items-center">
                     <small class="text-muted">
-                        {{ app_name or 'TALON System' }} v{{ app_version or '2.0.0' }}
+                        <a href="#" onclick="showCredits(); return false;" class="text-decoration-none text-muted">
+                            <i class="fas fa-info-circle"></i> Crediti
+                        </a>
+                        <span class="mx-2">|</span>
+                        <a href="#" onclick="showFeedback(); return false;" class="text-decoration-none text-muted">
+                            <i class="fas fa-comment"></i> Feedback
+                        </a>
                         {% if debug_mode or is_debug %}
                         <span class="badge bg-warning text-dark ms-2">
                             <i class="fas fa-bug"></i> DEBUG MODE
@@ -445,7 +445,6 @@
     {% if session.get('logged_in') %}
     
     <!-- UI Components -->
-    <script src="{{ url_for('static', filename='js/fullscreen-manager.js') }}?v={{ cache_buster }}"></script>
     
     
     <!-- Sistema Components -->
@@ -499,81 +498,6 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             
-            // Gestione fullscreen con gestione errori e compatibilità browser
-            const fullscreenBtn = document.getElementById('fullscreen-btn');
-            if (fullscreenBtn) {
-                fullscreenBtn.addEventListener('click', function(event) {
-                    // Assicurati che sia un click utente reale
-                    if (!event.isTrusted) {
-                        console.warn('Fullscreen richiede un gesto utente autentico');
-                        return;
-                    }
-                    
-                    const button = this;
-                    
-                    if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
-                        // Entra in modalità fullscreen
-                        const element = document.documentElement;
-                        
-                        if (element.requestFullscreen) {
-                            element.requestFullscreen()
-                                .then(() => {
-                                    button.innerHTML = '<i class="fas fa-compress"></i>';
-                                    button.title = 'Esci da schermo intero';
-                                })
-                                .catch(err => {
-                                    console.error('Errore entrando in fullscreen:', err.message);
-                                });
-                        } else if (element.webkitRequestFullscreen) { // Safari
-                            element.webkitRequestFullscreen();
-                            button.innerHTML = '<i class="fas fa-compress"></i>';
-                            button.title = 'Esci da schermo intero';
-                        } else if (element.msRequestFullscreen) { // IE11
-                            element.msRequestFullscreen();
-                            button.innerHTML = '<i class="fas fa-compress"></i>';
-                            button.title = 'Esci da schermo intero';
-                        }
-                    } else {
-                        // Esci dalla modalità fullscreen
-                        if (document.exitFullscreen) {
-                            document.exitFullscreen()
-                                .then(() => {
-                                    button.innerHTML = '<i class="fas fa-expand"></i>';
-                                    button.title = 'Schermo intero';
-                                })
-                                .catch(err => {
-                                    console.error('Errore uscendo da fullscreen:', err.message);
-                                });
-                        } else if (document.webkitExitFullscreen) { // Safari
-                            document.webkitExitFullscreen();
-                            button.innerHTML = '<i class="fas fa-expand"></i>';
-                            button.title = 'Schermo intero';
-                        } else if (document.msExitFullscreen) { // IE11
-                            document.msExitFullscreen();
-                            button.innerHTML = '<i class="fas fa-expand"></i>';
-                            button.title = 'Schermo intero';
-                        }
-                    }
-                });
-                
-                // Ascolta i cambiamenti di stato fullscreen
-                function handleFullscreenChange() {
-                    const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
-                    
-                    if (isFullscreen) {
-                        fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
-                        fullscreenBtn.title = 'Esci da schermo intero';
-                    } else {
-                        fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
-                        fullscreenBtn.title = 'Schermo intero';
-                    }
-                }
-                
-                // Aggiungi listener per tutti i browser
-                document.addEventListener('fullscreenchange', handleFullscreenChange);
-                document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-                document.addEventListener('msfullscreenchange', handleFullscreenChange);
-            }
             
             // ============================
             // GESTIONE STATO CONNESSIONE
@@ -871,6 +795,194 @@
                 }
             }, 5000);
         });
+        
+        // ============================
+        // FUNZIONI FOOTER
+        // ============================
+        
+        function showCredits() {
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fas fa-info-circle text-primary"></i> Crediti
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="text-center mb-3">
+                                <h6 class="fw-bold">Sistema TALON</h6>
+                                <p class="text-muted">Tactical Application for Logistics Operational Network</p>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-code"></i> Sviluppo</h6>
+                                    <ul class="list-unstyled small">
+                                        <li>• Architettura Flask/Python</li>
+                                        <li>• Database PostgreSQL/PostGIS</li>
+                                        <li>• Frontend Bootstrap/JavaScript</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-map"></i> Cartografia</h6>
+                                    <ul class="list-unstyled small">
+                                        <li>• Leaflet.js</li>
+                                        <li>• OpenStreetMap</li>
+                                        <li>• PostGIS Extensions</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="text-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-shield-alt"></i> 
+                                    Sistema sviluppato dal Magg. tramat. RN Ambrogio Napolitano<br>
+                                    per la Sala Operativa Logistica del Comando Logistico dell'Esercito
+                                </small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            modal.addEventListener('hidden.bs.modal', () => modal.remove());
+        }
+        
+        function showFeedback() {
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fas fa-comment text-success"></i> Feedback TALON
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Il tuo feedback è importante per migliorare il sistema TALON.</p>
+                            <form id="feedbackForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Tipo di feedback</label>
+                                    <select class="form-select" id="feedbackType" required>
+                                        <option value="">Seleziona...</option>
+                                        <option value="bug">Segnalazione Bug</option>
+                                        <option value="feature">Richiesta Funzionalità</option>
+                                        <option value="improvement">Miglioramento</option>
+                                        <option value="general">Feedback Generale</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Messaggio</label>
+                                    <textarea class="form-control" id="feedbackMessage" rows="4" 
+                                              placeholder="Descrivi il tuo feedback..." required></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                            <button type="button" class="btn btn-success" onclick="submitFeedback()">
+                                <i class="fas fa-paper-plane"></i> Invia Feedback
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            modal.addEventListener('hidden.bs.modal', () => modal.remove());
+        }
+        
+        function submitFeedback() {
+            const type = document.getElementById('feedbackType').value;
+            const message = document.getElementById('feedbackMessage').value;
+            
+            if (!type || !message) {
+                if (window.TalonApp && window.TalonApp.showToast) {
+                    TalonApp.showToast('Compila tutti i campi richiesti', 'warning');
+                } else {
+                    alert('Compila tutti i campi richiesti');
+                }
+                return;
+            }
+            
+            // Disabilita il pulsante per evitare doppi invii
+            const submitBtn = document.querySelector('.modal .btn-success');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Invio in corso...';
+            
+            // Prepara i dati del feedback
+            const feedbackData = {
+                tipo: type,
+                messaggio: message,
+                pagina_origine: window.location.pathname
+            };
+            
+            // Invia il feedback al server
+            fetch('/api/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(feedbackData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Successo
+                    if (window.TalonApp && window.TalonApp.showToast) {
+                        TalonApp.showToast('Grazie per il tuo feedback! È stato registrato con successo.', 'success');
+                    } else {
+                        alert('Grazie per il tuo feedback! È stato registrato con successo.');
+                    }
+                    
+                    // Chiudi il modal
+                    const modal = document.querySelector('.modal.show');
+                    if (modal) {
+                        bootstrap.Modal.getInstance(modal).hide();
+                    }
+                    
+                    // Reset form
+                    document.getElementById('feedbackType').value = '';
+                    document.getElementById('feedbackMessage').value = '';
+                } else {
+                    // Errore
+                    const errorMsg = data.error || 'Errore durante l\'invio del feedback';
+                    if (window.TalonApp && window.TalonApp.showToast) {
+                        TalonApp.showToast(errorMsg, 'error');
+                    } else {
+                        alert('Errore: ' + errorMsg);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Errore invio feedback:', error);
+                const errorMsg = 'Errore di connessione durante l\'invio del feedback';
+                if (window.TalonApp && window.TalonApp.showToast) {
+                    TalonApp.showToast(errorMsg, 'error');
+                } else {
+                    alert(errorMsg);
+                }
+            })
+            .finally(() => {
+                // Riabilita il pulsante
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            });
+        }
 
         // ============================
         // SETUP AJAX GLOBALE

@@ -169,7 +169,8 @@ textarea {
   max-width: 100%;
   width: 100%;
   margin: 0 auto;
-  overflow-x: auto;
+  overflow-x: hidden;
+  transition: all 0.3s ease;
 }
 
 /* ===== CONTROLLI RUOLI - STILI SOBRI ===== */
@@ -1164,8 +1165,15 @@ input:checked + .talon-slider:before {
   box-shadow: 0 4px 25px rgba(0, 0, 0, 0.08);
   width: 100%;
   margin: 0 auto;
-  overflow-x: auto;
+  overflow: hidden;
   backdrop-filter: blur(10px);
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 1rem;
 }
 
 .styled-table {
@@ -1779,6 +1787,16 @@ input:checked + .talon-slider:before {
   .styled-table th,
   .styled-table td {
     padding: var(--spacing-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+  }
+  
+  /* Nascondi colonna immagine su tablet */
+  .styled-table th:last-child,
+  .styled-table td:last-child {
+    display: none;
   }
   
   .search-bar input[type="search"] {
@@ -1801,6 +1819,39 @@ input:checked + .talon-slider:before {
     position: static;
     margin-bottom: 10px;
     display: inline-block;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Nascondi colonna teatro operativo su mobile */
+  .styled-table th:nth-child(3),
+  .styled-table td:nth-child(3) {
+    display: none;
+  }
+  
+  .detail-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .detail-header .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 576px) {
+  /* Nascondi colonna nome missione su mobile piccoli */
+  .styled-table th:nth-child(2),
+  .styled-table td:nth-child(2) {
+    display: none;
+  }
+  
+  .styled-table th,
+  .styled-table td {
+    padding: 5px;
+    font-size: 0.8em;
+    max-width: 150px;
   }
 }
 

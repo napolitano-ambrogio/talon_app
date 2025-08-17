@@ -457,9 +457,6 @@
             case 'print':
                 window.print();
                 break;
-            case 'fullscreen':
-                toggleFullscreen();
-                break;
             default:
                 log('warn', `Unknown action: ${action}`);
         }
@@ -500,13 +497,6 @@
         }
     }
 
-    function toggleFullscreen() {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen();
-        } else {
-            document.exitFullscreen();
-        }
-    }
 
     function exportDashboardData() {
         if (!state.lastData) {

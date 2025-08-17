@@ -1,0 +1,866 @@
+{% extends "_base.html" %}
+
+{% block title %}Backup Database - TALON{% endblock %}
+
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard_admin.css') }}">
+<style>
+.backup-dashboard {
+    background: #f8f9fa;
+    min-height: calc(100vh - 56px);
+    padding: 20px;
+}
+
+.backup-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: none;
+    margin-bottom: 20px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.backup-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+}
+
+.backup-stat-card {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.backup-stat-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+}
+
+.backup-stat-icon {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    color: #6c757d;
+}
+
+.backup-action-btn {
+    background: #007bff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    color: white;
+    font-weight: 600;
+    transition: all 0.3s;
+    margin: 5px;
+}
+
+.backup-action-btn:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    color: white;
+}
+
+.backup-danger-btn {
+    background: #dc3545;
+}
+
+.backup-danger-btn:hover {
+    background: #c82333;
+    color: white;
+}
+
+.backup-secondary-btn {
+    background: #6c757d;
+}
+
+.backup-secondary-btn:hover {
+    background: #545b62;
+    color: white;
+}
+
+.backup-table {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.backup-table th {
+    background: #f8f9fa;
+    border: none;
+    font-weight: 600;
+    color: #495057;
+}
+
+.backup-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-failed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status-running {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.backup-progress {
+    width: 100%;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.backup-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #28a745, #20c997);
+    transition: width 0.3s;
+}
+
+.backup-logs {
+    background: #2d3748;
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.config-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 10px 0;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="backup-dashboard">
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-database"></i> Sistema Backup Enterprise
+                    <span class="system-status" data-status="online">
+                        <i class="fas fa-circle"></i> Sistema Operativo
+                    </span>
+                </h1>
+            </div>
+            <div class="last-update">
+                <button class="backup-action-btn" onclick="createBackup('full')">
+                    <i class="fas fa-plus"></i> Nuovo Backup
+                </button>
+                <button class="backup-secondary-btn" onclick="refreshDashboard()">
+                    <i class="fas fa-sync-alt"></i> Aggiorna
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row stats-row mb-4">
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="card stat-card gradient-primary" data-stat="backup-total">
+                    <div class="card-body">
+                        <div class="stat-icon">
+                            <i class="fas fa-archive"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h5 class="card-title">BACKUP TOTALI</h5>
+                            <h2 class="card-value counter" data-target="{{ backup_status.backup_stats.total_backups or 0 }}">{{ backup_status.backup_stats.total_backups or 0 }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="card stat-card gradient-success" data-stat="backup-size">
+                    <div class="card-body">
+                        <div class="stat-icon">
+                            <i class="fas fa-hdd"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h5 class="card-title">SPAZIO UTILIZZATO</h5>
+                            <h2 class="card-value">{{ backup_status.disk_usage.backup_directory_size_mb or 0 }} MB</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="card stat-card gradient-info" data-stat="db-size">
+                    <div class="card-body">
+                        <div class="stat-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h5 class="card-title">DIMENSIONE DB</h5>
+                            <h2 class="card-value">{{ db_stats.database_size or 'N/A' }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="card stat-card gradient-warning" data-stat="last-backup">
+                    <div class="card-body">
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h5 class="card-title">ULTIMO BACKUP</h5>
+                            <h2 class="card-value">
+                                {% if backup_status.backup_stats.last_backup %}
+                                    {{ backup_status.backup_stats.last_backup.split('T')[0] }}
+                                {% else %}
+                                    Mai
+                                {% endif %}
+                            </h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Azioni Backup -->
+            <div class="col-lg-4 mb-4">
+                <div class="backup-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-play"></i> Azioni Backup</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="backup-action-btn" onclick="createBackup('full')">
+                                <i class="fas fa-database"></i> Backup Completo
+                            </button>
+                            <button class="backup-action-btn" onclick="createBackup('data_only')">
+                                <i class="fas fa-table"></i> Solo Dati
+                            </button>
+                            <button class="backup-action-btn" onclick="createBackup('schema_only')">
+                                <i class="fas fa-sitemap"></i> Solo Schema
+                            </button>
+                            <hr>
+                            <button class="backup-secondary-btn" onclick="cleanupBackups()">
+                                <i class="fas fa-broom"></i> Pulizia Automatica
+                            </button>
+                            <button class="backup-secondary-btn" onclick="showConfig()">
+                                <i class="fas fa-cog"></i> Configurazione
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Retention Policy -->
+                <div class="backup-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Retention Policy</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <h4 class="text-primary">{{ backup_status.retention_policy.daily or 7 }}</h4>
+                                <small>Giorni Daily</small>
+                            </div>
+                            <div class="col-6">
+                                <h4 class="text-success">{{ backup_status.retention_policy.weekly or 4 }}</h4>
+                                <small>Settimane Weekly</small>
+                            </div>
+                            <div class="col-6 mt-2">
+                                <h4 class="text-warning">{{ backup_status.retention_policy.monthly or 12 }}</h4>
+                                <small>Mesi Monthly</small>
+                            </div>
+                            <div class="col-6 mt-2">
+                                <h4 class="text-info">{{ backup_status.retention_policy.yearly or 3 }}</h4>
+                                <small>Anni Yearly</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista Backup -->
+            <div class="col-lg-8 mb-4">
+                <div class="backup-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-list"></i> Backup Recenti</h5>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="refreshBackupList()">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table backup-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>ID Backup</th>
+                                        <th>Tipo</th>
+                                        <th>Dimensione</th>
+                                        <th>Status</th>
+                                        <th>Data</th>
+                                        <th>Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="backupTableBody">
+                                    {% for backup in recent_backups %}
+                                    <tr>
+                                        <td>
+                                            <small class="text-monospace">{{ backup.backup_id[:20] }}...</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ backup.backup_type }}</span>
+                                        </td>
+                                        <td>
+                                            {% if backup.file_size %}
+                                                {{ "%.1f"|format(backup.file_size / 1024 / 1024) }} MB
+                                            {% else %}
+                                                N/A
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="backup-status status-{{ backup.status }}">
+                                                {{ backup.status }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small>{{ backup.created_at[:19] if backup.created_at else 'N/A' }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                {% if backup.status == 'completed' %}
+                                                <button class="btn btn-outline-primary" onclick="restoreBackup('{{ backup.backup_id }}')">
+                                                    <i class="fas fa-undo"></i>
+                                                </button>
+                                                {% endif %}
+                                                <button class="btn btn-outline-info" onclick="viewBackupDetails('{{ backup.backup_id }}')">
+                                                    <i class="fas fa-info"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" onclick="deleteBackup('{{ backup.backup_id }}')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Bar (Hidden by default) -->
+        <div class="row" id="progressSection" style="display: none;">
+            <div class="col-12">
+                <div class="backup-card">
+                    <div class="card-body">
+                        <h6><i class="fas fa-spinner fa-spin"></i> Operazione in corso...</h6>
+                        <div class="backup-progress">
+                            <div class="backup-progress-bar" id="progressBar" style="width: 0%"></div>
+                        </div>
+                        <div class="mt-2">
+                            <small id="progressText">Preparazione...</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="row" id="logsSection" style="display: none;">
+            <div class="col-12">
+                <div class="backup-card">
+                    <div class="card-header d-flex justify-content-between">
+                        <h5 class="mb-0"><i class="fas fa-terminal"></i> Log Operazioni</h5>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="clearLogs()">
+                            <i class="fas fa-trash"></i> Pulisci
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="backup-logs" id="logsContent">
+                            Nessun log disponibile...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Configurazione -->
+<div class="modal fade" id="configModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-cog"></i> Configurazione Backup</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="config-section">
+                    <h6><i class="fas fa-calendar"></i> Retention Policy</h6>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label>Backup Giornalieri</label>
+                            <input type="number" class="form-control" id="retentionDaily" min="1" max="30">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Backup Settimanali</label>
+                            <input type="number" class="form-control" id="retentionWeekly" min="1" max="52">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Backup Mensili</label>
+                            <input type="number" class="form-control" id="retentionMonthly" min="1" max="120">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Backup Annuali</label>
+                            <input type="number" class="form-control" id="retentionYearly" min="1" max="10">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="config-section">
+                    <h6><i class="fas fa-compress"></i> Compressione</h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="compressionEnabled">
+                        <label class="form-check-label" for="compressionEnabled">
+                            Abilita compressione backup
+                        </label>
+                    </div>
+                    <div class="mt-2">
+                        <label>Livello Compressione (1-9)</label>
+                        <input type="range" class="form-range" id="compressionLevel" min="1" max="9" value="6">
+                        <small class="text-muted">Livello corrente: <span id="compressionLevelText">6</span></small>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <h6><i class="fas fa-folder"></i> Directory Backup</h6>
+                    <input type="text" class="form-control" id="backupRoot" placeholder="F:\talon_backups">
+                    <small class="text-muted">Directory dove salvare i backup</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" onclick="saveConfig()">Salva Configurazione</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ripristino -->
+<div class="modal fade" id="restoreModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-undo"></i> Ripristino Backup</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Attenzione!</strong> Il ripristino sovrascriverà i dati attuali del database.
+                </div>
+                
+                <div class="mb-3">
+                    <label>Tipo Ripristino</label>
+                    <select class="form-control" id="restoreType">
+                        <option value="full">Ripristino Completo</option>
+                        <option value="selective">Ripristino Selettivo</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label>Database Destinazione (opzionale)</label>
+                    <input type="text" class="form-control" id="targetDb" placeholder="Lascia vuoto per database corrente">
+                </div>
+                
+                <input type="hidden" id="restoreBackupId">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-warning" onclick="confirmRestore()">
+                    <i class="fas fa-undo"></i> Ripristina
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/dashboard_admin.js') }}"></script>
+<script>
+// Sistema Backup Enterprise JavaScript
+let backupOperationInProgress = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Backup Dashboard inizializzata');
+    
+    // Inizializza contatori animati come nella dashboard admin
+    initCounterAnimations();
+    
+    // Setup compression level slider
+    const compressionLevel = document.getElementById('compressionLevel');
+    const compressionLevelText = document.getElementById('compressionLevelText');
+    
+    if (compressionLevel && compressionLevelText) {
+        compressionLevel.addEventListener('input', function() {
+            compressionLevelText.textContent = this.value;
+        });
+    }
+    
+    // Auto-refresh ogni 30 secondi
+    setInterval(function() {
+        if (!backupOperationInProgress) {
+            refreshBackupList();
+        }
+    }, 30000);
+});
+
+// Funzioni principali
+function createBackup(type = 'full') {
+    if (backupOperationInProgress) {
+        alert('Un\'operazione di backup è già in corso');
+        return;
+    }
+    
+    if (!confirm(`Confermi la creazione di un backup ${type}?`)) {
+        return;
+    }
+    
+    backupOperationInProgress = true;
+    showProgress('Creazione backup in corso...');
+    addLog(`[${new Date().toLocaleTimeString()}] Avvio backup ${type}`);
+    
+    fetch('/api/backup/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            backup_type: type,
+            method: 'manual'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProgress();
+        backupOperationInProgress = false;
+        
+        if (data.success) {
+            addLog(`[${new Date().toLocaleTimeString()}] Backup completato: ${data.backup_id}`);
+            addLog(`[${new Date().toLocaleTimeString()}] Dimensione: ${(data.file_size / 1024 / 1024).toFixed(1)} MB`);
+            addLog(`[${new Date().toLocaleTimeString()}] Durata: ${data.duration.toFixed(1)} secondi`);
+            
+            showNotification('Backup creato con successo!', 'success');
+            refreshDashboard();
+        } else {
+            addLog(`[${new Date().toLocaleTimeString()}] ERRORE: ${data.error}`);
+            showNotification('Errore durante la creazione del backup: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        hideProgress();
+        backupOperationInProgress = false;
+        addLog(`[${new Date().toLocaleTimeString()}] ERRORE RETE: ${error.message}`);
+        showNotification('Errore di rete: ' + error.message, 'error');
+    });
+}
+
+function restoreBackup(backupId) {
+    document.getElementById('restoreBackupId').value = backupId;
+    new bootstrap.Modal(document.getElementById('restoreModal')).show();
+}
+
+function confirmRestore() {
+    const backupId = document.getElementById('restoreBackupId').value;
+    const restoreType = document.getElementById('restoreType').value;
+    const targetDb = document.getElementById('targetDb').value;
+    
+    if (!confirm('ATTENZIONE: Il ripristino sovrascriverà i dati attuali. Continuare?')) {
+        return;
+    }
+    
+    bootstrap.Modal.getInstance(document.getElementById('restoreModal')).hide();
+    
+    backupOperationInProgress = true;
+    showProgress('Ripristino in corso...');
+    addLog(`[${new Date().toLocaleTimeString()}] Avvio ripristino da ${backupId}`);
+    
+    fetch(`/api/backup/${backupId}/restore`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            restore_type: restoreType,
+            target_db: targetDb || null
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProgress();
+        backupOperationInProgress = false;
+        
+        if (data.success) {
+            addLog(`[${new Date().toLocaleTimeString()}] Ripristino completato: ${data.restore_id}`);
+            addLog(`[${new Date().toLocaleTimeString()}] Durata: ${data.duration.toFixed(1)} secondi`);
+            
+            showNotification('Ripristino completato con successo!', 'success');
+            refreshDashboard();
+        } else {
+            addLog(`[${new Date().toLocaleTimeString()}] ERRORE RIPRISTINO: ${data.error}`);
+            showNotification('Errore durante il ripristino: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        hideProgress();
+        backupOperationInProgress = false;
+        addLog(`[${new Date().toLocaleTimeString()}] ERRORE RETE: ${error.message}`);
+        showNotification('Errore di rete: ' + error.message, 'error');
+    });
+}
+
+function deleteBackup(backupId) {
+    if (!confirm('Confermi l\'eliminazione di questo backup? L\'operazione è irreversibile.')) {
+        return;
+    }
+    
+    fetch(`/api/backup/${backupId}/delete`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            addLog(`[${new Date().toLocaleTimeString()}] Backup eliminato: ${backupId}`);
+            showNotification('Backup eliminato con successo', 'success');
+            refreshBackupList();
+        } else {
+            showNotification('Errore eliminazione backup: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        showNotification('Errore di rete: ' + error.message, 'error');
+    });
+}
+
+function cleanupBackups() {
+    if (!confirm('Confermi la pulizia automatica dei backup scaduti?')) {
+        return;
+    }
+    
+    showProgress('Pulizia backup in corso...');
+    addLog(`[${new Date().toLocaleTimeString()}] Avvio pulizia automatica backup scaduti`);
+    
+    fetch('/api/backup/cleanup', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProgress();
+        
+        if (data.success) {
+            addLog(`[${new Date().toLocaleTimeString()}] Pulizia completata: ${data.deleted_count} backup eliminati`);
+            if (data.errors.length > 0) {
+                addLog(`[${new Date().toLocaleTimeString()}] Errori: ${data.errors.join(', ')}`);
+            }
+            
+            showNotification(`Pulizia completata: ${data.deleted_count} backup eliminati`, 'success');
+            refreshDashboard();
+        } else {
+            showNotification('Errore durante la pulizia: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        hideProgress();
+        showNotification('Errore di rete: ' + error.message, 'error');
+    });
+}
+
+function showConfig() {
+    // Carica configurazione attuale
+    fetch('/api/backup/config')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const config = data.config;
+            
+            // Popola form
+            document.getElementById('retentionDaily').value = config.retention_policy.daily;
+            document.getElementById('retentionWeekly').value = config.retention_policy.weekly;
+            document.getElementById('retentionMonthly').value = config.retention_policy.monthly;
+            document.getElementById('retentionYearly').value = config.retention_policy.yearly;
+            
+            document.getElementById('compressionEnabled').checked = config.compression.enabled;
+            document.getElementById('compressionLevel').value = config.compression.level;
+            document.getElementById('compressionLevelText').textContent = config.compression.level;
+            
+            document.getElementById('backupRoot').value = config.backup_root;
+            
+            new bootstrap.Modal(document.getElementById('configModal')).show();
+        }
+    });
+}
+
+function saveConfig() {
+    const config = {
+        retention_policy: {
+            daily: parseInt(document.getElementById('retentionDaily').value),
+            weekly: parseInt(document.getElementById('retentionWeekly').value),
+            monthly: parseInt(document.getElementById('retentionMonthly').value),
+            yearly: parseInt(document.getElementById('retentionYearly').value)
+        },
+        compression: {
+            enabled: document.getElementById('compressionEnabled').checked,
+            level: parseInt(document.getElementById('compressionLevel').value)
+        },
+        backup_root: document.getElementById('backupRoot').value
+    };
+    
+    fetch('/api/backup/config', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(config)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('configModal')).hide();
+            showNotification('Configurazione salvata con successo', 'success');
+            addLog(`[${new Date().toLocaleTimeString()}] Configurazione aggiornata`);
+        } else {
+            showNotification('Errore salvataggio configurazione: ' + data.error, 'error');
+        }
+    });
+}
+
+function refreshDashboard() {
+    window.location.reload();
+}
+
+function refreshBackupList() {
+    fetch('/api/backup/list')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateBackupTable(data.backups);
+        }
+    })
+    .catch(error => {
+        console.error('Errore refresh backup list:', error);
+    });
+}
+
+function updateBackupTable(backups) {
+    const tbody = document.getElementById('backupTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = backups.map(backup => `
+        <tr>
+            <td><small class="text-monospace">${backup.backup_id.substring(0, 20)}...</small></td>
+            <td><span class="badge bg-primary">${backup.backup_type}</span></td>
+            <td>${backup.file_size ? (backup.file_size / 1024 / 1024).toFixed(1) + ' MB' : 'N/A'}</td>
+            <td><span class="backup-status status-${backup.status}">${backup.status}</span></td>
+            <td><small>${backup.created_at ? backup.created_at.substring(0, 19) : 'N/A'}</small></td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    ${backup.status === 'completed' ? `<button class="btn btn-outline-primary" onclick="restoreBackup('${backup.backup_id}')"><i class="fas fa-undo"></i></button>` : ''}
+                    <button class="btn btn-outline-info" onclick="viewBackupDetails('${backup.backup_id}')"><i class="fas fa-info"></i></button>
+                    <button class="btn btn-outline-danger" onclick="deleteBackup('${backup.backup_id}')"><i class="fas fa-trash"></i></button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Utility functions
+function showProgress(message) {
+    document.getElementById('progressText').textContent = message;
+    document.getElementById('progressSection').style.display = 'block';
+    document.getElementById('logsSection').style.display = 'block';
+    
+    // Simula progresso
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 10;
+        if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+        }
+        document.getElementById('progressBar').style.width = progress + '%';
+    }, 500);
+}
+
+function hideProgress() {
+    document.getElementById('progressSection').style.display = 'none';
+}
+
+function addLog(message) {
+    const logsContent = document.getElementById('logsContent');
+    if (logsContent) {
+        logsContent.innerHTML += message + '\n';
+        logsContent.scrollTop = logsContent.scrollHeight;
+    }
+}
+
+function clearLogs() {
+    document.getElementById('logsContent').innerHTML = 'Logs puliti...\n';
+}
+
+function showNotification(message, type = 'info') {
+    // Crea notification toast
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto remove dopo 5 secondi
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    }, 5000);
+}
+
+function viewBackupDetails(backupId) {
+    fetch(`/api/backup/${backupId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const backup = data.backup;
+            alert(`Dettagli Backup:
+ID: ${backup.backup_id}
+Tipo: ${backup.backup_type}
+Dimensione: ${backup.file_size ? (backup.file_size / 1024 / 1024).toFixed(2) + ' MB' : 'N/A'}
+Status: ${backup.status}
+Durata: ${backup.duration_seconds ? backup.duration_seconds + 's' : 'N/A'}
+Creato: ${backup.created_at}
+Checksum: ${backup.checksum || 'N/A'}
+Retention: ${backup.retention_category}
+Scade: ${backup.expires_at || 'Mai'}`);
+        }
+    });
+}
+</script>
+{% endblock %}

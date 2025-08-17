@@ -180,7 +180,7 @@ def lista_operazioni():
             f'Visualizzate {len(operazioni)} operazioni',
             'operazioni'
         )
-        return render_template('lista_operazioni.html',
+        return render_template('operazioni/lista_operazioni.html',
                                operazioni=operazioni_con_stato,
                                stats=stats,
                                user_role=user_role)
@@ -201,7 +201,7 @@ def inserisci_operazione_form():
         'ACCESS_CREATE_OPERAZIONE_FORM',
         'Accesso form creazione operazione'
     )
-    return render_template('inserimento_operazione.html')
+    return render_template('operazioni/inserimento_operazione.html')
 
 @operazioni_bp.route('/salva_operazione', methods=['POST'])
 @operatore_or_admin_required
@@ -392,7 +392,7 @@ def visualizza_operazione(id):
             'operazione',
             id
         )
-        return render_template('descrizione_operazione.html',
+        return render_template('operazioni/descrizione_operazione.html',
                                operazione=operazione,
                                stato=stato,
                                user_role=user_role)
@@ -436,7 +436,7 @@ def modifica_operazione_form(id):
             'operazione',
             id
         )
-        return render_template('modifica_operazione.html', operazione=operazione)
+        return render_template('operazioni/modifica_operazione.html', operazione=operazione)
 
     except Exception as e:
         if 'conn' in locals():
