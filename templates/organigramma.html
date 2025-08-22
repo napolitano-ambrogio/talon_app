@@ -13,7 +13,7 @@
                         <span style="width: 20px; display: inline-block;"></span>
                     {% endif %}
                     <div class="ente-name">
-                        <a href="{{ url_for('enti_militari.visualizza_ente', id=node.id) }}">
+                        <a href="{{ url_for('enti_militari.visualizza_ente', id=node.id, view=request.args.get('view', ''), search=request.args.get('search', '')) }}">
                             <strong>{{ node.nome }}</strong>
                         </a>
                     </div>

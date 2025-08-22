@@ -12,8 +12,8 @@
    CONTAINER E LAYOUT
    ======================================== */
 
-.attivita-container {
-    min-height: calc(100vh - 200px);
+/* Usa la stessa struttura delle altre pagine */
+.main-content {
     animation: fadeIn 0.3s ease-in;
 }
 
@@ -189,8 +189,8 @@
 .styled-table thead {
     background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
     position: sticky;
-    top: 0;
-    z-index: 10;
+    top: -1px;
+    z-index: 5;
 }
 
 .styled-table th {
@@ -403,10 +403,6 @@
     .styled-table th:nth-child(4),
     .styled-table td:nth-child(4) {
         display: none;
-    }
-    
-    .attivita-container {
-        margin: -15px;
     }
     
     .detail-header {

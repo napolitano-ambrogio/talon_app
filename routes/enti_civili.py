@@ -224,7 +224,6 @@ def salva_civile():
     nazione = request.form.get('nazione', 'ITALIA').upper().strip()
     telefono = request.form.get('telefono', '').strip()
     email = request.form.get('email', '').strip().lower()
-    note = request.form.get('note', '').upper().strip()
 
     conn = get_db_connection()
     try:
@@ -237,11 +236,11 @@ def salva_civile():
                 cur.execute(
                     '''INSERT INTO enti_civili
                        (nome, indirizzo, nazione,
-                        telefono, email, note, creato_da, data_creazione)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+                        telefono, email, creato_da, data_creazione)
+                       VALUES (%s, %s, %s, %s, %s, %s, NOW())
                        RETURNING id''',
                     (nome, indirizzo, nazione,
-                     telefono, email, note, user_id)
+                     telefono, email, user_id)
                 )
                 new_id = int(cur.fetchone()['id'])
 
@@ -373,7 +372,6 @@ def aggiorna_civile(id):
     nazione = request.form.get('nazione', 'ITALIA').upper().strip()
     telefono = request.form.get('telefono', '').strip()
     email = request.form.get('email', '').strip().lower()
-    note = request.form.get('note', '').upper().strip()
 
     conn = get_db_connection()
     try:
@@ -393,11 +391,11 @@ def aggiorna_civile(id):
                 cur.execute(
                     '''UPDATE enti_civili
                        SET nome=%s, indirizzo=%s,
-                           nazione=%s, telefono=%s, email=%s, note=%s,
+                           nazione=%s, telefono=%s, email=%s,
                            modificato_da=%s, data_modifica=NOW()
                        WHERE id = %s''',
                     (nome, indirizzo, nazione,
-                     telefono, email, note, user_id, id)
+                     telefono, email, user_id, id)
                 )
 
         log_user_action(
@@ -483,7 +481,7 @@ def export_enti_civili():
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 f'''SELECT nome, indirizzo, nazione,
-                           telefono, email, note, data_creazione
+                           telefono, email, data_creazione
                     FROM enti_civili
                     {where_sql}
                     ORDER BY nome''',
@@ -495,13 +493,11 @@ def export_enti_civili():
         import csv, io
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(['Nome','Indirizzo','Civico','CAP','Citt','Provincia',
-                         'Nazione','Telefono','Email','Note','Data Creazione'])
+        writer.writerow(['Nome','Indirizzo','Nazione','Telefono','Email','Data Creazione'])
         for e in enti_export:
             writer.writerow([
-                e['nome'], e['indirizzo'], e['civico'], e['cap'], e['citta'],
-                e['provincia'], e['nazione'], e['telefono'], e['email'],
-                e['note'], e['data_creazione']
+                e['nome'], e['indirizzo'], e['nazione'], e['telefono'], e['email'],
+                e['data_creazione']
             ])
 
         log_user_action(

@@ -5,6 +5,21 @@
 {% block head %}
 <!-- CSS specifico per form attività -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/form_attivita.css') }}?v={{ cache_buster }}">
+<style>
+/* Fix altezza campi per allinearli */
+/* Searchable select del tipo vettore */
+.searchable-select[data-select-id="tipo_vettore_stratevac"] .searchable-select-input {
+    height: 42px !important;
+    padding: 9px 12px !important;
+}
+
+/* Campo seriale per allinearlo con tipo vettore */
+#dettagli-stratevac input#seriale_vettore_stratevac.form-control {
+    height: 42px !important;
+    padding: 9px 12px !important;
+    box-sizing: border-box !important;
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -68,6 +83,24 @@
                                 data-details="{% if op.nome_breve %}{{ op.nome_breve }} • {% endif %}{% if op.teatro_operativo %}{{ op.teatro_operativo }}{% endif %}{% if op.nazione %} • {{ op.nazione }}{% endif %}"
                                 {% if op.id == attivita.operazione_id %}selected{% endif %}>
                             {{ op.nome_missione }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="esercitazione_id">Esercitazione</label>
+                <div class="searchable-select" data-select-id="esercitazione_id"></div>
+                <select name="esercitazione_id" id="esercitazione_id" style="display: none;">
+                    <option value="">-- Seleziona un'esercitazione (opzionale) --</option>
+                    {% for eserc in esercitazioni %}
+                        <option value="{{ eserc.id }}"
+                                data-nome="{{ eserc.nome }}"
+                                data-nome-breve="{{ eserc.nome_breve or '' }}"
+                                data-anno="{{ eserc.anno or '' }}"
+                                data-details="{% if eserc.nome_breve %}{{ eserc.nome_breve }} • {% endif %}{% if eserc.anno %}{{ eserc.anno }}{% endif %}"
+                                {% if eserc.id == attivita.esercitazione_id %}selected{% endif %}>
+                            {{ eserc.nome }}
                         </option>
                     {% endfor %}
                 </select>
@@ -375,8 +408,9 @@
         <div id="dettagli-stratevac" class="form-section detail-section" style="display: none;" data-active="false">
             <h4 class="section-title">DETTAGLI SGOMBERI SANITARI/VETERINARI</h4>
             
-            <div class="form-row">
-                <div class="form-group">
+            <!-- Priorità e Forza Armata affiancate -->
+            <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 1rem;">
+                <div class="form-group" style="flex: 1;">
                     <label for="priorita">Priorità <span class="required">*</span></label>
                     <select id="priorita" name="priorita" class="form-control">
                         <option value="" {% if not dettagli_stratevac.priorita %}selected{% endif %}>-- Seleziona --</option>
@@ -386,16 +420,65 @@
                     </select>
                 </div>
                 
-                <div class="form-group">
+                <div class="form-group" style="flex: 1;">
+                    <label for="forza_armata">Forza Armata</label>
+                    <select id="forza_armata" name="forza_armata" class="form-control">
+                        <option value="" {% if not dettagli_stratevac.forza_armata %}selected{% endif %}>-- Seleziona --</option>
+                        <option value="ESERCITO ITALIANO" {% if dettagli_stratevac.forza_armata == 'ESERCITO ITALIANO' %}selected{% endif %}>Esercito Italiano</option>
+                        <option value="MARINA MILITARE" {% if dettagli_stratevac.forza_armata == 'MARINA MILITARE' %}selected{% endif %}>Marina Militare</option>
+                        <option value="AERONAUTICA MILITARE" {% if dettagli_stratevac.forza_armata == 'AERONAUTICA MILITARE' %}selected{% endif %}>Aeronautica Militare</option>
+                        <option value="ARMA DEI CARABINIERI" {% if dettagli_stratevac.forza_armata == 'ARMA DEI CARABINIERI' %}selected{% endif %}>Arma dei Carabinieri</option>
+                        <option value="GUARDIA DI FINANZA" {% if dettagli_stratevac.forza_armata == 'GUARDIA DI FINANZA' %}selected{% endif %}>Guardia di Finanza</option>
+                        <option value="ALTRO" {% if dettagli_stratevac.forza_armata == 'ALTRO' %}selected{% endif %}>Altro</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Ente di Appartenenza - Largo come i due campi sopra -->
+            <div class="form-group" id="ente_appartenenza_select_container" {% if dettagli_stratevac.forza_armata != 'ESERCITO ITALIANO' %}style="display: none;"{% endif %}>
+                <label for="ente_appartenenza">Ente di Appartenenza</label>
+                <div class="searchable-select" data-select-id="ente_appartenenza"></div>
+                <select name="ente_appartenenza" id="ente_appartenenza" style="display: none;">
+                    <option value="">-- Seleziona (opzionale) --</option>
+                    {% for ente in enti_militari %}
+                        <option value="militare-{{ ente.id }}"
+                                data-tipo="militare"
+                                data-codice="{{ ente.codice or '' }}"
+                                data-indirizzo="{{ ente.indirizzo or '' }}"
+                                data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}"
+                                {% if dettagli_stratevac.ente_appartenenza == 'militare-' + ente.id|string %}selected{% endif %}>
+                            {{ ente.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group" id="ente_appartenenza_text_container" {% if dettagli_stratevac.forza_armata == 'ESERCITO ITALIANO' %}style="display: none;"{% endif %}>
+                <label for="ente_appartenenza_testo">Ente di Appartenenza</label>
+                <input type="text" id="ente_appartenenza_testo" name="ente_appartenenza_testo" class="form-control" 
+                       placeholder="Inserisci il nome dell'ente di appartenenza"
+                       value="{% if dettagli_stratevac.forza_armata != 'ESERCITO ITALIANO' %}{{ dettagli_stratevac.ente_appartenenza or '' }}{% endif %}">
+            </div>
+            
+            <!-- Numero Unità e Grado affiancati -->
+            <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 1rem;">
+                <div class="form-group" style="flex: 1;">
                     <label for="num_unita">Numero Unità</label>
                     <input type="number" id="num_unita" name="num_unita" class="form-control" min="0"
                            value="{{ dettagli_stratevac.num_unita or '' }}">
                 </div>
+                
+                <div class="form-group" style="flex: 1;">
+                    <label for="grado">Grado</label>
+                    <input type="text" id="grado" name="grado" class="form-control"
+                           value="{{ dettagli_stratevac.grado or '' }}">
+                </div>
             </div>
             
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="tipo_vettore_stratevac">Tipo Vettore</label>
+            <!-- Tipo Vettore e Seriale affiancati -->
+            <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 1rem;">
+                <div class="form-group" style="flex: 1;">
+                    <label for="tipo_vettore_stratevac">Tipo Vettore <small class="text-muted">(o "volo civile")</small></label>
                     <div class="searchable-select" data-select-id="tipo_vettore_stratevac"></div>
                     <select id="tipo_vettore_stratevac" name="tipo_vettore_stratevac" style="display: none;">
                         <option value="">-- Seleziona Vettore --</option>
@@ -403,61 +486,11 @@
                     </select>
                 </div>
                 
-                <div class="form-group">
-                    <label for="seriale_vettore_stratevac">Seriale / Targa / Nominativo</label>
+                <div class="form-group" style="flex: 1;">
+                    <label for="seriale_vettore_stratevac">Seriale</label>
                     <input type="text" id="seriale_vettore_stratevac" name="seriale_vettore_stratevac" class="form-control"
                            value="{{ dettagli_stratevac.seriale_vettore or '' }}">
                 </div>
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="grado">Grado</label>
-                    <input type="text" id="grado" name="grado" class="form-control"
-                           value="{{ dettagli_stratevac.grado or '' }}">
-                </div>
-                
-                <div class="form-group">
-                    <label for="forza_armata">Forza Armata</label>
-                    <select id="forza_armata" name="forza_armata" class="form-control">
-                        <option value="" {% if not dettagli_stratevac.forza_armata %}selected{% endif %}>-- Seleziona --</option>
-                        <option value="ESERCITO ITALIANO" {% if dettagli_stratevac.forza_armata == 'ESERCITO ITALIANO' %}selected{% endif %}>Esercito Italiano</option>
-                        <option value="AERONAUTICA MILITARE" {% if dettagli_stratevac.forza_armata == 'AERONAUTICA MILITARE' %}selected{% endif %}>Aeronautica Militare</option>
-                        <option value="MARINA MILITARE" {% if dettagli_stratevac.forza_armata == 'MARINA MILITARE' %}selected{% endif %}>Marina Militare</option>
-                        <option value="CARABINIERI" {% if dettagli_stratevac.forza_armata == 'CARABINIERI' %}selected{% endif %}>Carabinieri</option>
-                        <option value="GUARDIA DI FINANZA" {% if dettagli_stratevac.forza_armata == 'GUARDIA DI FINANZA' %}selected{% endif %}>Guardia di Finanza</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="ente_appartenenza">Ente di Appartenenza</label>
-                <div class="searchable-select" data-select-id="ente_appartenenza"></div>
-                <select name="ente_appartenenza" id="ente_appartenenza" style="display: none;">
-                    <option value="">-- Seleziona (opzionale) --</option>
-                    <optgroup label="ENTI MILITARI">
-                        {% for ente in enti_militari %}
-                            <option value="militare-{{ ente.id }}"
-                                    data-tipo="militare"
-                                    data-codice="{{ ente.codice or '' }}"
-                                    data-indirizzo="{{ ente.indirizzo or '' }}"
-                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}"
-                                    {% if dettagli_stratevac.ente_appartenenza == 'militare-' + ente.id|string %}selected{% endif %}>
-                                {{ ente.nome }}
-                            </option>
-                        {% endfor %}
-                    </optgroup>
-                    <optgroup label="ALTRI ENTI">
-                        <option value="altro" {% if dettagli_stratevac.ente_appartenenza and not dettagli_stratevac.ente_appartenenza.startswith('militare-') %}selected{% endif %}>Altro (testo libero)</option>
-                    </optgroup>
-                </select>
-            </div>
-            
-            <div class="form-group" id="ente_appartenenza_altro" {% if not (dettagli_stratevac.ente_appartenenza and not dettagli_stratevac.ente_appartenenza.startswith('militare-')) %}style="display: none;"{% endif %}>
-                <label for="ente_appartenenza_testo">Specifica Altro Ente</label>
-                <input type="text" id="ente_appartenenza_testo" name="ente_appartenenza_testo" class="form-control" 
-                       placeholder="Inserisci il nome dell'ente"
-                       value="{% if dettagli_stratevac.ente_appartenenza and not dettagli_stratevac.ente_appartenenza.startswith('militare-') %}{{ dettagli_stratevac.ente_appartenenza }}{% endif %}">
             </div>
             
             <div class="form-group">
@@ -644,17 +677,25 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Gestione ente_appartenenza per stratevac
-    const enteAppartenenzaSelect = document.getElementById('ente_appartenenza');
-    const enteAppartenenzaAltro = document.getElementById('ente_appartenenza_altro');
+    // Gestione forza_armata e ente_appartenenza per stratevac
+    const forzaArmataSelect = document.getElementById('forza_armata');
+    const enteAppartenenzaSelectContainer = document.getElementById('ente_appartenenza_select_container');
+    const enteAppartenenzaTextContainer = document.getElementById('ente_appartenenza_text_container');
     
-    if (enteAppartenenzaSelect && enteAppartenenzaAltro) {
-        enteAppartenenzaSelect.addEventListener('change', function() {
-            if (this.value === 'altro') {
-                enteAppartenenzaAltro.style.display = 'block';
-            } else {
-                enteAppartenenzaAltro.style.display = 'none';
+    if (forzaArmataSelect && enteAppartenenzaSelectContainer && enteAppartenenzaTextContainer) {
+        forzaArmataSelect.addEventListener('change', function() {
+            if (this.value === 'ESERCITO ITALIANO') {
+                // Mostra select enti militari, nascondi campo libero
+                enteAppartenenzaSelectContainer.style.display = 'block';
+                enteAppartenenzaTextContainer.style.display = 'none';
+                // Pulisci campo testo
                 document.getElementById('ente_appartenenza_testo').value = '';
+            } else {
+                // Nascondi select enti militari, mostra campo libero
+                enteAppartenenzaSelectContainer.style.display = 'none';
+                enteAppartenenzaTextContainer.style.display = 'block';
+                // Pulisci select
+                document.getElementById('ente_appartenenza').value = '';
             }
         });
     }
@@ -682,6 +723,33 @@ document.addEventListener('DOMContentLoaded', function() {
             input.value = input.value.toUpperCase();
         }
     });
+    
+    // Fix altezze campi STRATEVAC dopo che searchable-select è stato inizializzato
+    setTimeout(function() {
+        // Trova l'input del searchable-select per tipo_vettore_stratevac
+        var tipoVettoreWrapper = document.querySelector('.searchable-select[data-select-id="tipo_vettore_stratevac"]');
+        if (tipoVettoreWrapper) {
+            var searchableInput = tipoVettoreWrapper.querySelector('input');
+            if (searchableInput) {
+                // Forza l'altezza dell'input searchable
+                searchableInput.style.height = '42px';
+                searchableInput.style.minHeight = '42px';
+                searchableInput.style.padding = '9px 12px';
+                searchableInput.style.boxSizing = 'border-box';
+                console.log('Altezza tipo vettore impostata a 42px');
+            }
+        }
+        
+        // Forza l'altezza del campo seriale
+        var serialeInput = document.getElementById('seriale_vettore_stratevac');
+        if (serialeInput) {
+            serialeInput.style.height = '42px';
+            serialeInput.style.minHeight = '42px';
+            serialeInput.style.padding = '9px 12px';
+            serialeInput.style.boxSizing = 'border-box';
+            console.log('Altezza seriale impostata a 42px');
+        }
+    }, 1000); // Attendi 1 secondo per essere sicuri che tutto sia caricato
 });
 
 

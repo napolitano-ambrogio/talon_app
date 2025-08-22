@@ -556,7 +556,6 @@
         updateChart: updateChart,
         updateStats: updateStats,
         exportData: exportDashboardData,
-        toggleFullscreen: toggleFullscreen,
         getState: () => ({ ...state }),
         getConfig: () => ({ ...CONFIG }),
         version: '2.0.0'

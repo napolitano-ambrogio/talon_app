@@ -1,0 +1,6 @@
+{
+  "workingDirectory": "F:/talon_app",
+  "projectName": "TALON",
+  "allowedTools": ["Bash", "Read", "Write", "Edit", "MultiEdit", "Glob", "Grep", "LS"],
+  "defaultMode": "development"
+}

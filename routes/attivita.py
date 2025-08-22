@@ -489,6 +489,7 @@ def lista_attivita():
                     em.nome AS ente_nome,
                     ta.nome AS tipologia_nome,
                     o.nome_missione AS operazione_nome,
+                    e.nome AS esercitazione_nome,
                     u_creato.username as creato_da_username,
                     u_modificato.username as modificato_da_username,
                     a.data_creazione, a.data_modifica
@@ -496,6 +497,7 @@ def lista_attivita():
                 JOIN enti_militari em ON a.ente_svolgimento_id = em.id
                 JOIN tipologie_attivita ta ON a.tipologia_id = ta.id
                 LEFT JOIN operazioni o ON a.operazione_id = o.id
+                LEFT JOIN esercitazioni e ON a.esercitazione_id = e.id
                 LEFT JOIN utenti u_creato ON a.creato_da = u_creato.id
                 LEFT JOIN utenti u_modificato ON a.modificato_da = u_modificato.id
                 WHERE a.ente_svolgimento_id IN ({placeholders})
@@ -595,11 +597,19 @@ def inserisci_attivita_form():
                 )
                 operazioni = cur.fetchall()
 
+                # Esercitazioni
+                cur.execute(
+                    '''SELECT id, nome, nome_breve, anno
+                       FROM esercitazioni
+                       ORDER BY anno DESC, nome ASC'''
+                )
+                esercitazioni = cur.fetchall()
+
             tipologie_organizzate = get_tipologie_organizzate(conn)
 
     except Exception as e:
         flash(f'Errore nel caricamento dei dati del form: {str(e)}', 'error')
-        enti_militari, enti_civili, operazioni, tipologie_organizzate = [], [], [], {}
+        enti_militari, enti_civili, operazioni, esercitazioni, tipologie_organizzate = [], [], [], [], {}
     finally:
         conn.close()
 
@@ -616,6 +626,7 @@ def inserisci_attivita_form():
         enti_militari=enti_militari,
         enti_civili=enti_civili,
         operazioni=operazioni,
+        esercitazioni=esercitazioni,
         tipologie=tipologie_organizzate
     )
 
@@ -684,8 +695,8 @@ def salva_attivita():
                         ente_svolgimento_id, tipologia_id, data_inizio, data_fine, descrizione,
                         partenza_militare_id, partenza_civile_id, destinazione_militare_id, destinazione_civile_id,
                         personale_ufficiali, personale_sottufficiali, personale_graduati, personale_civili, 
-                        note, operazione_id, creato_da, data_creazione
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                        note, operazione_id, esercitazione_id, creato_da, data_creazione
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
                     RETURNING id
                 """, (
                     ente_svolgimento_id,
@@ -701,6 +712,7 @@ def salva_attivita():
                     request.form.get('personale_civili', 0) or 0,
                     (request.form.get('note', '') or '').upper().strip(),
                     request.form.get('operazione_id') or None,
+                    request.form.get('esercitazione_id') or None,
                     user_id
                 ))
                 new_id = cur.fetchone()['id']
@@ -774,12 +786,14 @@ def visualizza_attivita(id):
                         em.nome as ente_nome, em.codice as ente_codice,
                         ta.nome as tipologia_nome,
                         op.nome_missione as operazione_nome, op.nome_breve as operazione_breve,
+                        e.nome as esercitazione_nome, e.nome_breve as esercitazione_breve, e.anno as esercitazione_anno,
                         u_creato.username as creato_da_username, u_creato.nome as creato_da_nome,
                         u_modificato.username as modificato_da_username, u_modificato.nome as modificato_da_nome
                     FROM attivita a
                     JOIN enti_militari em ON a.ente_svolgimento_id = em.id
                     JOIN tipologie_attivita ta ON a.tipologia_id = ta.id
                     LEFT JOIN operazioni op ON a.operazione_id = op.id
+                    LEFT JOIN esercitazioni e ON a.esercitazione_id = e.id
                     LEFT JOIN utenti u_creato ON a.creato_da = u_creato.id
                     LEFT JOIN utenti u_modificato ON a.modificato_da = u_modificato.id
                     WHERE a.id = %s
@@ -871,6 +885,7 @@ def modifica_attivita_form(id):
                            em_destinazione.nome AS destinazione_militare_nome,
                            ec_destinazione.nome AS destinazione_civile_nome,
                            o.nome_missione AS operazione_nome,
+                           e.nome AS esercitazione_nome,
                            u_creato.username AS creato_da_nome,
                            u_modificato.username AS modificato_da_nome
                     FROM attivita a
@@ -881,6 +896,7 @@ def modifica_attivita_form(id):
                     LEFT JOIN enti_militari em_destinazione ON a.destinazione_militare_id = em_destinazione.id
                     LEFT JOIN enti_civili ec_destinazione ON a.destinazione_civile_id = ec_destinazione.id
                     LEFT JOIN operazioni o ON a.operazione_id = o.id
+                    LEFT JOIN esercitazioni e ON a.esercitazione_id = e.id
                     LEFT JOIN utenti u_creato ON a.creato_da = u_creato.id
                     LEFT JOIN utenti u_modificato ON a.modificato_da = u_modificato.id
                     WHERE a.id = %s
@@ -903,6 +919,14 @@ def modifica_attivita_form(id):
                        ORDER BY nome_missione'''
                 )
                 operazioni = cur.fetchall()
+
+                # Esercitazioni
+                cur.execute(
+                    '''SELECT id, nome, nome_breve, anno
+                       FROM esercitazioni
+                       ORDER BY anno DESC, nome ASC'''
+                )
+                esercitazioni = cur.fetchall()
 
                 tipologie_organizzate = get_tipologie_organizzate(conn)
 
@@ -979,6 +1003,7 @@ def modifica_attivita_form(id):
         enti_militari=enti_militari,
         enti_civili=enti_civili,
         operazioni=operazioni,
+        esercitazioni=esercitazioni,
         tipologie=tipologie_organizzate
     )
 
@@ -1054,7 +1079,7 @@ def aggiorna_attivita(id):
                         ente_svolgimento_id=%s, tipologia_id=%s, data_inizio=%s, data_fine=%s, descrizione=%s,
                         partenza_militare_id=%s, partenza_civile_id=%s, destinazione_militare_id=%s, destinazione_civile_id=%s,
                         personale_ufficiali=%s, personale_sottufficiali=%s, personale_graduati=%s, personale_civili=%s, 
-                        note=%s, operazione_id=%s, modificato_da=%s, data_modifica=NOW()
+                        note=%s, operazione_id=%s, esercitazione_id=%s, modificato_da=%s, data_modifica=NOW()
                     WHERE id = %s
                 """, (
                     ente_svolgimento_id, request.form['tipologia_id'],
@@ -1068,6 +1093,7 @@ def aggiorna_attivita(id):
                     request.form.get('personale_civili', 0) or 0,
                     (request.form.get('note', '') or '').upper().strip(),
                     request.form.get('operazione_id') or None,
+                    request.form.get('esercitazione_id') or None,
                     user_id,
                     id
                 ))

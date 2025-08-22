@@ -103,7 +103,7 @@
         <div class="detail-header">
             <h3>Dettaglio Ente Militare</h3>
             <!-- Pulsante "Torna all'elenco" spostato in alto -->
-            <a href="{{ url_for('enti_militari.organigramma') }}" class="cancel-link" style="font-size: 0.9em;">&larr; Torna all'Organigramma</a>
+            <a href="{{ url_for('enti_militari.organigramma', view=return_view if return_view else none, search=return_search if return_search else none) }}" class="cancel-link" style="font-size: 0.9em;">&larr; Torna all'Organigramma</a>
         </div>
         
         <dl class="detail-grid">
@@ -137,8 +137,8 @@
         
         <!-- Pulsanti Modifica ed Elimina affiancati e con stile uniforme -->
         <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
-            <a href="{{ url_for('enti_militari.modifica_militare_form', id=ente.id) }}" style="background-color: #007bff; color: white; padding: 10px 20px; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em; text-decoration: none;">Modifica</a>
-            <form action="{{ url_for('enti_militari.elimina_militare', id=ente.id) }}" method="POST" onsubmit="return confirm('Sei sicuro di voler eliminare questo ente? L\'azione è irreversibile.') && confirm('ATTENZIONE: Confermi definitivamente l\'eliminazione?');" style="margin: 0;">
+            <a href="{{ url_for('enti_militari.modifica_militare_form', id=ente.id, view=return_view if return_view else none, search=return_search if return_search else none) }}" style="background-color: #007bff; color: white; padding: 10px 20px; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em; text-decoration: none;">Modifica</a>
+            <form action="{{ url_for('enti_militari.elimina_militare', id=ente.id, view=return_view if return_view else none, search=return_search if return_search else none) }}" method="POST" onsubmit="return confirm('Sei sicuro di voler eliminare questo ente? L\'azione è irreversibile.') && confirm('ATTENZIONE: Confermi definitivamente l\'eliminazione?');" style="margin: 0;">
                 <button type="submit" style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">Elimina Ente</button>
             </form>
             </div>

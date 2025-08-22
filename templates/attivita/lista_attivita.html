@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="attivita-container" id="attivita-container">
+<div class="main-content">
     <div class="detail-header">
         <h3>Elenco Attività</h3>
         <a href="{{ url_for('attivita.inserisci_attivita_form') }}" 
@@ -94,20 +94,14 @@
 // Inizializzazione specifica per vista lista
 document.addEventListener('DOMContentLoaded', function() {
     // Il modulo TalonAttivita si auto-inizializza già dal file attivita.js
-    // ma possiamo forzare refresh se necessario
     if (window.TalonAttivita && typeof window.TalonAttivita.init === 'function') {
         console.log('[Lista Attività] Modulo attività disponibile');
-        // Il modulo si auto-inizializza, non serve chiamare init() manualmente
     }
 });
-
 
 // Handler personalizzati per questa vista (se necessari)
 document.addEventListener('attivita:ready', function() {
     console.log('[Lista Attività] Modulo attività pronto');
-    
-    // Qui possiamo aggiungere logica specifica per la lista
-    // se necessaria, ma il modulo attivita.js gestisce già tutto
 });
 </script>
 {% endblock %}

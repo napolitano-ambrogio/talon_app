@@ -136,10 +136,10 @@ def get_accessible_entities():
 
 def validate_ente_militare_data(form_data, ente_id=None):
     errors = []
-    required_fields = ['nome', 'codice']
+    required_fields = ['nome']  # Rimosso 'codice' dai campi obbligatori
     for field in required_fields:
         if not form_data.get(field, '').strip():
-            errors.append(f'Il campo {field}  obbligatorio.')
+            errors.append(f'Il campo {field} è obbligatorio.')
     codice = form_data.get('codice', '').strip()
     if codice and len(codice) < 2:
         errors.append('Il codice deve essere di almeno 2 caratteri.')
@@ -149,15 +149,16 @@ def validate_ente_militare_data(form_data, ente_id=None):
     return errors
 
 def check_duplicate_ente_militare(nome, codice, exclude_id=None):
+    # Controlla solo duplicati sul nome, non sul codice (il codice può essere duplicato)
     if exclude_id:
         row = query_one(
-            'SELECT id FROM enti_militari WHERE (nome = %s OR codice = %s) AND id <> %s',
-            (nome, codice, exclude_id)
+            'SELECT id FROM enti_militari WHERE nome = %s AND id <> %s',
+            (nome, exclude_id)
         )
     else:
         row = query_one(
-            'SELECT id FROM enti_militari WHERE nome = %s OR codice = %s',
-            (nome, codice)
+            'SELECT id FROM enti_militari WHERE nome = %s',
+            (nome,)
         )
     return row is not None
 
@@ -437,7 +438,7 @@ def salva_militare():
                 return redirect(url_for('enti_militari.inserisci_militare_form'))
 
         if check_duplicate_ente_militare(nome, codice):
-            flash('Esiste gi un ente militare con questo nome o codice.', 'warning')
+            flash('Esiste già un ente militare con questo nome.', 'warning')
             return redirect(url_for('enti_militari.inserisci_militare_form'))
 
         new_id = execute(
@@ -484,6 +485,10 @@ def salva_militare():
 def visualizza_ente(id):
     user_id = request.current_user['user_id']
     user_role = get_user_role()
+    
+    # Cattura parametri per ritorno all'organigramma
+    return_view = request.args.get('view', '')
+    return_search = request.args.get('search', '')
 
     try:
         conn = pg_conn()
@@ -570,7 +575,9 @@ def visualizza_ente(id):
                                parent_name=parent_name,
                                children=children,
                                related_stats=related_stats,
-                               user_role=user_role)
+                               user_role=user_role,
+                               return_view=return_view,
+                               return_search=return_search)
 
     except Exception as e:
         flash(f'Errore nel caricamento dell\'ente: {str(e)}', 'error')
@@ -582,6 +589,11 @@ def visualizza_ente(id):
 @permission_required('EDIT_ENTI_MILITARI')
 def modifica_militare_form(id):
     user_id = request.current_user['user_id']
+    
+    # Cattura parametri per ritorno all'organigramma
+    return_view = request.args.get('view', '')
+    return_search = request.args.get('search', '')
+    
     try:
         ente = query_one('SELECT * FROM enti_militari WHERE id = %s', (id,))
         if not ente:
@@ -601,7 +613,9 @@ def modifica_militare_form(id):
 
         return render_template('modifica_ente.html',
                                ente=ente,
-                               tutti_gli_enti=available_parents)
+                               tutti_gli_enti=available_parents,
+                               return_view=return_view,
+                               return_search=return_search)
 
     except Exception as e:
         flash(f'Errore nel caricamento dell\'ente: {str(e)}', 'error')
@@ -613,12 +627,16 @@ def modifica_militare_form(id):
 @permission_required('EDIT_ENTI_MILITARI')
 def aggiorna_militare(id):
     user_id = request.current_user['user_id']
+    
+    # Cattura parametri per ritorno all'organigramma
+    return_view = request.args.get('view', '')
+    return_search = request.args.get('search', '')
 
     validation_errors = validate_ente_militare_data(request.form, id)
     if validation_errors:
         for error in validation_errors:
             flash(error, 'error')
-        return redirect(url_for('enti_militari.modifica_militare_form', id=id))
+        return redirect(url_for('enti_militari.modifica_militare_form', id=id, view=return_view, search=return_search))
 
     try:
         nome = request.form['nome'].upper().strip()
@@ -643,7 +661,7 @@ def aggiorna_militare(id):
             accessible = get_accessible_entities()
             if parent_id not in accessible:
                 flash('Non hai accesso all\'ente parent specificato.', 'error')
-                return redirect(url_for('enti_militari.modifica_militare_form', id=id))
+                return redirect(url_for('enti_militari.modifica_militare_form', id=id, view=return_view, search=return_search))
 
             # blocca loop gerarchici
             conn = pg_conn()
@@ -654,11 +672,11 @@ def aggiorna_militare(id):
             descendant_ids = [d['id'] for d in descendants]
             if parent_id in descendant_ids:
                 flash('Non  possibile impostare un discendente come parent.', 'error')
-                return redirect(url_for('enti_militari.modifica_militare_form', id=id))
+                return redirect(url_for('enti_militari.modifica_militare_form', id=id, view=return_view, search=return_search))
 
         if check_duplicate_ente_militare(nome, codice, id):
-            flash('Esiste gi un ente militare con questo nome o codice.', 'warning')
-            return redirect(url_for('enti_militari.modifica_militare_form', id=id))
+            flash('Esiste già un ente militare con questo nome.', 'warning')
+            return redirect(url_for('enti_militari.modifica_militare_form', id=id, view=return_view, search=return_search))
 
         execute(
             """
@@ -684,7 +702,7 @@ def aggiorna_militare(id):
         clear_user_cache()
 
         flash(f'Ente militare "{nome}" aggiornato con successo.', 'success')
-        return redirect(url_for('enti_militari.visualizza_ente', id=id))
+        return redirect(url_for('enti_militari.visualizza_ente', id=id, view=return_view, search=return_search))
 
     except Exception as e:
         flash(f'Errore durante l\'aggiornamento: {str(e)}', 'error')
@@ -696,18 +714,23 @@ def aggiorna_militare(id):
             id,
             result='FAILED'
         )
-        return redirect(url_for('enti_militari.modifica_militare_form', id=id))
+        return redirect(url_for('enti_militari.modifica_militare_form', id=id, view=return_view, search=return_search))
 
 @enti_militari_bp.route('/elimina_militare/<int:id>', methods=['POST'])
 @entity_access_required('id')
 @admin_required
 def elimina_militare(id):
     user_id = request.current_user['user_id']
+    
+    # Cattura parametri per ritorno all'organigramma
+    return_view = request.args.get('view', '')
+    return_search = request.args.get('search', '')
+    
     try:
         ente = query_one('SELECT nome, codice FROM enti_militari WHERE id = %s', (id,))
         if not ente:
             flash('Ente militare non trovato.', 'error')
-            return redirect('/enti_militari/organigramma')
+            return redirect(url_for('enti_militari.organigramma', view=return_view, search=return_search))
 
         nome_ente = ente['nome']
         codice_ente = ente['codice']
@@ -715,7 +738,7 @@ def elimina_militare(id):
         dependencies = check_ente_militare_dependencies(id)
         if dependencies:
             flash(f'Impossibile eliminare l\'ente "{nome_ente}": {", ".join(dependencies)}.', 'error')
-            return redirect('/enti_militari/organigramma')
+            return redirect(url_for('enti_militari.organigramma', view=return_view, search=return_search))
 
         execute('DELETE FROM enti_militari WHERE id = %s', (id,))
 
@@ -742,7 +765,7 @@ def elimina_militare(id):
             id,
             result='FAILED'
         )
-    return redirect('/enti_militari/organigramma')
+    return redirect(url_for('enti_militari.organigramma', view=return_view, search=return_search))
 
 # ===========================================
 # ROUTE AGGIUNTIVE E UTILIT

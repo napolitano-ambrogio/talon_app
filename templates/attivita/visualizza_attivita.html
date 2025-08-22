@@ -86,6 +86,10 @@
         </div>
         <div>
             <div class="detail-item">
+                <dt>Descrizione</dt>
+                <dd>{{ attivita.descrizione if attivita.descrizione else 'Nessuna descrizione disponibile' }}</dd>
+            </div>
+            <div class="detail-item">
                 <dt>Luogo Partenza</dt>
                 <dd>{{ partenza if partenza else 'Non specificato' }}</dd>
             </div>
@@ -94,8 +98,8 @@
                 <dd>{{ destinazione if destinazione else 'Non specificato' }}</dd>
             </div>
             <div class="detail-item">
-                <dt>Descrizione</dt>
-                <dd>{{ attivita.descrizione if attivita.descrizione else 'Nessuna descrizione disponibile' }}</dd>
+                <dt>Esercitazione</dt>
+                <dd>{{ attivita.esercitazione_nome if attivita.esercitazione_nome else 'NON SPECIFICATA' }}</dd>
             </div>
         </div>
     </dl>

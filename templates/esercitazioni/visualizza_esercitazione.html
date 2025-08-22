@@ -1,0 +1,104 @@
+{% extends "_base.html" %}
+
+{% block title %}Dettaglio Esercitazione #{{ esercitazione.id }} - TALON{% endblock %}
+
+{% block head %}
+<!-- CSS specifico per visualizzazione -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/visualizza_attivita.css') }}?v={{ cache_buster }}">
+{% endblock %}
+
+{% block content %}
+<div class="detail-card">
+    <div class="detail-header">
+        <div>
+            <h3>{{ esercitazione.nome }}</h3>
+            {% if esercitazione.nome_breve %}
+                <p class="text-muted">{{ esercitazione.nome_breve }}</p>
+            {% endif %}
+        </div>
+        
+        <div>
+            <a href="{{ url_for('esercitazioni.lista_esercitazioni') }}" style="color: #007bff; text-decoration: none; font-size: 0.9em;">
+                ← Torna all'Elenco
+            </a>
+        </div>
+    </div>
+    
+    <div class="detail-content">
+    <h4 style="margin-bottom: 15px; color: #495057;">INFORMAZIONI PRINCIPALI</h4>
+    <dl class="detail-grid">
+        <div>
+            <dt>Nome:</dt>
+            <dd>{{ esercitazione.nome }}</dd>
+        </div>
+        
+        {% if esercitazione.nome_breve %}
+        <div>
+            <dt>Nome Breve:</dt>
+            <dd>{{ esercitazione.nome_breve }}</dd>
+        </div>
+        {% endif %}
+        
+        {% if esercitazione.anno %}
+        <div>
+            <dt>Anno:</dt>
+            <dd>{{ esercitazione.anno }}</dd>
+        </div>
+        {% endif %}
+    </dl>
+        
+    </div>
+    
+    <hr style="margin-top: 30px; margin-bottom: 20px;">
+    
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+        {% if session.get('ruolo_nome') in ['ADMIN', 'OPERATORE'] %}
+        <a href="{{ url_for('esercitazioni.modifica_esercitazione', id=esercitazione.id) }}" 
+           style="background-color: #007bff; color: white; padding: 10px 20px; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em; text-decoration: none;">
+            MODIFICA
+        </a>
+        {% endif %}
+        
+        {% if session.get('ruolo_nome') == 'ADMIN' %}
+        <button type="button" 
+                onclick="confermaEliminazione()"
+                style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">
+            ELIMINA
+        </button>
+        {% endif %}
+        
+        <button type="button" onclick="window.print()" 
+                style="background-color: #6c757d; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">
+            STAMPA
+        </button>
+    </div>
+</div>
+
+{% if session.get('ruolo_nome') == 'ADMIN' %}
+<!-- Form nascosto per eliminazione -->
+<form id="form-elimina" method="POST" action="{{ url_for('esercitazioni.elimina_esercitazione', id=esercitazione.id) }}" style="display: none;">
+</form>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if session.get('ruolo_nome') == 'ADMIN' %}
+<script>
+function confermaEliminazione() {
+    if (confirm('Sei sicuro di voler eliminare questa esercitazione?\n\nATTENZIONE: Questa operazione è irreversibile!\nVerrà verificato se ci sono attività collegate prima dell\'eliminazione.')) {
+        document.getElementById('form-elimina').submit();
+    }
+}
+</script>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Log visualizzazione
+    console.log('Visualizzando esercitazione ID:', {{ esercitazione.id }});
+    
+    // Eventuali altre inizializzazioni
+});
+</script>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "_base.html" %}
+
+{% block title %}Nuova Esercitazione - TALON{% endblock %}
+
+{% block head %}
+<!-- CSS specifico per form -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/form_attivita.css') }}?v={{ cache_buster }}">
+{% endblock %}
+
+{% block content %}
+<div class="form-container attivita-form-container" id="inserimento-esercitazione-container">
+    <div class="form-header">
+        <h3>NUOVA ESERCITAZIONE:</h3>
+    </div>
+    
+    <form action="{{ url_for('esercitazioni.inserisci_esercitazione_form') }}" method="POST" id="form-inserimento-esercitazione" class="attivita-form">
+        
+        <!-- Sezione Dati Principali -->
+        <div class="form-section">
+            <h4 class="section-title">DATI PRINCIPALI</h4>
+            
+            <div class="form-group">
+                <label for="nome">Nome Esercitazione <span class="required">*</span></label>
+                <input type="text" 
+                       name="nome" 
+                       id="nome" 
+                       class="form-control" 
+                       required
+                       maxlength="255"
+                       placeholder="Inserisci il nome dell'esercitazione">
+            </div>
+
+            <div class="form-group">
+                <label for="nome_breve">Nome Breve</label>
+                <input type="text" 
+                       name="nome_breve" 
+                       id="nome_breve" 
+                       class="form-control" 
+                       maxlength="100"
+                       placeholder="Nome abbreviato (opzionale)">
+            </div>
+
+            <div class="form-group">
+                <label for="anno">Anno</label>
+                <input type="number" 
+                       name="anno" 
+                       id="anno" 
+                       class="form-control" 
+                       min="2000" 
+                       max="2030"
+                       placeholder="Anno dell'esercitazione">
+            </div>
+        </div>
+        
+        <!-- Pulsanti azione -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Salva Esercitazione
+            </button>
+        </div>
+    </form>
+    <br>
+    <a href="{{ url_for('esercitazioni.lista_esercitazioni') }}" class="cancel-link">Annulla</a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('form-inserimento-esercitazione');
+    
+    // Validazione form
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const nome = document.getElementById('nome').value.trim();
+            
+            if (!nome) {
+                e.preventDefault();
+                alert('Il nome dell\'esercitazione è obbligatorio');
+                document.getElementById('nome').focus();
+                return false;
+            }
+        });
+    }
+    
+    // Auto-focus sul primo campo
+    const nomeField = document.getElementById('nome');
+    if (nomeField) {
+        nomeField.focus();
+    }
+});
+</script>
+{% endblock %}

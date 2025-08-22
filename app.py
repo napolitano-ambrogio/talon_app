@@ -77,6 +77,7 @@ from routes.enti_militari import enti_militari_bp
 from routes.enti_civili import enti_civili_bp
 from routes.operazioni import operazioni_bp
 from routes.attivita import attivita_bp
+from routes.esercitazioni import esercitazioni_bp
 from routes.drill_down_chart import drill_down_bp
 from routes.geografia import geografia_bp
 from blueprints.geocoding_bp import geocoding_bp
@@ -95,6 +96,7 @@ def create_app():
     
     # FORZA DEBUG MODE
     app.config['DEBUG'] = True
+    app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.debug = True
     
     # Setup logging
@@ -1682,6 +1684,7 @@ def create_app():
     app.register_blueprint(enti_civili_bp)
     app.register_blueprint(operazioni_bp)
     app.register_blueprint(attivita_bp)
+    app.register_blueprint(esercitazioni_bp)
     app.register_blueprint(drill_down_bp)
     app.register_blueprint(geografia_bp)
     app.register_blueprint(geocoding_bp)
