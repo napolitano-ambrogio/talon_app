@@ -1,0 +1,265 @@
+{% extends "shared/_base.html" %}
+{% block title %}Dettaglio Ente Civile - TALON{% endblock %}
+
+{% block extra_css %}
+<!-- Leaflet CSS (locale) -->
+<link rel="stylesheet" href="/external/leaflet/leaflet.css" />
+<style>
+    .main-content-wrapper {
+        display: flex;
+        gap: 0;
+        align-items: stretch;
+        width: 100%;
+        max-height: calc(100vh - 160px);
+        min-height: 500px;
+    }
+    
+    .ente-details {
+        flex: 0 0 500px;
+        min-width: 500px;
+        max-width: 600px;
+    }
+    
+    .ente-map-container {
+        flex: 1;
+        min-width: 400px;
+        border: 1px solid #ddd;
+        border-left: none;
+        border-radius: 0 8px 8px 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .detail-card {
+        border-radius: 8px 0 0 8px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    #ente-map {
+        width: 100%;
+        flex: 1;
+        min-height: 0;
+    }
+    
+    
+    .no-coordinates {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        background: #f8f9fa;
+        color: #6c757d;
+        text-align: center;
+        font-style: italic;
+    }
+    
+    .leaflet-marker-blue {
+        filter: invert(28%) sepia(74%) saturate(1812%) hue-rotate(208deg) brightness(94%) contrast(91%);
+    }
+    
+    @media (max-width: 1024px) {
+        .main-content-wrapper {
+            flex-direction: column;
+            gap: 20px;
+            min-height: auto;
+        }
+        
+        .ente-details {
+            flex: none;
+            min-width: auto;
+            max-width: none;
+        }
+        
+        .ente-map-container {
+            flex: none;
+            min-width: auto;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        .detail-card {
+            border-radius: 8px;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .ente-map-container {
+            height: 300px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 40px;">
+    <div class="main-content-wrapper">
+        <div class="ente-details">
+            <div class="detail-card">
+        <div class="detail-header">
+            <h3>Dettaglio Ente Civile</h3>
+            <!-- CORREZIONE 3: Pulsante "Torna all'elenco" spostato in alto -->
+            <a href="{{ url_for('enti_civili.enti_civili') }}" class="cancel-link" style="font-size: 0.9em;">&larr; Torna all'elenco</a>
+        </div>
+        
+        <dl class="detail-grid">
+            <div>
+                <div class="detail-item">
+                    <dt>Nome Ente</dt>
+                    <dd>{{ ente.nome or 'N/D' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Indirizzo</dt>
+                    <dd>{{ ente.indirizzo or 'Indirizzo non specificato' }}</dd>
+                </div>
+                 <div class="detail-item">
+                    <dt>Nazione</dt>
+                    <dd>{{ ente.nazione or 'N/D' }}</dd>
+                </div>
+            </div>
+            <div>
+                <div class="detail-item">
+                    <dt>Telefono</dt>
+                    <dd>{{ ente.telefono or 'N/D' }}</dd>
+                </div>
+                <div class="detail-item">
+                    <dt>Email</dt>
+                    <dd>{{ ente.email or 'N/D' }}</dd>
+                </div>
+            </div>
+        </dl>
+
+        <hr style="margin-top: 30px; margin-bottom: 20px;">
+        
+        <!-- CORREZIONE 1 & 2: Pulsanti Modifica ed Elimina affiancati e con stile uniforme -->
+        <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+            <a href="{{ url_for('enti_civili.modifica_civile_form', id=ente.id) }}" style="background-color: #007bff; color: white; padding: 10px 20px; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em; text-decoration: none;">Modifica</a>
+            <form action="{{ url_for('enti_civili.elimina_civile', id=ente.id) }}" method="POST" onsubmit="return confirm('Sei sicuro di voler eliminare questo ente? L\'azione è irreversibile.') && confirm('ATTENZIONE: Confermi definitivamente l\'eliminazione?');" style="margin: 0;">
+                <button type="submit" style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">Elimina Ente</button>
+            </form>
+            </div>
+        </div>
+        </div>
+        
+        <!-- Mappa dell'ente -->
+        <div class="ente-map-container">
+            <div id="ente-map"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JS (locale) -->
+<script src="/external/leaflet/leaflet.js"></script>
+<script>
+// Inizializza mappa ente civile
+function initEnteMap() {
+    // Configura icona marker personalizzata blu con FontAwesome
+    const customIcon = L.icon({
+        iconUrl: '/external/fontawesome/svgs/solid/location-dot.svg',
+        iconSize: [30, 40],
+        iconAnchor: [15, 40],
+        popupAnchor: [0, -40],
+        className: 'leaflet-marker-blue'
+    });
+    
+    // Coordinate dell'ente dal backend
+    const coordinateStr = '{{ ente.coordinate_formatted|default("") }}';
+    const enteData = {
+        id: {{ ente.id }},
+        nome: '{{ ente.nome|e }}',
+        indirizzo: '{{ ente.indirizzo|e }}',
+        nazione: '{{ ente.nazione|e }}',
+        tipo: 'civile',
+        coordinate_str: coordinateStr,
+        ha_coordinate: coordinateStr.length > 0
+    };
+    
+    // Parse delle coordinate se disponibili
+    if (enteData.ha_coordinate && enteData.coordinate_str && enteData.coordinate_str.trim() !== '') {
+        const coords = enteData.coordinate_str.split(', ');
+        if (coords.length === 2) {
+            enteData.lat = parseFloat(coords[0]);
+            enteData.lng = parseFloat(coords[1]);
+            if (isNaN(enteData.lat) || isNaN(enteData.lng)) {
+                enteData.ha_coordinate = false;
+            }
+        } else {
+            enteData.ha_coordinate = false;
+        }
+    } else {
+        enteData.ha_coordinate = false;
+    }
+    
+    console.log('Dati ente civile (caricamento veloce):', enteData);
+    console.log('coordinate_formatted dal backend:', '{{ ente.coordinate_formatted }}');
+    
+    // Caricamento immediato senza chiamata AJAX
+    if (enteData.ha_coordinate && enteData.lat && enteData.lng) {
+        console.log('Coordinate valide trovate, showing map:', enteData.lat, enteData.lng);
+        // Coordinate trovate, mostra la mappa immediatamente
+        showEnteMap(enteData, customIcon);
+    } else {
+        console.log('Nessuna coordinata per ente civile:', enteData.id, 'ha_coordinate:', enteData.ha_coordinate, 'lat:', enteData.lat, 'lng:', enteData.lng);
+        // Nessuna coordinata, mostra messaggio
+        showNoCoordinatesMessage();
+    }
+}
+
+function showEnteMap(ente, customIcon) {
+    // Coordinate trovate, mostra la mappa
+    const map = L.map('ente-map').setView([ente.lat, ente.lng], 15);
+        
+        // Aggiungi tile layer con ottimizzazioni
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18,
+            loading: 'lazy',
+            crossOrigin: true,
+            updateWhenIdle: true,
+            keepBuffer: 2
+        }).addTo(map);
+                    
+    // Aggiungi marker per l'ente con icona personalizzata
+    const marker = L.marker([ente.lat, ente.lng], {icon: customIcon})
+        .addTo(map)
+        .bindPopup(`
+            <strong>${ente.nome}</strong><br>
+            ${ente.indirizzo}<br>
+            <small>Ente ${ente.tipo}</small>
+        `)
+        .openPopup();
+}
+
+function showNoCoordinatesMessage() {
+    document.getElementById('ente-map').innerHTML = `
+        <div class="no-coordinates">
+            <div>
+                <i class="fas fa-map-marker-alt" style="font-size: 2em; margin-bottom: 10px; color: #ccc;"></i><br>
+                Questo ente non è stato ancora georeferenziato.<br>
+                <small>Le coordinate non sono disponibili.</small>
+            </div>
+        </div>
+    `;
+}
+
+function showErrorMessage(message) {
+    document.getElementById('ente-map').innerHTML = `
+        <div class="no-coordinates">
+            <div>
+                <i class="fas fa-exclamation-triangle" style="font-size: 2em; margin-bottom: 10px; color: #dc3545;"></i><br>
+                ${message}<br>
+                <small>Impossibile caricare la mappa.</small>
+            </div>
+        </div>
+    `;
+}
+
+// Inizializza quando il DOM è pronto
+document.addEventListener('DOMContentLoaded', initEnteMap);
+</script>
+{% endblock %}

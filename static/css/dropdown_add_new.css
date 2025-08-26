@@ -1,0 +1,178 @@
+/**
+ * ========================================
+ * TALON - DROPDOWN ADD NEW STYLES
+ * File: static/css/dropdown_add_new.css
+ * 
+ * Design Professionale per Opzioni "Aggiungi nuovo..."
+ * ========================================
+ */
+
+/* ===== OPZIONE "AGGIUNGI NUOVO" ===== */
+.searchable-select-option[data-value="new"] {
+    background: linear-gradient(135deg, var(--gray-50) 0%, #e7f3ff 100%) !important;
+    border: 1px solid var(--secondary-color) !important;
+    border-radius: var(--radius) !important;
+    margin: 4px 6px !important;
+    padding: var(--spacing-sm) var(--spacing) !important;
+    font-weight: 600 !important;
+    color: var(--secondary-color) !important;
+    font-style: italic !important;
+    transition: all var(--transition) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
+    box-shadow: 0 2px 4px rgba(74, 144, 226, 0.1) !important;
+}
+
+.searchable-select-option[data-value="new"]:hover {
+    background: linear-gradient(135deg, #e7f3ff 0%, #cce7ff 100%) !important;
+    border-color: #3a7bc8 !important;
+    color: #3a7bc8 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: var(--shadow-hover) !important;
+}
+
+/* ===== SEPARATORE VISIVO ===== */
+.searchable-select-option[data-value="new"]::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 6px;
+    right: 6px;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border-color), transparent);
+}
+
+/* ===== OPZIONI TEMPORANEE ===== */
+.searchable-select-option[data-temp="true"] {
+    background: #fff3cd !important;
+    border-left: 3px solid var(--warning-color) !important;
+    padding-left: var(--spacing-lg) !important;
+}
+
+.searchable-select-option[data-temp="true"] .option-text {
+    font-weight: 500 !important;
+    color: var(--gray-800) !important;
+}
+
+/* ===== DROPDOWN VISIBILITÀ ===== */
+.searchable-select-dropdown {
+    max-height: 400px;
+    overflow: visible;
+}
+
+/* ===== CONTAINER OPZIONI CON SCROLL ===== */
+.searchable-select-dropdown .searchable-select-options,
+div.searchable-select-dropdown ul.searchable-select-options,
+.searchable-select .searchable-select-dropdown .searchable-select-options {
+    position: relative !important;
+    max-height: 380px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: var(--spacing-xl) !important;
+    box-sizing: border-box !important;
+}
+
+/* ===== ULTIMO ELEMENTO PADDING ===== */
+.searchable-select-dropdown .searchable-select-options .searchable-select-option:last-child,
+div.searchable-select-dropdown ul.searchable-select-options li:last-child,
+.searchable-select .searchable-select-dropdown .searchable-select-options li:last-child {
+    margin-bottom: var(--spacing) !important;
+    padding-bottom: var(--spacing-xl) !important;
+    border-bottom: none !important;
+}
+
+/* ===== SCROLLBAR PERSONALIZZATA ===== */
+html body .searchable-select-dropdown .searchable-select-options::-webkit-scrollbar,
+html body div.searchable-select-dropdown ul.searchable-select-options::-webkit-scrollbar,
+html body .searchable-select .searchable-select-dropdown .searchable-select-options::-webkit-scrollbar {
+    width: 8px !important;
+    background: transparent !important;
+}
+
+html body .searchable-select-dropdown .searchable-select-options::-webkit-scrollbar-track,
+html body div.searchable-select-dropdown ul.searchable-select-options::-webkit-scrollbar-track,
+html body .searchable-select .searchable-select-dropdown .searchable-select-options::-webkit-scrollbar-track {
+    background: var(--gray-100) !important;
+    border-radius: 4px !important;
+    margin: 4px 0 !important;
+}
+
+html body .searchable-select-dropdown .searchable-select-options::-webkit-scrollbar-thumb,
+html body div.searchable-select-dropdown ul.searchable-select-options::-webkit-scrollbar-thumb,
+html body .searchable-select .searchable-select-dropdown .searchable-select-options::-webkit-scrollbar-thumb {
+    background: var(--secondary-color) !important;
+    border-radius: 4px !important;
+    min-height: 40px !important;
+}
+
+html body .searchable-select-dropdown .searchable-select-options::-webkit-scrollbar-thumb:hover,
+html body div.searchable-select-dropdown ul.searchable-select-options::-webkit-scrollbar-thumb:hover,
+html body .searchable-select .searchable-select-dropdown .searchable-select-options::-webkit-scrollbar-thumb:hover {
+    background: #3a7bc8 !important;
+}
+
+html body .searchable-select-dropdown .searchable-select-options::-webkit-scrollbar-thumb:active,
+html body div.searchable-select-dropdown ul.searchable-select-options::-webkit-scrollbar-thumb:active,
+html body .searchable-select .searchable-select-dropdown .searchable-select-options::-webkit-scrollbar-thumb:active {
+    background: var(--primary-color) !important;
+}
+
+/* ===== SCROLLBAR FIREFOX ===== */
+html body .searchable-select-dropdown .searchable-select-options,
+html body div.searchable-select-dropdown ul.searchable-select-options,
+html body .searchable-select .searchable-select-dropdown .searchable-select-options {
+    scrollbar-width: thin !important;
+    scrollbar-color: var(--secondary-color) var(--gray-100) !important;
+}
+
+/* ===== POSIZIONAMENTO DROPDOWN ===== */
+.searchable-select-wrapper {
+    position: relative;
+    z-index: 1050;
+}
+
+.searchable-select-dropdown.dropdown-above {
+    top: auto !important;
+    bottom: 100% !important;
+    margin-top: 0 !important;
+    margin-bottom: var(--spacing-sm) !important;
+}
+
+/* ===== ICONA PIÙ ===== */
+.searchable-select-option[data-value="new"] .option-text::before {
+    content: "➕ ";
+    font-size: var(--text-sm);
+    margin-right: var(--spacing-sm);
+    opacity: 0.8;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+    .searchable-select-option[data-value="new"] {
+        padding: var(--spacing-sm) !important;
+        font-size: var(--text-sm) !important;
+    }
+}
+
+/* ===== ANIMAZIONI ===== */
+@keyframes pulseAddNew {
+    0% { box-shadow: 0 2px 4px rgba(74, 144, 226, 0.1); }
+    50% { box-shadow: 0 4px 8px rgba(74, 144, 226, 0.3); }
+    100% { box-shadow: 0 2px 4px rgba(74, 144, 226, 0.1); }
+}
+
+.searchable-select-option[data-value="new"]:focus {
+    animation: pulseAddNew 1.5s infinite;
+}
+
+/* ===== STATO EVIDENZIATO ===== */
+.searchable-select-option[data-value="new"].highlighted {
+    background: linear-gradient(135deg, var(--secondary-color) 0%, #3a7bc8 100%) !important;
+    color: white !important;
+    border-color: var(--primary-color) !important;
+}
+
+.searchable-select-option[data-value="new"].highlighted .option-text::before {
+    color: white !important;
+}

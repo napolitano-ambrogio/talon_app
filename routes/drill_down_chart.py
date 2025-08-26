@@ -42,7 +42,22 @@ def get_db_connection():
 def index():
     """Vista principale per il grafico drill-down"""
     # Usa il template standalone che non richiede base.html
-    return render_template('components/drill-down_chart.html')
+    return render_template('drill-down_chart.html')
+
+@drill_down_bp.route('/test')
+def test():
+    """Test route semplice per verificare che funzioni"""
+    return """
+    <html>
+    <head><title>TEST DRILL DOWN</title></head>
+    <body style="background: red !important; padding: 100px;">
+        <h1 style="color: white;">TEST DRILL DOWN ROUTE FUNZIONA!</h1>
+        <div style="background: green; padding: 50px; margin: 50px; border: 10px solid blue;">
+            <h2>Container Test</h2>
+        </div>
+    </body>
+    </html>
+    """
 
 # ===========================================
 # API ENDPOINTS
@@ -361,7 +376,6 @@ def api_dettagli():
                 WHERE em.nome = %s
                     AND {date_condition}
                 ORDER BY a.data_inizio DESC
-                LIMIT 50
             """
             
             cur.execute(query, date_params)

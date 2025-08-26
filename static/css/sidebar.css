@@ -11,7 +11,7 @@
     --sidebar-hover-color: rgb(28, 46, 74);
     --sidebar-highlight-color: #495057;
     --sidebar-width-collapsed: 60px;
-    --sidebar-width-expanded: 260px;
+    --sidebar-width-expanded: 180px;
     --transition-speed: 0.5s;
     --transition-easing: cubic-bezier(0.4, 0.0, 0.2, 1);
     --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
@@ -85,15 +85,15 @@
 }
 
 .menu-toggle svg {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     transform-origin: center;
-    transform: rotate(0deg) scale(1);
+    transform: rotate(0deg);
     transition: transform 0.6s var(--transition-bounce) !important;
 }
 
 .sidebar.pinned .menu-toggle svg {
-    transform: rotate(90deg) scale(1.1);
+    transform: rotate(90deg);
 }
 
 /* Tooltip */
@@ -111,7 +111,7 @@
     padding: 8px 12px;
     z-index: 1001; 
     font-size: 12px; 
-    font-weight: 500;
+    font-weight: normal;
     white-space: nowrap;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     pointer-events: none;
@@ -165,6 +165,8 @@
     border-radius: 0 25px 25px 0;
     margin-right: 10px;
     transition: all 0.3s var(--transition-easing);
+    color: white;
+    text-decoration: none;
 }
 
 .sidebar-menu li a:hover { 
@@ -193,13 +195,16 @@
 /* Icone del menu */
 .sidebar-menu svg { 
     flex-shrink: 0; 
-    width: 24px;
-    height: 24px;
-    transition: all 0.4s var(--transition-bounce);
+    width: 28px !important;
+    height: 28px !important;
+    transition: none !important;
+    stroke: white;
+    fill: none;
+    color: white;
 }
 
 .sidebar-menu li a:hover svg {
-    transform: scale(1.2);
+    /* Rimosso zoom animation */
     filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.3));
 }
 
@@ -209,7 +214,8 @@
     opacity: 0; 
     transform: translateX(-20px);
     transition: all 0.4s var(--transition-easing);
-    font-weight: 500;
+    font-weight: normal;
+    color: white;
 }
 
 .sidebar.expanded .menu-text,
@@ -237,7 +243,7 @@
 
 .menu-divider .divider-label {
     font-size: 0.7rem;
-    font-weight: 600;
+    font-weight: normal;
     color: rgba(255, 255, 255, 0.6);
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -299,38 +305,7 @@ body[data-user-role="VISUALIZZATORE"] .sidebar li[data-visualizzatore-hidden] {
     display: none !important;
 }
 
-/* Indicatori di livello accesso */
-.sidebar li[data-min-role="ADMIN"] a::after,
-.sidebar li[data-requires-role="ADMIN"] a::after {
-    content: '';
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 3px;
-    background: var(--role-admin-color);
-    border-radius: 50%;
-    opacity: 0.7;
-}
-
-.sidebar li[data-min-role="OPERATORE"] a::after,
-.sidebar li[data-requires-role="OPERATORE"] a::after {
-    content: '';
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 3px;
-    background: var(--role-operatore-color);
-    border-radius: 50%;
-    opacity: 0.7;
-}
-
-.sidebar:not(.expanded):not(.pinned) li a::after {
-    display: none;
-}
+/* Indicatori di livello accesso rimossi */
 
 /* ========================================
    6. SIDEBAR FOOTER E LOGOUT
@@ -377,13 +352,13 @@ body[data-user-role="VISUALIZZATORE"] .sidebar li[data-visualizzatore-hidden] {
 .logout-btn svg {
     margin-right: 0.75rem;
     flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-    transition: all 0.4s var(--transition-bounce);
+    width: 28px !important;
+    height: 28px !important;
+    transition: none !important;
 }
 
 .logout-btn:hover svg {
-    transform: scale(1.2);
+    /* Rimosso zoom animation */
     filter: drop-shadow(0 2px 4px rgba(255, 107, 107, 0.3));
 }
 
@@ -503,7 +478,7 @@ body[data-user-role="VISUALIZZATORE"] .sidebar li[data-visualizzatore-hidden] {
 .page-wrapper {
     margin-left: var(--sidebar-width-collapsed);
     padding: 0;
-    transition: margin-left var(--transition-speed) var(--transition-easing);
+    transition: margin-left 0.3s ease;
 }
 
 .sidebar.expanded ~ .page-wrapper,
@@ -521,18 +496,15 @@ body[data-user-role="VISUALIZZATORE"] .sidebar li[data-visualizzatore-hidden] {
    10. RESPONSIVE
    ======================================== */
 @media (max-width: 768px) {
+    /* Sidebar sempre visibile per navigazione - rimosse regole di nascondimento */
     .sidebar {
-        transform: translateX(-100%);
-        transition: transform var(--transition-speed) var(--transition-easing);
+        /* Mantieni sidebar visibile */
+        transform: translateX(0) !important;
     }
     
     .sidebar.expanded,
     .sidebar.pinned {
         transform: translateX(0);
-    }
-    
-    .page-wrapper {
-        margin-left: 0;
     }
     
     .menu-divider {
@@ -633,13 +605,13 @@ span[data-role],
 
 .sistema-btn svg {
     flex-shrink: 0;
-    width: 24px;
-    height: 24px;
-    transition: all 0.4s var(--transition-bounce);
+    width: 28px !important;
+    height: 28px !important;
+    transition: none !important;
 }
 
 .sistema-btn:hover svg {
-    transform: scale(1.2);
+    /* Rimosso zoom animation */
     filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.3));
 }
 
@@ -648,7 +620,7 @@ span[data-role],
     opacity: 0;
     transform: translateX(-20px);
     transition: all 0.4s var(--transition-easing);
-    font-weight: 500;
+    font-weight: normal;
 }
 
 .sidebar.expanded .sistema-btn .menu-text,
@@ -666,4 +638,48 @@ span[data-role],
 
 .sidebar.collapsed .sistema-btn svg {
     margin-right: 0;
+}
+
+/* OVERRIDE ASSOLUTO - Dimensioni fisse per TUTTE le icone */
+.sidebar svg,
+.sidebar .menu-toggle svg,
+.sidebar .sidebar-menu svg,
+.sidebar .logout-btn svg,
+.sidebar .sistema-btn svg,
+nav.sidebar svg,
+#sidebar svg,
+.sidebar * svg {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    max-width: 28px !important;
+    max-height: 28px !important;
+    transform: none !important;
+    transition: none !important;
+    flex-shrink: 0 !important;
+}
+
+/* Stati specifici sidebar */
+.sidebar.collapsed svg,
+.sidebar.expanded svg, 
+.sidebar.pinned svg,
+.sidebar:not(.expanded) svg,
+.sidebar:not(.pinned) svg {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    max-width: 28px !important;
+    max-height: 28px !important;
+}
+
+/* Eccezione SOLO per rotazione toggle */
+.sidebar .menu-toggle svg {
+    transition: transform 0.6s var(--transition-bounce) !important;
+    transform: rotate(0deg) !important;
+}
+
+.sidebar.pinned .menu-toggle svg {
+    transform: rotate(90deg) !important;
 }

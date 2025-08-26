@@ -1,21 +1,25 @@
-{% extends "_base.html" %}
+{% extends "shared/_base.html" %}
 
 {% block title %}Elenco Attività - TALON{% endblock %}
 
-{% block head %}
-<!-- CSS specifico per lista attività -->
-<link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/lista_attivita.css') }}?v={{ cache_buster }}">
+{% block additional_css %}
+<!-- CSS Advanced Table Component -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/advanced-table.css') }}?v=1.0">
+{% endblock %}
+
+{% block page_title %}Elenco Attività{% endblock %}
+
+{% block page_controls %}
+{% if user_role in ['ADMIN', 'OPERATORE'] %}
+<a href="{{ url_for('attivita.inserisci_attivita_form') }}" class="btn btn-success">
+    <i class="fas fa-plus"></i> Nuova Attività
+</a>
+{% endif %}
 {% endblock %}
 
 {% block content %}
-<div class="main-content">
-    <div class="detail-header">
-        <h3>Elenco Attività</h3>
-        <a href="{{ url_for('attivita.inserisci_attivita_form') }}" 
-           class="btn-modifica">Nuova Attività</a>
-    </div>
-
-    <div class="list-container">
+<main class="dashboard__content-wrapper" role="main">
+    <section class="dashboard__scroll-content" aria-label="Contenuto principale lista attivita">
         <!-- Barra di ricerca -->
         <div class="search-bar">
             <input type="search" 
@@ -25,30 +29,38 @@
                    aria-label="Cerca attività">
         </div>
 
+        <!-- Paginazione superiore -->
+        <div class="pagination-wrapper top-pagination" id="topPagination">
+            <div class="pagination-info">
+                <span id="topPageInfo">Pagina 1 di 1 (0 attività totali)</span>
+            </div>
+            <div class="pagination-controls" id="topPaginationControls">
+                <!-- Controlli generati dinamicamente -->
+            </div>
+        </div>
+
         <!-- Tabella attività -->
         <div class="table-responsive">
-            <table class="styled-table" id="attivitaTable">
+            <table class="advanced-table" id="attivitaTable">
                 <thead>
                     <tr>
                         <th class="sortable" data-column="0" data-sort-type="date">
                             <span class="th-label">Data Inizio</span>
-                            <span class="th-arrow" data-arrow="">▲▼</span>
                         </th>
-                        <th class="sortable" data-column="1" data-sort-type="text">
-                            <span class="th-label">Tipo Attività</span>
-                            <span class="th-arrow" data-arrow="">▲▼</span>
+                        <th class="sortable" data-column="1" data-sort-type="date">
+                            <span class="th-label">Data Fine</span>
                         </th>
                         <th class="sortable" data-column="2" data-sort-type="text">
-                            <span class="th-label">Ente Svolgimento</span>
-                            <span class="th-arrow" data-arrow="">▲▼</span>
+                            <span class="th-label">Tipo Attività</span>
                         </th>
                         <th class="sortable" data-column="3" data-sort-type="text">
-                            <span class="th-label">Operazione</span>
-                            <span class="th-arrow" data-arrow="">▲▼</span>
+                            <span class="th-label">Ente Svolgimento</span>
                         </th>
                         <th class="sortable" data-column="4" data-sort-type="text">
+                            <span class="th-label">Operazione</span>
+                        </th>
+                        <th class="sortable" data-column="5" data-sort-type="text">
                             <span class="th-label">Descrizione</span>
-                            <span class="th-arrow" data-arrow="">▲▼</span>
                         </th>
                     </tr>
                 </thead>
@@ -61,6 +73,9 @@
                         <td data-sort="{{ attivita.data_inizio.isoformat() if attivita.data_inizio else '' }}">
                             {{ attivita.data_inizio.strftime('%d/%m/%Y') if attivita.data_inizio else '' }}
                         </td>
+                        <td data-sort="{{ attivita.data_fine.isoformat() if attivita.data_fine else '' }}">
+                            {{ attivita.data_fine.strftime('%d/%m/%Y') if attivita.data_fine else '' }}
+                        </td>
                         <td>{{ attivita.tipologia_nome }}</td>
                         <td>{{ attivita.ente_nome }}</td>
                         <td>{{ attivita.operazione_nome or 'NAZIONALE' }}</td>
@@ -70,33 +85,94 @@
                     </tr>
                     {% else %}
                     <tr class="no-data-row">
-                        <td colspan="5" style="text-align: center;">Nessuna attività inserita.</td>
+                        <td colspan="6" style="text-align: center;">Nessuna attività inserita.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
 
+        <!-- Paginazione inferiore -->
+        <div class="pagination-wrapper bottom-pagination" id="bottomPagination">
+            <div class="pagination-info">
+                <span id="bottomPageInfo">Pagina 1 di 1 (0 attività totali)</span>
+            </div>
+            <div class="pagination-controls" id="bottomPaginationControls">
+                <!-- Controlli generati dinamicamente -->
+            </div>
+        </div>
+
         <!-- Riga no results (gestita da JavaScript) -->
         <!-- Viene creata dinamicamente da attivita.js se necessario -->
-    </div>
-</div>
+        
+    </section>
+</main>
+
 {% endblock %}
 
 {% block extra_js %}
-<!-- I file JavaScript delle attività sono già caricati da _base.html nella sezione corretta:
+<!-- I file JavaScript delle attività sono già caricati da shared/_base.html nella sezione corretta:
      - static/js/attivita/attivita_utils.js
      - static/js/attivita/attivita_forms.js  
      - static/js/attivita/attivita.js (contiene la logica della lista)
      Quindi qui serve solo l'inizializzazione -->
 
+<!-- Advanced Table Component JS -->
+<script src="{{ url_for('static', filename='js/components/advanced-table.js') }}?v={{ cache_buster }}"></script>
+
 <script>
 // Inizializzazione specifica per vista lista
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('[Lista Attività] DOM caricato, inizializzazione tabella...');
+    
     // Il modulo TalonAttivita si auto-inizializza già dal file attivita.js
     if (window.TalonAttivita && typeof window.TalonAttivita.init === 'function') {
         console.log('[Lista Attività] Modulo attività disponibile');
     }
+    
+    // Aspetta che AdvancedTable sia disponibile
+    setTimeout(function() {
+        if (typeof AdvancedTable !== 'undefined') {
+            console.log('[Lista Attività] AdvancedTable disponibile, inizializzazione...');
+            
+            // Verifica che la tabella esista
+            const tableElement = document.querySelector('#attivitaTable');
+            if (tableElement) {
+                console.log('[Lista Attività] Tabella trovata:', tableElement);
+                console.log('[Lista Attività] Headers nella tabella:', tableElement.querySelectorAll('th').length);
+                
+                // Inizializza la Advanced Table con tutte le funzionalità
+                try {
+                    window.attivitaTable = new AdvancedTable({
+                        tableSelector: '#attivitaTable',
+                        searchInputSelector: '#searchInput',
+                        itemsPerPage: 100,
+                        enableSorting: true,
+                        enableDragDrop: true,
+                        enablePagination: true,
+                        enableColumnResize: true
+                    });
+                    
+                    console.log('[Lista Attività] Tabella avanzata inizializzata:', window.attivitaTable);
+                    
+                    // Test drag&drop - aggiungi event listeners di test
+                    const headers = tableElement.querySelectorAll('th.sortable');
+                    console.log('[Lista Attività] Headers sortabili trovati:', headers.length);
+                    
+                    headers.forEach((header, index) => {
+                        console.log(`[Lista Attività] Header ${index}: draggable=${header.draggable}, hasListeners=${header.ondragstart ? 'yes' : 'no'}`);
+                    });
+                    
+                } catch (error) {
+                    console.error('[Lista Attività] Errore durante inizializzazione:', error);
+                }
+            } else {
+                console.error('[Lista Attività] Tabella #attivitaTable non trovata nel DOM!');
+            }
+        } else {
+            console.error('[Lista Attività] AdvancedTable non disponibile!');
+        }
+    }, 100); // Aspetta 100ms per dare tempo al DOM di essere completamente pronto
 });
 
 // Handler personalizzati per questa vista (se necessari)

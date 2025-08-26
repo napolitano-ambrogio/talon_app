@@ -12,7 +12,7 @@ os.environ['FLASK_DEBUG'] = '1'
 # Aggiungi il percorso root al sys.path per import corretti
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Flask, request, jsonify, render_template, redirect, session, flash, url_for, Response, get_flashed_messages
+from flask import Flask, request, jsonify, render_template, redirect, session, flash, url_for, Response, get_flashed_messages, send_from_directory
 import hashlib
 import datetime
 from waitress import serve
@@ -80,6 +80,8 @@ from routes.attivita import attivita_bp
 from routes.esercitazioni import esercitazioni_bp
 from routes.drill_down_chart import drill_down_bp
 from routes.geografia import geografia_bp
+from routes.api_temp import api_temp_bp
+from routes import test_bp
 from blueprints.geocoding_bp import geocoding_bp
 
 
@@ -523,7 +525,7 @@ def create_app():
         """Mostra pagina di login"""
         if session.get('logged_in') and session.get('user_id'):
             return redirect(url_for('main.dashboard'))
-        return render_template('login.html')
+        return render_template('auth/login.html')
     
     @app.route('/login', methods=['POST'])
     @app.route('/auth/login', methods=['POST'])
@@ -1458,7 +1460,7 @@ def create_app():
     @admin_required
     def impostazioni():
         """Pagina impostazioni (solo admin)"""
-        return render_template('impostazioni.html')
+        return render_template('admin/impostazioni.html')
     
     @app.route('/impostazioni/utenti')
     @app.route('/admin/users')
@@ -1687,6 +1689,8 @@ def create_app():
     app.register_blueprint(esercitazioni_bp)
     app.register_blueprint(drill_down_bp)
     app.register_blueprint(geografia_bp)
+    app.register_blueprint(api_temp_bp)
+    app.register_blueprint(test_bp)
     app.register_blueprint(geocoding_bp)
     
     # ===========================================

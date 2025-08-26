@@ -107,7 +107,7 @@
 .list-container {
     background: white;
     border-radius: 10px;
-    padding: 25px;
+    padding: 10px 25px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
     animation: slideUp 0.5s ease-out;
 }
@@ -128,7 +128,7 @@
    ======================================== */
 
 .search-bar {
-    margin-bottom: 25px;
+    margin-bottom: 10px;
     position: relative;
 }
 

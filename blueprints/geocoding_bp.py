@@ -44,7 +44,7 @@ def get_db_connection():
 @operatore_or_admin_required
 def geocoding_interattivo():
     """Pagina principale geocoding interattivo embedded in TALON"""
-    return render_template('geocoding_embedded.html')
+    return render_template('geografia/geocoding_embedded.html')
 
 @geocoding_bp.route('/api/tutti-gli-enti')
 @login_required

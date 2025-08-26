@@ -66,9 +66,9 @@
             timelineView: '#attivita-timeline, .attivita-timeline',
             
             // Tabella lista
-            tableBody: '#attivitaTableBody, tbody.attivita-tbody, table tbody',
-            tableHeaders: '.styled-table th.sortable, th[data-sortable]',
-            clickableRows: '.clickable-row, tr[data-href]',
+            tableBody: '#attivitaTableBody, tbody.attivita-tbody',
+            tableHeaders: '#attivitaTable th.sortable, .attivita-list th.sortable, th[data-sortable]',
+            clickableRows: '#attivitaTableBody .clickable-row, .attivita-tbody tr[data-href]',
             
             // Controlli
             searchInput: '#searchInput, #search-attivita, input[type="search"], .search-input',
@@ -507,15 +507,19 @@
     // ========================================
     
     function setupSorting() {
+        // Solo se siamo nella pagina attività
+        if (!document.getElementById('attivitaTableBody') && !document.querySelector('.attivita-tbody')) {
+            return;
+        }
+        
         const sortableHeaders = document.querySelectorAll(CONFIG.SELECTORS.tableHeaders);
         
         sortableHeaders.forEach(header => {
-            // Aggiungi indicatore ordinamento
-            if (!header.querySelector('[data-arrow]')) {
+            // Aggiungi indicatore ordinamento solo se non esiste già
+            if (!header.querySelector('.th-arrow')) {
                 const arrow = document.createElement('span');
-                arrow.setAttribute('data-arrow', 'true');
-                arrow.className = 'sort-arrow ms-1';
-                arrow.textContent = '↕';
+                arrow.className = 'th-arrow';
+                // Non mettiamo contenuto, sarà gestito dal CSS con ::before e ::after
                 header.appendChild(arrow);
             }
             
@@ -548,20 +552,10 @@
         // Reset classi ordinamento
         document.querySelectorAll(CONFIG.SELECTORS.tableHeaders).forEach(h => {
             h.classList.remove('sorted-asc', 'sorted-desc');
-            const arrow = h.querySelector('[data-arrow]');
-            if (arrow) {
-                arrow.textContent = '↕';
-                arrow.classList.remove('text-primary');
-            }
         });
 
         // Aggiungi classe corrente
         header.classList.add(order === 'asc' ? 'sorted-asc' : 'sorted-desc');
-        const currentArrow = header.querySelector('[data-arrow]');
-        if (currentArrow) {
-            currentArrow.textContent = order === 'asc' ? '↑' : '↓';
-            currentArrow.classList.add('text-primary');
-        }
 
         // Ordina righe
         rowsToSort.sort((a, b) => {

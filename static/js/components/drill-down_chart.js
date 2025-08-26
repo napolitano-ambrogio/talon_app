@@ -28,6 +28,48 @@ function cleanName(name) {
     return name;
 }
 
+function parseItalianDate(dateStr) {
+    // Funzione per parsare date italiane GG/MM/AAAA o GG/MM/AA
+    if (!dateStr || dateStr === '//' || typeof dateStr !== 'string') {
+        return null;
+    }
+    
+    const cleanStr = dateStr.trim();
+    const parts = cleanStr.split('/');
+    
+    if (parts.length !== 3) {
+        return null;
+    }
+    
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    let year = parseInt(parts[2], 10);
+    
+    // Controlli di validità
+    if (isNaN(day) || isNaN(month) || isNaN(year) || 
+        day < 1 || day > 31 || 
+        month < 1 || month > 12) {
+        return null;
+    }
+    
+    // Gestione anni a 2 cifre (assumendo 20XX per 00-50, 19XX per 51-99)
+    if (year < 100) {
+        year += (year <= 50) ? 2000 : 1900;
+    }
+    
+    // Crea la data usando il costruttore Date (month è 0-based)
+    const date = new Date(year, month - 1, day);
+    
+    // Verifica che la data creata corrisponda ai valori inseriti
+    if (date.getFullYear() !== year || 
+        date.getMonth() !== month - 1 || 
+        date.getDate() !== day) {
+        return null;
+    }
+    
+    return date;
+}
+
 function generateColors(count) {
     const baseColors = [
         'rgba(102, 126, 234, 0.8)',
@@ -114,6 +156,12 @@ async function updateInfoCardsForCurrentLevel(data) {
     const specificActivitiesEl = document.getElementById('specificActivitiesValue');
     if (specificActivitiesEl) {
         specificActivitiesEl.textContent = specificActivities;
+    }
+    
+    // Aggiorna "Categorie" (numero di categorie/elementi nel livello corrente)
+    const categoriesValueEl = document.getElementById('categoriesValue');
+    if (categoriesValueEl && data.labels) {
+        categoriesValueEl.textContent = data.labels.length;
     }
     
     // Carica il totale generale delle attività (sempre fisso)
@@ -244,6 +292,12 @@ function initChart(labels, values, chartType = 'bar') {
         console.error('Canvas element non trovato');
         return;
     }
+    
+    // Gli stili sono gestiti dal template HTML - non sovrascrivere
+    
+    ctx.style.display = 'block';
+    ctx.style.width = '100%';
+    ctx.style.height = 'auto';
     
     // Distruggi chart esistente se presente
     if (window.chart) {
@@ -425,6 +479,13 @@ function displayEntityActivities(ente, activities) {
         return;
     }
     
+    console.log(`[DrillDown] Visualizzando ${activities ? activities.length : 0} attività per ente: ${ente}`);
+    
+    // Genera ID univoco per evitare conflitti con altre tabelle
+    const tableId = 'drilldownTable_' + Date.now();
+    const topPagId = 'topPag_' + Date.now();
+    const bottomPagId = 'bottomPag_' + Date.now();
+    
     // Mostra il pannello dettagli
     panel.style.display = 'block';
     
@@ -437,16 +498,38 @@ function displayEntityActivities(ente, activities) {
     
     if (activities && activities.length > 0) {
         html += `
+            <!-- Paginazione superiore -->
+            <div class="pagination-wrapper top-pagination" id="${topPagId}">
+                <div class="pagination-info">
+                    <span id="topPageInfo">Pagina 1 di 1 (${activities.length} attività totali)</span>
+                </div>
+                <div class="pagination-controls" id="topPaginationControls">
+                    <!-- Controlli generati dinamicamente -->
+                </div>
+            </div>
+            
             <div class="table-responsive">
-                <table class="table table-hover table-sm">
-                    <thead class="table-light">
+                <table class="advanced-table" id="${tableId}">
+                    <thead>
                         <tr>
-                            <th>Data Inizio</th>
-                            <th class="text-center">Data Fine</th>
-                            <th>Descrizione</th>
-                            <th>Stato</th>
-                            <th>Durata</th>
-                            <th>In favore di</th>
+                            <th class="sortable" data-column="0" data-sort-type="date">
+                                <span class="th-label">Data Inizio</span>
+                            </th>
+                            <th class="sortable" data-column="1" data-sort-type="date">
+                                <span class="th-label">Data Fine</span>
+                            </th>
+                            <th class="sortable" data-column="2" data-sort-type="text">
+                                <span class="th-label">Descrizione</span>
+                            </th>
+                            <th class="sortable" data-column="3" data-sort-type="text">
+                                <span class="th-label">Stato</span>
+                            </th>
+                            <th class="sortable" data-column="4" data-sort-type="text">
+                                <span class="th-label">Durata</span>
+                            </th>
+                            <th class="sortable" data-column="5" data-sort-type="text">
+                                <span class="th-label">In favore di</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -462,10 +545,31 @@ function displayEntityActivities(ente, activities) {
                                activity.stato === 'In corso' ? 'warning' : 
                                activity.stato === 'Pianificata' ? 'info' : 'secondary';
             
+            // Gestione sicura delle date con parsing personalizzato per formato italiano
+            let dataInizioSort = '';
+            if (activity.data_inizio && activity.data_inizio !== '//' && activity.data_inizio.trim() !== '') {
+                const parsedInizio = parseItalianDate(activity.data_inizio);
+                if (parsedInizio) {
+                    dataInizioSort = parsedInizio.toISOString();
+                } else {
+                    console.warn(`[DrillDown] Data inizio non parsabile:`, activity.data_inizio);
+                }
+            }
+            
+            let dataFineSort = '';
+            if (activity.data_fine && activity.data_fine !== '//' && activity.data_fine.trim() !== '') {
+                const parsedFine = parseItalianDate(activity.data_fine);
+                if (parsedFine) {
+                    dataFineSort = parsedFine.toISOString();
+                } else {
+                    console.warn(`[DrillDown] Data fine non parsabile:`, activity.data_fine);
+                }
+            }
+            
             html += `
                 <tr>
-                    <td>${activity.data_inizio || 'N/D'}</td>
-                    <td class="text-center">${activity.data_fine || 'N/D'}</td>
+                    <td data-sort="${dataInizioSort}">${activity.data_inizio || 'N/D'}</td>
+                    <td data-sort="${dataFineSort}">${activity.data_fine || 'N/D'}</td>
                     <td>${activity.descrizione || 'N/D'}</td>
                     <td><span class="badge bg-${statusClass}">${activity.stato || 'N/D'}</span></td>
                     <td>${activity.durata || 'N/D'}</td>
@@ -478,6 +582,16 @@ function displayEntityActivities(ente, activities) {
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Paginazione inferiore -->
+            <div class="pagination-wrapper bottom-pagination" id="${bottomPagId}">
+                <div class="pagination-info">
+                    <span id="bottomPageInfo">Pagina 1 di 1 (${activities.length} attività totali)</span>
+                </div>
+                <div class="pagination-controls" id="bottomPaginationControls">
+                    <!-- Controlli generati dinamicamente -->
+                </div>
+            </div>
         `;
     } else {
         html += '<p class="text-muted">Nessuna attività trovata per questo ente nel periodo selezionato.</p>';
@@ -486,6 +600,34 @@ function displayEntityActivities(ente, activities) {
     
     html += '</div>';
     list.innerHTML = html;
+    
+    // Inizializza AdvancedTable se esistono attività
+    if (activities && activities.length > 0) {
+        setTimeout(() => {
+            const table = document.getElementById(tableId);
+            if (table && typeof AdvancedTable !== 'undefined') {
+                console.log('[DrillDown] Inizializzando AdvancedTable per dettagli...');
+                
+                // Inizializza con paginazione smart per gestire grandi quantità di dati
+                window.drilldownTable = new AdvancedTable({
+                    tableSelector: '#' + tableId,
+                    itemsPerPage: 100, // Mostra 100 record per pagina come lista_attività
+                    enableSorting: true,
+                    enableDragDrop: true,
+                    enablePagination: true, // Abilita paginazione smart
+                    enableColumnResize: true,
+                    topControlsSelector: '#topPaginationControls',
+                    bottomControlsSelector: '#bottomPaginationControls',
+                    topInfoSelector: '#topPageInfo',
+                    bottomInfoSelector: '#bottomPageInfo'
+                });
+                
+                console.log('[DrillDown] AdvancedTable inizializzata:', window.drilldownTable);
+            } else {
+                console.warn('[DrillDown] AdvancedTable non disponibile o tabella non trovata');
+            }
+        }, 100);
+    }
 }
 
 function hideEntityDetails() {
@@ -701,21 +843,48 @@ function showDetailsListFromAPI(entity, details) {
     
     panel.classList.add('show');
     
+    // Genera ID univoco per evitare conflitti con altre tabelle
+    const tableId2 = 'drilldownTable2_' + Date.now();
+    const topPagId2 = 'topPag2_' + Date.now();
+    const bottomPagId2 = 'bottomPag2_' + Date.now();
+    
     let html = `<h5>Dettagli attività: ${entity}</h5><div class="mt-3">`;
     
     if (details && details.length > 0) {
         // Crea una tabella per i dettagli
         html += `
+            <!-- Paginazione superiore -->
+            <div class="pagination-wrapper top-pagination" id="${topPagId2}">
+                <div class="pagination-info">
+                    <span id="topPageInfo2">Pagina 1 di 1 (${details.length} dettagli totali)</span>
+                </div>
+                <div class="pagination-controls" id="topPaginationControls2">
+                    <!-- Controlli generati dinamicamente -->
+                </div>
+            </div>
+            
             <div class="table-responsive">
-                <table class="table table-hover">
+                <table class="advanced-table" id="${tableId2}">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Data</th>
-                            <th>Descrizione</th>
-                            <th>Durata</th>
-                            <th>Responsabile</th>
-                            <th>Stato</th>
+                            <th class="sortable" data-column="0" data-sort-type="text">
+                                <span class="th-label">ID</span>
+                            </th>
+                            <th class="sortable" data-column="1" data-sort-type="date">
+                                <span class="th-label">Data</span>
+                            </th>
+                            <th class="sortable" data-column="2" data-sort-type="text">
+                                <span class="th-label">Descrizione</span>
+                            </th>
+                            <th class="sortable" data-column="3" data-sort-type="text">
+                                <span class="th-label">Durata</span>
+                            </th>
+                            <th class="sortable" data-column="4" data-sort-type="text">
+                                <span class="th-label">Responsabile</span>
+                            </th>
+                            <th class="sortable" data-column="5" data-sort-type="text">
+                                <span class="th-label">Stato</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -725,10 +894,21 @@ function showDetailsListFromAPI(entity, details) {
             const statusColor = detail.stato === 'Completata' ? 'success' : 
                                detail.stato === 'In corso' ? 'warning' : 'info';
             
+            // Gestione sicura della data con parsing personalizzato per formato italiano
+            let dataSort = '';
+            if (detail.data && detail.data !== '//' && detail.data.trim() !== '') {
+                const parsedDate = parseItalianDate(detail.data);
+                if (parsedDate) {
+                    dataSort = parsedDate.toISOString();
+                } else {
+                    console.warn(`[DrillDown] Data dettaglio non parsabile:`, detail.data);
+                }
+            }
+            
             html += `
                 <tr>
                     <td>${detail.id || 'N/D'}</td>
-                    <td>${detail.data || 'N/D'}</td>
+                    <td data-sort="${dataSort}">${detail.data || 'N/D'}</td>
                     <td>${detail.descrizione || 'N/D'}</td>
                     <td>${detail.durata || 'N/D'}</td>
                     <td>${detail.responsabile || 'N/D'}</td>
@@ -741,6 +921,16 @@ function showDetailsListFromAPI(entity, details) {
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Paginazione inferiore -->
+            <div class="pagination-wrapper bottom-pagination" id="${bottomPagId2}">
+                <div class="pagination-info">
+                    <span id="bottomPageInfo2">Pagina 1 di 1 (${details.length} dettagli totali)</span>
+                </div>
+                <div class="pagination-controls" id="bottomPaginationControls2">
+                    <!-- Controlli generati dinamicamente -->
+                </div>
+            </div>
         `;
     } else {
         html += '<p class="text-muted">Nessun dettaglio disponibile</p>';
@@ -749,6 +939,34 @@ function showDetailsListFromAPI(entity, details) {
     
     html += '</div>';
     list.innerHTML = html;
+    
+    // Inizializza AdvancedTable se esistono dettagli
+    if (details && details.length > 0) {
+        setTimeout(() => {
+            const table = document.getElementById(tableId2);
+            if (table && typeof AdvancedTable !== 'undefined') {
+                console.log('[DrillDown] Inizializzando AdvancedTable per dettagli lista...');
+                
+                // Inizializza con paginazione smart per gestire grandi quantità di dati
+                window.drilldownTable2 = new AdvancedTable({
+                    tableSelector: '#' + tableId2,
+                    itemsPerPage: 100, // Mostra 100 record per pagina come lista_attività
+                    enableSorting: true,
+                    enableDragDrop: true,
+                    enablePagination: true, // Abilita paginazione smart
+                    enableColumnResize: true,
+                    topControlsSelector: '#topPaginationControls2',
+                    bottomControlsSelector: '#bottomPaginationControls2',
+                    topInfoSelector: '#topPageInfo2',
+                    bottomInfoSelector: '#bottomPageInfo2'
+                });
+                
+                console.log('[DrillDown] AdvancedTable2 inizializzata:', window.drilldownTable2);
+            } else {
+                console.warn('[DrillDown] AdvancedTable non disponibile o tabella2 non trovata');
+            }
+        }, 100);
+    }
     
     // Nascondi il grafico quando mostri i dettagli
     const chartContainer = document.querySelector('.chart-container');
@@ -948,6 +1166,11 @@ class TalonDrillDownChart {
         // Inizializza UI
         updateBreadcrumb();
         updateInfoCards();
+    }
+    
+    parseItalianDate(dateStr) {
+        // Metodo di istanza che usa la funzione globale
+        return parseItalianDate(dateStr);
     }
     
     setPeriod(period) {

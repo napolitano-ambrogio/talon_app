@@ -1,0 +1,355 @@
+{% extends "shared/_base.html" %}
+
+{% block title %}Dashboard - TALON{% endblock %}
+
+{% block page_title %}Panoramica delle Attività Logistiche{% endblock %}
+
+{% block page_controls %}
+{% endblock %}
+
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/drill-down_chart.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/advanced-table.css') }}?v=1.0">
+<style>
+/* Info Cards Layout Orizzontale */
+.info-cards {
+    display: flex;
+    gap: 15px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+/* Dettagli Panel - Tabella con bordi sottili */
+.details-panel table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0;
+}
+
+.details-panel table th,
+.details-panel table td {
+    border: 1px solid #e2e8f0;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+/* Centramento per colonne specifiche */
+.details-panel table td:nth-child(1), /* Colonna 1 */
+.details-panel table td:nth-child(2), /* Colonna 2 */
+.details-panel table td:nth-child(4), /* Colonna 4 */
+.details-panel table td:nth-child(5)  /* Colonna 5 */
+{
+    text-align: center;
+}
+
+.details-panel table th {
+    background-color: #f7fafc;
+    font-weight: 600;
+    color: #4a5568;
+    text-align: center;
+}
+
+.details-panel table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+.info-card {
+    flex: 1;
+    min-width: 120px;
+}
+
+.info-card .value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 4px;
+    line-height: 1;
+}
+
+.info-card .label {
+    font-size: 0.75rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="dashboard__content-wrapper" role="main">
+    <section class="dashboard__scroll-content" aria-label="Contenuto principale dashboard">
+        
+        <!-- Period Selector -->
+        <div class="period-selector" style="margin-top: 0px; margin-bottom: 10px;">
+            <button class="period-btn" data-period="week">Ultima Settimana</button>
+            <button class="period-btn" data-period="month">Ultimo Mese</button>
+            <button class="period-btn" data-period="quarter">Ultimo Trimestre</button>
+            <button class="period-btn active" data-period="year">Ultimo Anno</button>
+            <button class="period-btn" data-period="custom" onclick="toggleCustomPeriod()">Periodo Personalizzato</button>
+        </div>
+
+        <!-- Custom Period Selector (nascosto di default) -->
+        <div class="custom-period-selector" id="customPeriodSelector" style="display: none; margin-bottom: 10px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+            <div style="display: flex; gap: 15px; align-items: end; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 140px;">
+                    <label for="startDate" style="display: block; font-size: 0.8rem; color: #666; margin-bottom: 5px;">Data Inizio:</label>
+                    <input type="date" id="startDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div style="flex: 1; min-width: 140px;">
+                    <label for="endDate" style="display: block; font-size: 0.8rem; color: #666; margin-bottom: 5px;">Data Fine:</label>
+                    <input type="date" id="endDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div style="flex: 0 0 auto;">
+                    <button onclick="applyCustomPeriod()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">Applica</button>
+                    <button onclick="cancelCustomPeriod()" style="padding: 8px 16px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px;">Annulla</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Period Info (mostra il periodo attivo) -->
+        <div class="period-info" id="periodInfo" style="display: none; margin-bottom: 10px; padding: 8px 12px; background: #e8f4f8; border-left: 4px solid #667eea; border-radius: 4px; font-size: 0.9rem; color: #333;">
+            <span id="periodInfoText">Periodo: </span>
+        </div>
+
+        <!-- Breadcrumb Navigation -->
+        <div class="breadcrumb-nav" id="breadcrumb" style="margin-top: 0px; margin-bottom: 10px;">
+            <div id="chart-breadcrumb">
+                <div class="breadcrumb-item active" data-level="0">
+                    <span>CHART</span> Categorie Principali
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chart -->
+        <div class="chart-container" style="margin-top: 10px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <canvas id="chartCanvas" style="display: block; width: 100%; height: 350px; max-height: 350px;"></canvas>
+        </div>
+
+        <!-- Info Cards -->
+        <div class="info-cards" id="infoCards">
+            <div class="info-card">
+                <div class="value" id="totalValue">0</div>
+                <div class="label">Totale Attività</div>
+            </div>
+            <div class="info-card">
+                <div class="value" id="specificActivitiesValue">0</div>
+                <div class="label">Attività Specifiche</div>
+            </div>
+            <div class="info-card">
+                <div class="value" id="entitiesValue">0</div>
+                <div class="label">Enti Coinvolti</div>
+            </div>
+            <div class="info-card">
+                <div class="value" id="categoriesValue">0</div>
+                <div class="label">Categorie</div>
+            </div>
+            <div class="info-card">
+                <div class="value" id="periodValue">365</div>
+                <div class="label">Giorni Analizzati</div>
+            </div>
+        </div>
+
+        <!-- Details Panel - Nascosto di default -->
+        <div class="details-panel" id="detailsPanel" style="display: none;">
+            <div id="detailsList"></div>
+        </div>
+
+        <!-- Container nascosto per inizializzazione drill-down -->
+        <div id="drill-down-init" 
+             data-drilldown-chart
+             data-period="year"
+             style="display: none;"></div>
+        
+    </section>
+</main>
+{% endblock %}
+
+{% block additional_js %}
+<!-- Chart.js per il drill-down chart -->
+<script src="/external/chartjs/chart.umd.min.js"></script>
+<!-- Advanced Table Component per tabelle del drilldown -->
+<script src="{{ url_for('static', filename='js/components/advanced-table.js') }}?v=2.0"></script>
+<script src="{{ url_for('static', filename='js/components/drill-down_chart.js') }}?v=2.0"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurazione API endpoints per Flask
+    window.TALON_CONFIG = window.TALON_CONFIG || {};
+    window.TALON_CONFIG.api = {
+        baseUrl: '',
+        endpoints: {
+            categories: '/drill-down/api/categorie',
+            subcategories: '/drill-down/api/sottocategorie',
+            entities: '/drill-down/api/enti',
+            details: '/drill-down/api/dettagli',
+            stats: '/drill-down/api/statistiche',
+            export: '/drill-down/api/export'
+        }
+    };
+
+    // Aspetta che tutti gli script siano caricati
+    setTimeout(function() {
+        // Distruggi eventuali chart esistenti per evitare conflitti Canvas
+        if (window.chart && typeof window.chart.destroy === 'function') {
+            window.chart.destroy();
+            window.chart = null;
+        }
+        
+        // Debug: controlla cosa è disponibile
+        console.log('TalonDrillDownChart disponibile?', typeof TalonDrillDownChart);
+        console.log('Chart.js disponibile?', typeof Chart);
+        console.log('API endpoints configurati:', window.TALON_CONFIG.api);
+        
+        
+        // Usa SOLO le API reali - nessun fallback ai dati mock
+        if (typeof TalonDrillDownChart !== 'undefined') {
+            console.log('🎯 Drill-down chart: Caricamento dati reali da API PostgreSQL...');
+            try {
+                window.drillDownChart = new TalonDrillDownChart({
+                    container: '.dashboard__scroll-content',
+                    canvas: 'chartCanvas',
+                    period: 'year'
+                });
+                console.log('✅ Drill-down chart inizializzato con successo');
+            } catch (error) {
+                console.error('❌ Errore inizializzazione drill-down:', error);
+                document.querySelector('.chart-container').innerHTML = '<div style="text-align:center;padding:50px;color:#dc3545;"><h3>Errore</h3><p>Errore inizializzazione: ' + error.message + '</p></div>';
+            }
+        } else {
+            console.error('❌ Modulo TalonDrillDownChart non disponibile - impossibile caricare dati reali');
+            document.querySelector('.chart-container').innerHTML = '<div style="text-align:center;padding:50px;color:#dc3545;"><h3>Errore</h3><p>Modulo drill-down non disponibile</p></div>';
+        }
+
+        // Gestione pulsanti periodo
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                console.log('Periodo selezionato:', this.dataset.period);
+                document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                const period = this.dataset.period;
+                
+                // Nascondi l'info del periodo personalizzato se si seleziona un periodo predefinito
+                if (period !== 'custom') {
+                    hidePeriodInfo();
+                }
+                
+                if (window.drillDownChart && typeof window.drillDownChart.setPeriod === 'function') {
+                    window.drillDownChart.setPeriod(period);
+                    console.log('✅ Periodo impostato:', period);
+                } else {
+                    console.warn('drillDownChart.setPeriod non disponibile');
+                }
+            });
+        });
+
+        // Auto-refresh in background ogni 5 minuti
+        setInterval(function() {
+            if (window.drillDownChart && typeof window.drillDownChart.refreshData === 'function') {
+                console.log('🔄 Auto-refresh dati chart...');
+                window.drillDownChart.refreshData();
+            } else if (window.drillDownChart && typeof window.drillDownChart.init === 'function') {
+                console.log('🔄 Auto-refresh chart (fallback)...');
+                window.drillDownChart.init();
+            }
+        }, 5 * 60 * 1000); // 5 minuti in millisecondi
+        
+    }, 100); // Aspetta 100ms per il caricamento completo
+});
+
+// Funzioni per periodo personalizzato
+function toggleCustomPeriod() {
+    const selector = document.getElementById('customPeriodSelector');
+    const btn = document.querySelector('[data-period="custom"]');
+    
+    if (selector.style.display === 'none') {
+        // Mostra il selettore
+        selector.style.display = 'block';
+        btn.classList.add('active');
+        
+        // Imposta date predefinite (ultimo mese)
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 1);
+        
+        document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+        document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+    } else {
+        // Nascondi il selettore
+        selector.style.display = 'none';
+        btn.classList.remove('active');
+    }
+}
+
+function applyCustomPeriod() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (!startDate || !endDate) {
+        alert('Seleziona entrambe le date');
+        return;
+    }
+    
+    if (startDate > endDate) {
+        alert('La data di inizio deve essere precedente alla data di fine');
+        return;
+    }
+    
+    // Rimuovi active da tutti gli altri pulsanti
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-period="custom"]').classList.add('active');
+    
+    // Mostra l'info del periodo personalizzato
+    showPeriodInfo(`Periodo Personalizzato: ${formatDate(startDate)} - ${formatDate(endDate)}`);
+    
+    // Applica il periodo personalizzato al drill-down chart
+    if (window.drillDownChart && typeof window.drillDownChart.setCustomPeriod === 'function') {
+        window.drillDownChart.setCustomPeriod(startDate, endDate);
+        console.log('✅ Periodo personalizzato applicato:', startDate, 'a', endDate);
+    } else {
+        console.warn('drillDownChart.setCustomPeriod non disponibile');
+    }
+    
+    // Nascondi il selettore
+    document.getElementById('customPeriodSelector').style.display = 'none';
+}
+
+function cancelCustomPeriod() {
+    // Nascondi il selettore e rimuovi active
+    document.getElementById('customPeriodSelector').style.display = 'none';
+    document.querySelector('[data-period="custom"]').classList.remove('active');
+    
+    // Riattiva il periodo precedentemente selezionato
+    const activePeriod = document.querySelector('.period-btn.active:not([data-period="custom"])');
+    if (!activePeriod) {
+        // Se nessun periodo attivo, torna a "Ultimo Anno"
+        document.querySelector('[data-period="year"]').classList.add('active');
+    }
+    
+    // Nascondi l'info del periodo
+    hidePeriodInfo();
+}
+
+// Funzioni per gestire l'info del periodo
+function showPeriodInfo(text) {
+    const periodInfo = document.getElementById('periodInfo');
+    const periodInfoText = document.getElementById('periodInfoText');
+    
+    periodInfoText.textContent = text;
+    periodInfo.style.display = 'block';
+}
+
+function hidePeriodInfo() {
+    const periodInfo = document.getElementById('periodInfo');
+    periodInfo.style.display = 'none';
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('it-IT', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric'
+    });
+}
+</script>
+{% endblock %}

@@ -329,7 +329,7 @@ def organigramma():
         
         if not accessible:
             flash('Non hai accesso a nessun ente militare.', 'warning')
-            return render_template('organigramma.html', tree=[], view_all=False, user_role=user_role)
+            return render_template('enti/militari/organigramma.html', tree=[], view_all=False, user_role=user_role)
 
         conn = pg_conn()
         try:
@@ -372,7 +372,7 @@ def organigramma():
             'organigramma'
         )
 
-        return render_template('organigramma.html',
+        return render_template('enti/militari/organigramma.html',
                                tree=tree_structure,
                                view_all=view_all,
                                search=search,
@@ -402,7 +402,7 @@ def inserisci_militare_form():
             f'Accesso form creazione con {len(enti_parent)} enti parent disponibili'
         )
 
-        return render_template('inserimento_ente.html', enti=enti_parent)
+        return render_template('enti/militari/inserimento_ente.html', enti=enti_parent)
 
     except Exception as e:
         flash(f'Errore nel caricamento del form: {str(e)}', 'error')
@@ -570,7 +570,7 @@ def visualizza_ente(id):
             id
         )
 
-        return render_template('descrizione_ente.html',
+        return render_template('enti/militari/descrizione_ente.html',
                                ente=ente,
                                parent_name=parent_name,
                                children=children,
@@ -611,7 +611,7 @@ def modifica_militare_form(id):
             id
         )
 
-        return render_template('modifica_ente.html',
+        return render_template('enti/militari/modifica_ente.html',
                                ente=ente,
                                tutti_gli_enti=available_parents,
                                return_view=return_view,

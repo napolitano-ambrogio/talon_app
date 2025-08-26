@@ -1,489 +1,236 @@
-{% extends "_base.html" %}
+{% extends "shared/_base.html" %}
 
-{% block title %}Dettaglio Attività #{{ attivita.id }} - TALON{% endblock %}
+{% block title %}Dettaglio {{ attivita.tipologia_nome }} - TALON{% endblock %}
 
-{% block head %}
+{% block additional_css %}
 <!-- CSS specifico per visualizzazione attività -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/visualizza_attivita.css') }}?v={{ cache_buster }}">
-<!-- JavaScript per decodifica vettore GETRA -->
-<script src="{{ url_for('static', filename='js/attivita/vettore_decoder.js') }}?v={{ cache_buster }}"></script>
+{% endblock %}
+
+{% block page_title %}
+Dettaglio {{ attivita.tipologia_nome }}
+{# Calcolo dello status per l'header - stesso codice del body #}
+{% if attivita.data_inizio and (not attivita.data_fine or attivita.data_inizio == attivita.data_fine) %}
+    {# Attività di un solo giorno #}
+    {% if attivita.data_inizio < today %}
+        {% set header_status_text = 'CONCLUSA' %}
+        {% set header_status_class = 'header-status-conclusa' %}
+    {% elif attivita.data_inizio > today %}
+        {% set header_status_text = 'PIANIFICATA' %}
+        {% set header_status_class = 'header-status-pianificata' %}
+    {% else %}
+        {% set header_status_text = 'IN CORSO' %}
+        {% set header_status_class = 'header-status-in-corso' %}
+    {% endif %}
+{% elif attivita.data_inizio and attivita.data_fine %}
+    {# Attività di più giorni #}
+    {% if attivita.data_fine < today %}
+        {% set header_status_text = 'CONCLUSA' %}
+        {% set header_status_class = 'header-status-conclusa' %}
+    {% elif attivita.data_inizio <= today and attivita.data_fine >= today %}
+        {% set header_status_text = 'ATTIVA' %}
+        {% set header_status_class = 'header-status-attiva' %}
+    {% elif attivita.data_inizio > today %}
+        {% set header_status_text = 'PIANIFICATA' %}
+        {% set header_status_class = 'header-status-pianificata' %}
+    {% else %}
+        {% set header_status_text = 'ATTIVA' %}
+        {% set header_status_class = 'header-status-attiva' %}
+    {% endif %}
+{% else %}
+    {# Fallback per attività senza date chiare #}
+    {% set header_status_text = 'ATTIVA' %}
+    {% set header_status_class = 'header-status-attiva' %}
+{% endif %}
+<span class="header-status-badge {{ header_status_class }}">{{ header_status_text }}</span>
+{% endblock %}
+
+{% block page_controls %}
+<a href="{{ url_for('attivita.lista_attivita') }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Torna all'Elenco
+</a>
+{% if can_edit %}
+<a href="{{ url_for('attivita.modifica_attivita_form', id=attivita.id) }}" class="btn btn-primary">
+    <i class="fas fa-edit"></i> Modifica
+</a>
+{% endif %}
+{% if can_delete %}
+<form action="{{ url_for('attivita.elimina_attivita', id=attivita.id) }}" method="POST" onsubmit="return confirm('Confermare l\'eliminazione dell\'attività?');" style="display: inline;">
+    <button type="submit" class="btn btn-danger">
+        <i class="fas fa-trash"></i> Elimina
+    </button>
+</form>
+{% endif %}
 {% endblock %}
 
 {% block content %}
-<div class="detail-card">
-    <div class="detail-header">
-        <div>
-            <h3>{{ attivita.tipologia_nome }}</h3>
-            {% if attivita.data_inizio and (not attivita.data_fine or attivita.data_inizio == attivita.data_fine) %}
-                {# Attività di un solo giorno #}
-                {% if attivita.data_inizio < today %}
-                    {% set status_text = 'CONCLUSA' %}
-                    {% set status_color = '#6c757d' %}
-                {% elif attivita.data_inizio > today %}
-                    {% set status_text = 'PIANIFICATA' %}
-                    {% set status_color = '#17a2b8' %}
-                {% else %}
-                    {% set status_text = 'IN CORSO' %}
-                    {% set status_color = '#ffc107' %}
-                {% endif %}
-            {% elif attivita.data_inizio and attivita.data_fine %}
-                {# Attività di più giorni #}
-                {% if attivita.data_fine < today %}
-                    {% set status_text = 'CONCLUSA' %}
-                    {% set status_color = '#6c757d' %}
-                {% elif attivita.data_inizio <= today and attivita.data_fine >= today %}
-                    {% set status_text = 'ATTIVA' %}
-                    {% set status_color = '#28a745' %}
-                {% elif attivita.data_inizio > today %}
-                    {% set status_text = 'PIANIFICATA' %}
-                    {% set status_color = '#17a2b8' %}
-                {% else %}
-                    {% set status_text = 'ATTIVA' %}
-                    {% set status_color = '#28a745' %}
-                {% endif %}
-            {% else %}
-                {# Fallback per attività senza date chiare #}
-                {% set status_text = 'ATTIVA' %}
-                {% set status_color = '#28a745' %}
-            {% endif %}
-            <p style="color: {{ status_color }}; font-weight: bold; margin: 5px 0 0 0; font-size: 0.9em;">{{ status_text }}</p>
-        </div>
-        <a href="{{ url_for('attivita.lista_attivita') }}" class="cancel-link" style="font-size: 0.9em;">&larr; Torna all'Elenco</a>
-    </div>
+<main class="dashboard__content-wrapper" role="main">
+    <section class="dashboard__scroll-content" aria-label="Contenuto principale dettaglio attivita">
+        <div class="detail-card">
 
-    <dl class="detail-grid">
-        <div>
-            <div class="detail-item">
-                <dt>Ente Svolgimento</dt>
-                <dd>{{ attivita.ente_nome }}</dd>
-            </div>
-            <div class="detail-item">
-                <dt>Data Inizio</dt>
-                <dd>{{ attivita.data_inizio.strftime('%d/%m/%Y') if attivita.data_inizio else 'Non specificata' }}</dd>
-            </div>
-            <div class="detail-item">
-                <dt>Data Fine</dt>
-                <dd>
-                    {% if attivita.data_fine %}
-                        {{ attivita.data_fine.strftime('%d/%m/%Y') }}
-                        {% if attivita.data_inizio and attivita.data_fine != attivita.data_inizio %}
-                            <span class="text-muted">({{ (attivita.data_fine - attivita.data_inizio).days + 1 }} giorni)</span>
-                        {% elif attivita.data_inizio and attivita.data_fine == attivita.data_inizio %}
-                            <span class="text-muted">(1 giorno)</span>
-                        {% endif %}
-                    {% elif attivita.data_inizio %}
-                        {{ attivita.data_inizio.strftime('%d/%m/%Y') }}
-                        <span class="text-muted">(1 giorno)</span>
-                    {% else %}
-                        <span class="text-muted">Non specificata</span>
-                    {% endif %}
-                </dd>
-            </div>
-            <div class="detail-item">
-                <dt>Operazione</dt>
-                <dd>{{ attivita.operazione_nome if attivita.operazione_nome else 'NAZIONALE' }}</dd>
-            </div>
-        </div>
-        <div>
-            <div class="detail-item">
-                <dt>Descrizione</dt>
-                <dd>{{ attivita.descrizione if attivita.descrizione else 'Nessuna descrizione disponibile' }}</dd>
-            </div>
-            <div class="detail-item">
-                <dt>Luogo Partenza</dt>
-                <dd>{{ partenza if partenza else 'Non specificato' }}</dd>
-            </div>
-            <div class="detail-item">
-                <dt>Luogo Destinazione</dt>
-                <dd>{{ destinazione if destinazione else 'Non specificato' }}</dd>
-            </div>
-            <div class="detail-item">
-                <dt>Esercitazione</dt>
-                <dd>{{ attivita.esercitazione_nome if attivita.esercitazione_nome else 'NON SPECIFICATA' }}</dd>
-            </div>
-        </div>
-    </dl>
-
-    {% if (attivita.personale_ufficiali and attivita.personale_ufficiali > 0) or (attivita.personale_sottufficiali and attivita.personale_sottufficiali > 0) or (attivita.personale_graduati and attivita.personale_graduati > 0) or (attivita.personale_civili and attivita.personale_civili > 0) %}
-    <hr style="margin-top: 30px; margin-bottom: 20px;">
-    
-    <h4 style="margin-bottom: 15px; color: #495057;">PERSONALE IMPIEGATO</h4>
-    <dl class="detail-grid">
-        <div>
-            <div class="detail-item">
-                <dt>Ufficiali</dt>
-                <dd>{{ attivita.personale_ufficiali or 0 }}</dd>
-            </div>
-            <div class="detail-item">
-                <dt>Sottufficiali</dt>
-                <dd>{{ attivita.personale_sottufficiali or 0 }}</dd>
-            </div>
-        </div>
-        <div>
-            <div class="detail-item">
-                <dt>Graduati/VFP</dt>
-                <dd>{{ attivita.personale_graduati or 0 }}</dd>
-            </div>
-            <div class="detail-item">
-                <dt>Civili</dt>
-                <dd>{{ attivita.personale_civili or 0 }}</dd>
-            </div>
-        </div>
-    </dl>
-    {% endif %}
-
-    {% if dettagli_specifici and dettagli_specifici|length > 0 %}
-    <hr style="margin-top: 30px; margin-bottom: 20px;">
-    
-    <h4 style="margin-bottom: 15px; color: #495057;">DETTAGLI SPECIFICI</h4>
-    <dl class="detail-grid">
-        <div>
-            {# GESTIONE TRANSITO (GETRA) - Vettore e personale/mezzi #}
-            {% if attivita.tipologia_nome == 'GESTIONE TRANSITO' %}
-                {% if dettagli_specifici.tipo_vettore or dettagli_specifici.seriale_vettore %}
-                <div class="detail-item">
-                    <dt>Vettore</dt>
-                    <dd>
-                        {% if dettagli_specifici.tipo_vettore %}{{ dettagli_specifici.tipo_vettore }}{% endif %}
-                        {% if dettagli_specifici.tipo_vettore and dettagli_specifici.seriale_vettore %} {% endif %}
-                        {% if dettagli_specifici.seriale_vettore %}{{ dettagli_specifici.seriale_vettore }}{% endif %}
-                        {% if dettagli_specifici.tipo_vettore %}
-                        <div class="vettore-decoded" id="vettore-decode-{{ dettagli_specifici.tipo_vettore }}" style="font-size: 0.85em; margin-top: 5px; color: #6c757d;">
-                            <span class="decode-eng"></span><br>
-                            <span class="decode-ita"></span>
-                        </div>
-                        {% endif %}
-                    </dd>
-                </div>
-                {% endif %}
-                
-                {% if dettagli_specifici.numero_personale %}
-                <div class="detail-item">
-                    <dt>Numero Personale</dt>
-                    <dd>{{ dettagli_specifici.numero_personale }}</dd>
-                </div>
-                {% endif %}
-                
-                {% if dettagli_specifici.numero_mezzi %}
-                <div class="detail-item">
-                    <dt>Numero Mezzi</dt>
-                    <dd>{{ dettagli_specifici.numero_mezzi }}</dd>
-                </div>
-                {% endif %}
-            
-            {# ESERCITAZIONI #}
-            {% elif attivita.tipologia_nome == 'ESERCITAZIONI' %}
-                {% if dettagli_specifici.nome_esercitazione %}
-                <div class="detail-item">
-                    <dt>Nome Esercitazione</dt>
-                    <dd>{{ dettagli_specifici.nome_esercitazione }}</dd>
-                </div>
-                {% endif %}
-                
-                {% if dettagli_specifici.tipo_esercitazione %}
-                <div class="detail-item">
-                    <dt>Tipo Esercitazione</dt>
-                    <dd>{{ dettagli_specifici.tipo_esercitazione }}</dd>
-                </div>
-                {% endif %}
-                
-                {% if dettagli_specifici.descrizione_esercitazione %}
-                <div class="detail-item">
-                    <dt>Descrizione Esercitazione</dt>
-                    <dd>{{ dettagli_specifici.descrizione_esercitazione }}</dd>
-                </div>
-                {% endif %}
-            
-            {# CORSI DI FORMAZIONE #}
-            {% elif attivita.tipologia_nome == 'CORSI DI FORMAZIONE' %}
-                {% if dettagli_specifici.nome_corso %}
-                <div class="detail-item">
-                    <dt>Nome Corso</dt>
-                    <dd>{{ dettagli_specifici.nome_corso }}</dd>
-                </div>
-                {% endif %}
-                
-                {% if dettagli_specifici.tipo_formazione %}
-                <div class="detail-item">
-                    <dt>Tipo Formazione</dt>
-                    <dd>{{ dettagli_specifici.tipo_formazione }}</dd>
-                </div>
-                {% endif %}
-            
-            {# ATTIVITÀ DI TRAINING ON THE JOB #}
-            {% elif attivita.tipologia_nome == 'ATTIVITÀ DI TRAINING ON THE JOB' %}
-                {% if dettagli_specifici.tipo_training %}
-                <div class="detail-item">
-                    <dt>Tipo Training</dt>
-                    <dd>{{ dettagli_specifici.tipo_training }}</dd>
-                </div>
-                {% endif %}
-            
-            {# MEDICINA CURATIVA #}
-            {% elif attivita.tipologia_nome == 'MEDICINA CURATIVA' %}
-                <!-- Prima riga: Numero Interventi | A Favore di -->
-                {% if dettagli_specifici.num_interventi or dettagli_specifici.a_favore %}
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 50px; margin-bottom: 15px;">
-                    {% if dettagli_specifici.num_interventi %}
-                    <div class="detail-item">
-                        <dt style="white-space: nowrap;">Numero Interventi</dt>
-                        <dd style="white-space: nowrap; text-align: center;">{{ dettagli_specifici.num_interventi }}</dd>
+            <!-- Informazioni generali - Layout responsive a colonne -->
+            <div class="info-section">
+                <h3 class="section-title">INFORMAZIONI GENERALI</h3>
+                <div class="responsive-grid">
+                    <div class="grid-item">
+                        <dt>Ente Svolgimento</dt>
+                        <dd>{{ attivita.ente_nome }}</dd>
                     </div>
-                    {% else %}
-                    <div></div>
-                    {% endif %}
-                    
-                    {% if dettagli_specifici.a_favore %}
-                    <div class="detail-item">
-                        <dt style="white-space: nowrap;">A Favore di</dt>
-                        <dd style="white-space: nowrap;">{{ dettagli_specifici.a_favore }}</dd>
+                    <div class="grid-item">
+                        <dt>Data Inizio</dt>
+                        <dd>{{ attivita.data_inizio.strftime('%d/%m/%Y') if attivita.data_inizio else 'Non specificata' }}</dd>
                     </div>
-                    {% else %}
-                    <div></div>
-                    {% endif %}
-                </div>
-                {% endif %}
-            
-            {# SGOMBERI SANITARI/VETERINARI #}
-            {% elif attivita.tipologia_nome == 'SGOMBERI SANITARI/VETERINARI' %}
-                <!-- Prima riga: Priorità | Vettore | Motivo Sgombero | Forza Armata -->
-                {% if dettagli_specifici.priorita or dettagli_specifici.tipo_vettore or dettagli_specifici.seriale_vettore or dettagli_specifici.motivo_sgombero or dettagli_specifici.forza_armata %}
-                <div style="display: grid; grid-template-columns: 1fr 2fr 3fr 1.5fr; gap: 50px; margin-bottom: 15px;">
-                    {% if dettagli_specifici.priorita %}
-                    <div class="detail-item">
-                        <dt>Priorità</dt>
-                        <dd style="white-space: nowrap;">{{ dettagli_specifici.priorita }}</dd>
-                    </div>
-                    {% else %}
-                    <div></div>
-                    {% endif %}
-                    
-                    {% if dettagli_specifici.tipo_vettore or dettagli_specifici.seriale_vettore %}
-                    <div class="detail-item">
-                        <dt>Vettore</dt>
-                        <dd style="white-space: nowrap;">
-                            {% if dettagli_specifici.tipo_vettore %}{{ dettagli_specifici.tipo_vettore }}{% endif %}
-                            {% if dettagli_specifici.tipo_vettore and dettagli_specifici.seriale_vettore %} {% endif %}
-                            {% if dettagli_specifici.seriale_vettore %}{{ dettagli_specifici.seriale_vettore }}{% endif %}
+                    <div class="grid-item">
+                        <dt>Data Fine</dt>
+                        <dd>
+                            {% if attivita.data_fine %}
+                                {{ attivita.data_fine.strftime('%d/%m/%Y') }}
+                                {% if attivita.data_inizio and attivita.data_fine != attivita.data_inizio %}
+                                    <span class="text-muted">({{ (attivita.data_fine - attivita.data_inizio).days + 1 }} giorni)</span>
+                                {% elif attivita.data_inizio and attivita.data_fine == attivita.data_inizio %}
+                                    <span class="text-muted">(1 giorno)</span>
+                                {% endif %}
+                            {% elif attivita.data_inizio %}
+                                {{ attivita.data_inizio.strftime('%d/%m/%Y') }}
+                                <span class="text-muted">(1 giorno)</span>
+                            {% else %}
+                                <span class="text-muted">Non specificata</span>
+                            {% endif %}
                         </dd>
                     </div>
-                    {% else %}
-                    <div></div>
-                    {% endif %}
-                    
-                    {% if dettagli_specifici.motivo_sgombero %}
-                    <div class="detail-item">
-                        <dt style="white-space: nowrap;">Motivo Sgombero</dt>
-                        <dd style="white-space: nowrap;">{{ dettagli_specifici.motivo_sgombero }}</dd>
+                    <div class="grid-item">
+                        <dt>Operazione</dt>
+                        <dd>{{ attivita.operazione_nome if attivita.operazione_nome else 'NAZIONALE' }}</dd>
                     </div>
-                    {% else %}
-                    <div></div>
-                    {% endif %}
-                    
-                    {% if dettagli_specifici.forza_armata %}
-                    <div class="detail-item">
-                        <dt>Forza Armata</dt>
-                        <dd style="white-space: nowrap;">{{ dettagli_specifici.forza_armata }}</dd>
+                    <div class="grid-item grid-item-wide">
+                        <dt>Descrizione</dt>
+                        <dd>{{ attivita.descrizione if attivita.descrizione else 'Nessuna descrizione disponibile' }}</dd>
                     </div>
-                    {% else %}
-                    <div></div>
-                    {% endif %}
-                </div>
-                {% endif %}
-                
-                <!-- Seconda riga: Unità | Grado | Ente di Appartenenza -->
-                {% if dettagli_specifici.num_unita or dettagli_specifici.grado or dettagli_specifici.ente_appartenenza %}
-                <div style="display: grid; grid-template-columns: 1fr 1fr 3fr; gap: 50px; margin-bottom: 15px;">
-                    {% if dettagli_specifici.num_unita %}
-                    <div class="detail-item">
-                        <dt>Unità</dt>
-                        <dd style="white-space: nowrap; text-align: center;">{{ dettagli_specifici.num_unita }}</dd>
+                    <div class="grid-item">
+                        <dt>Luogo Partenza</dt>
+                        <dd>{{ partenza if partenza else 'Non specificato' }}</dd>
                     </div>
-                    {% else %}
-                    <div></div>
-                    {% endif %}
-                    
-                    {% if dettagli_specifici.grado %}
-                    <div class="detail-item">
-                        <dt>Grado</dt>
-                        <dd style="white-space: nowrap;">{{ dettagli_specifici.grado }}</dd>
+                    <div class="grid-item">
+                        <dt>Luogo Destinazione</dt>
+                        <dd>{{ destinazione if destinazione else 'Non specificato' }}</dd>
                     </div>
-                    {% else %}
-                    <div></div>
-                    {% endif %}
-                    
-                    {% if dettagli_specifici.ente_appartenenza %}
-                    <div class="detail-item">
-                        <dt>Ente di Appartenenza</dt>
-                        <dd style="white-space: nowrap;">{{ dettagli_specifici.ente_appartenenza }}</dd>
+                    <div class="grid-item">
+                        <dt>Esercitazione</dt>
+                        <dd>{{ attivita.esercitazione_nome if attivita.esercitazione_nome else 'NON SPECIFICATA' }}</dd>
                     </div>
-                    {% else %}
-                    <div></div>
-                    {% endif %}
                 </div>
-                {% endif %}
-                
-                {% if dettagli_specifici.trasporto_a_cura %}
-                <div class="detail-item">
-                    <dt>Trasporto a Cura di</dt>
-                    <dd>{{ dettagli_specifici.trasporto_a_cura }}</dd>
-                </div>
-                {% endif %}
-            
-            {# MANTENIMENTO E SQUADRE A CONTATTO #}
-            {% elif attivita.tipologia_nome == 'MANTENIMENTO E SQUADRE A CONTATTO' %}
-                {% if dettagli_specifici.tipo_intervento %}
-                <div class="detail-item">
-                    <dt>Tipo Intervento</dt>
-                    <dd>{{ dettagli_specifici.tipo_intervento }}</dd>
-                </div>
-                {% endif %}
-                
-                {% if dettagli_specifici.attivita_svolta %}
-                <div class="detail-item">
-                    <dt>Attività Svolta</dt>
-                    <dd>{{ dettagli_specifici.attivita_svolta }}</dd>
-                </div>
-                {% endif %}
-                
-                {% if dettagli_specifici.piattaforma_materiale %}
-                <div class="detail-item">
-                    <dt>Piattaforma/Materiale</dt>
-                    <dd>{{ dettagli_specifici.piattaforma_materiale }}</dd>
-                </div>
-                {% endif %}
-            
-            {# RIFORNIMENTI #}
-            {% elif attivita.tipologia_nome == 'RIFORNIMENTI' %}
-                <!-- Tutti i campi su una riga -->
-                {% if dettagli_specifici.tipologia_rifornimento or dettagli_specifici.dettaglio_materiale or dettagli_specifici.quantita %}
-                <div style="display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 50px; margin-bottom: 15px;">
-                    {% if dettagli_specifici.tipologia_rifornimento %}
-                    <div class="detail-item">
-                        <dt style="white-space: nowrap;">Tipologia Rifornimento</dt>
-                        <dd style="white-space: nowrap;">{{ dettagli_specifici.tipologia_rifornimento }}</dd>
+            </div>
+
+            {% if (attivita.personale_ufficiali and attivita.personale_ufficiali > 0) or (attivita.personale_sottufficiali and attivita.personale_sottufficiali > 0) or (attivita.personale_graduati and attivita.personale_graduati > 0) or (attivita.personale_civili and attivita.personale_civili > 0) %}
+            <!-- Personale impiegato -->
+            <div class="info-section">
+                <h3 class="section-title">PERSONALE IMPIEGATO</h3>
+                <div class="responsive-grid personnel-grid">
+                    <div class="grid-item personnel-item">
+                        <dt>Ufficiali</dt>
+                        <dd class="personnel-count">{{ attivita.personale_ufficiali or 0 }}</dd>
                     </div>
-                    {% else %}
-                    <div></div>
-                    {% endif %}
-                    
-                    {% if dettagli_specifici.dettaglio_materiale %}
-                    <div class="detail-item">
-                        <dt style="white-space: nowrap;">Dettaglio Materiale</dt>
-                        <dd style="white-space: nowrap;">{{ dettagli_specifici.dettaglio_materiale }}</dd>
+                    <div class="grid-item personnel-item">
+                        <dt>Sottufficiali</dt>
+                        <dd class="personnel-count">{{ attivita.personale_sottufficiali or 0 }}</dd>
                     </div>
-                    {% else %}
-                    <div></div>
-                    {% endif %}
-                    
-                    {% if dettagli_specifici.quantita %}
-                    <div class="detail-item">
-                        <dt style="white-space: nowrap;">Quantità</dt>
-                        <dd style="white-space: nowrap;">
-                            {{ dettagli_specifici.quantita|int }}
-                            {% if dettagli_specifici.unita_di_misura %} {{ dettagli_specifici.unita_di_misura }}{% endif %}
-                        </dd>
+                    <div class="grid-item personnel-item">
+                        <dt>Graduati/VFP</dt>
+                        <dd class="personnel-count">{{ attivita.personale_graduati or 0 }}</dd>
                     </div>
-                    {% else %}
-                    <div></div>
-                    {% endif %}
+                    <div class="grid-item personnel-item">
+                        <dt>Civili</dt>
+                        <dd class="personnel-count">{{ attivita.personale_civili or 0 }}</dd>
+                    </div>
+                    <div class="grid-item personnel-item personnel-total">
+                        <dt>Totale</dt>
+                        <dd class="personnel-count total">{{ (attivita.personale_ufficiali or 0) + (attivita.personale_sottufficiali or 0) + (attivita.personale_graduati or 0) + (attivita.personale_civili or 0) }}</dd>
+                    </div>
                 </div>
-                {% endif %}
-            
-            {# MOVIMENTI E TRASPORTI #}
-            {% elif attivita.tipologia_nome == 'MOVIMENTI E TRASPORTI' %}
-                {% if dettagli_specifici.tipologia_carico %}
-                <div class="detail-item">
-                    <dt>Tipologia Carico</dt>
-                    <dd>{{ dettagli_specifici.tipologia_carico }}</dd>
-                </div>
-                {% endif %}
-                
-                {% if dettagli_specifici.mezzo_impiegato %}
-                <div class="detail-item">
-                    <dt>Mezzo Impiegato</dt>
-                    <dd>{{ dettagli_specifici.mezzo_impiegato }}</dd>
-                </div>
-                {% endif %}
+            </div>
             {% endif %}
-        </div>
-        <div>
-            {# GESTIONE TRANSITO (GETRA) - Volume #}
-            {% if attivita.tipologia_nome == 'GESTIONE TRANSITO' %}
-                {% if dettagli_specifici.volume %}
-                <div class="detail-item">
-                    <dt>Volume</dt>
-                    <dd>
-                        {{ dettagli_specifici.volume }}
-                        {% if dettagli_specifici.unita_di_misura %} {{ dettagli_specifici.unita_di_misura }}{% endif %}
-                    </dd>
+
+            {% if dettagli_specifici and dettagli_specifici|length > 0 %}
+            <!-- Dettagli specifici -->
+            <div class="info-section">
+                <h3 class="section-title">DETTAGLI SPECIFICI</h3>
+                <div class="responsive-grid details-grid">
+                        <!-- Gestione dinamica dei dettagli basata sul tipo attività -->
+                        {% for key, value in dettagli_specifici.items() %}
+                            {% if value and value != '' %}
+                                <div class="grid-item {% if key in ['descrizione_esercitazione', 'descrizione', 'motivo_sgombero'] %}grid-item-wide{% endif %}">
+                                    <dt>
+                                        {% if key == 'tipo_vettore' %}Tipo Vettore
+                                        {% elif key == 'seriale_vettore' %}Seriale Vettore
+                                        {% elif key == 'numero_personale' %}Numero Personale
+                                        {% elif key == 'numero_mezzi' %}Numero Mezzi
+                                        {% elif key == 'volume' %}Volume
+                                        {% elif key == 'nome_esercitazione' %}Nome Esercitazione
+                                        {% elif key == 'tipo_esercitazione' %}Tipo Esercitazione
+                                        {% elif key == 'descrizione_esercitazione' %}Descrizione
+                                        {% elif key == 'nome_corso' %}Nome Corso
+                                        {% elif key == 'tipo_formazione' %}Tipo Formazione
+                                        {% elif key == 'tipo_training' %}Tipo Training
+                                        {% elif key == 'num_interventi' %}Numero Interventi
+                                        {% elif key == 'a_favore' %}A Favore di
+                                        {% elif key == 'tipo_intervento' %}Tipo Intervento
+                                        {% elif key == 'priorita' %}Priorità
+                                        {% elif key == 'motivo_sgombero' %}Motivo Sgombero
+                                        {% elif key == 'forza_armata' %}Forza Armata
+                                        {% elif key == 'num_unita' %}Numero Unità
+                                        {% elif key == 'grado' %}Grado
+                                        {% elif key == 'ente_appartenenza' %}Ente di Appartenenza
+                                        {% elif key == 'trasporto_a_cura' %}Trasporto a Cura di
+                                        {% elif key == 'attivita_svolta' %}Attività Svolta
+                                        {% elif key == 'piattaforma_materiale' %}Piattaforma/Materiale
+                                        {% elif key == 'tipologia_rifornimento' %}Tipologia Rifornimento
+                                        {% elif key == 'dettaglio_materiale' %}Dettaglio Materiale
+                                        {% elif key == 'quantita' %}Quantità
+                                        {% elif key == 'unita_di_misura' %}Unità di Misura
+                                        {% elif key == 'tipologia_carico' %}Tipologia Carico
+                                        {% elif key == 'mezzo_impiegato' %}Mezzo Impiegato
+                                        {% else %}{{ key|title }}{% endif %}
+                                    </dt>
+                                    <dd>
+                                        {% if key == 'tipo_vettore' and dettagli_specifici.seriale_vettore %}
+                                            {{ value }} {{ dettagli_specifici.seriale_vettore }}
+                                            <div class="vettore-decoded" id="vettore-decode-{{ value }}" style="font-size: 0.85em; margin-top: 5px; color: #6c757d;">
+                                                <span class="decode-eng"></span><br>
+                                                <span class="decode-ita"></span>
+                                            </div>
+                                        {% elif key == 'quantita' and dettagli_specifici.unita_di_misura %}
+                                            {{ value|int }} {{ dettagli_specifici.unita_di_misura }}
+                                        {% elif key == 'volume' and dettagli_specifici.unita_di_misura %}
+                                            {{ value }} {{ dettagli_specifici.unita_di_misura }}
+                                        {% elif key not in ['seriale_vettore', 'unita_di_misura'] %}
+                                            {{ value }}
+                                        {% endif %}
+                                    </dd>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
                 </div>
-                {% endif %}
-            
-            
-            {# MEDICINA CURATIVA - Seconda colonna #}
-            {% elif attivita.tipologia_nome == 'MEDICINA CURATIVA' %}
-                <!-- Tipo Intervento (full width) -->
-                {% if dettagli_specifici.tipo_intervento and dettagli_specifici.tipo_intervento.strip() %}
-                <div class="detail-item" style="margin-bottom: 15px;">
-                    <dt style="white-space: nowrap;">Tipo Intervento</dt>
-                    <dd style="white-space: nowrap;">{{ dettagli_specifici.tipo_intervento }}</dd>
-                </div>
-                {% else %}
-                <div class="detail-item" style="margin-bottom: 15px;">
-                    <dt style="white-space: nowrap;">Tipo Intervento</dt>
-                    <dd style="white-space: nowrap; color: #6c757d; font-style: italic;">Non specificato</dd>
-                </div>
-                {% endif %}
-            
-            {# RIFORNIMENTI - Quantità (già inclusa nella prima colonna) #}
-            {% elif attivita.tipologia_nome == 'RIFORNIMENTI' %}
-                <!-- Quantità già gestita nella prima colonna -->
-            
-            {# MOVIMENTI E TRASPORTI - Quantità #}
-            {% elif attivita.tipologia_nome == 'MOVIMENTI E TRASPORTI' %}
-                {% if dettagli_specifici.quantita %}
-                <div class="detail-item">
-                    <dt>Quantità</dt>
-                    <dd>
-                        {{ dettagli_specifici.quantita }}
-                        {% if dettagli_specifici.unita_di_misura %} {{ dettagli_specifici.unita_di_misura }}{% endif %}
-                    </dd>
-                </div>
-                {% endif %}
-            {% endif %}
-        </div>
-    </dl>
+            </div>
     {% endif %}
 
-    {% if attivita.note %}
-    <hr style="margin-top: 30px; margin-bottom: 20px;">
-    
-    <h4 style="margin-bottom: 15px; color: #495057;">NOTE</h4>
-    <div class="detail-item">
-        <dd>{{ attivita.note }}</dd>
-    </div>
-    {% endif %}
-
-    <hr style="margin-top: 30px; margin-bottom: 20px;">
-
-    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
-        {% if can_edit %}
-        <a href="{{ url_for('attivita.modifica_attivita_form', id=attivita.id) }}" style="background-color: #007bff; color: white; padding: 10px 20px; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em; text-decoration: none;">Modifica</a>
-        {% endif %}
+            {% if attivita.note %}
+            <!-- Note -->
+            <div class="info-section">
+                <h3 class="section-title">NOTE</h3>
+                <div class="note-content">
+                    {{ attivita.note }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
         
-        {% if can_delete %}
-        <form action="{{ url_for('attivita.elimina_attivita', id=attivita.id) }}" method="POST" onsubmit="return confirm('Confermare l\'eliminazione dell\'attività?');" style="margin: 0;">
-            <button type="submit" style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">Elimina</button>
-        </form>
-        {% endif %}
-        
-        <button type="button" onclick="window.print()" style="background-color: #6c757d; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; text-transform: uppercase; font-weight: bold; font-size: 0.9em;">Stampa</button>
-    </div>
-</div>
+    </section>
+</main>
 {% endblock %}
 
-{% block extra_js %}
+{% block additional_js %}
+<!-- JavaScript per decodifica vettore GETRA -->
+<script src="{{ url_for('static', filename='js/attivita/vettore_decoder.js') }}?v={{ cache_buster }}"></script>
 <script>
 // Decodifica automatica del vettore GETRA - versione inline
 document.addEventListener('DOMContentLoaded', function() {

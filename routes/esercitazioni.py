@@ -114,7 +114,7 @@ def lista_esercitazioni():
         log_user_action("Visualizzazione lista esercitazioni", "esercitazioni", None)
         
         return render_template(
-            'elenco_esercitazioni.html',
+            'esercitazioni/lista.html',
             esercitazioni_list=esercitazioni_list
         )
         

@@ -114,23 +114,7 @@ body[data-user-role="VISUALIZZATORE"] .limited-access-indicator {
     display: inline-block;
 }
 
-/* Icona di lucchetto per elementi ristretti */
-.sidebar li[data-min-role] a::after {
-    content: '🔒';
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.75rem;
-    opacity: 0.5;
-    display: none;
-}
-
-body[data-user-role="VISUALIZZATORE"] .sidebar li[data-min-role="OPERATORE"] a::after,
-body[data-user-role="VISUALIZZATORE"] .sidebar li[data-min-role="ADMIN"] a::after,
-body[data-user-role="OPERATORE"] .sidebar li[data-min-role="ADMIN"] a::after {
-    display: block;
-}
+/* Icone di lucchetto rimosse */
 
 /* ===========================================
    ELEMENTI MENU DISABILITATI AVANZATI
@@ -368,10 +352,7 @@ body[data-user-role="OPERATORE"] .sidebar li:hover .quick-actions {
         font-weight: 700;
     }
     
-    .sidebar li[data-min-role] a::after {
-        font-size: 1rem;
-        opacity: 1;
-    }
+    /* Icone ruolo rimosse */
 }
 
 /* ===========================================

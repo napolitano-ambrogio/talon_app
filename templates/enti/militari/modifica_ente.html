@@ -1,0 +1,88 @@
+{% extends "shared/_base.html" %}
+
+{% block title %}Modifica Ente Militare - TALON{% endblock %}
+
+{% block head %}
+<!-- CSS specifico per form attività (per avere stessi stili) -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/form_attivita.css') }}?v={{ cache_buster }}">
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Rimuovi frecce native dal select nascosto */
+#parent_id,
+select[name="parent_id"] {
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    background-image: none !important;
+    background: none !important;
+}
+
+/* Nascondi SVG duplicato e mantieni solo l'icona CSS del form attività */
+.searchable-select-display .display-icon svg {
+    display: none !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h1>Modifica Ente: {{ ente.nome }}</h1>
+        
+        <form action="{{ url_for('enti_militari.aggiorna_militare', id=ente.id, view=return_view if return_view else none, search=return_search if return_search else none) }}" method="POST">
+            <!-- Tutti i campi del form di modifica rimangono invariati -->
+            <div class="form-group">
+                <label for="nome">Nome Ente:</label>
+                <input type="text" id="nome" name="nome" value="{{ ente.nome }}" required>
+            </div>
+            <div class="form-group">
+                <label for="codice">Codice (opzionale):</label>
+                <input type="text" id="codice" name="codice" value="{{ ente.codice or '' }}">
+            </div>
+            <!-- CORREZIONE: Sostituito il <select> con il componente di ricerca -->
+            <div class="form-group">
+                <label for="parent_id">Dipende da (Ente Genitore):</label>
+                <div class="searchable-select" data-select-id="parent_id"></div>
+                <select name="parent_id" id="parent_id" style="display: none !important; visibility: hidden !important; opacity: 0 !important;">
+                    <option value="">-- Nessuno (Ente al Vertice) --</option>
+                    {% for p in tutti_gli_enti %}
+                        <option value="{{ p.id }}" {% if p.id == ente.parent_id %}selected{% endif %}>{{ p.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <hr>
+            <h3>Dettagli Contatto</h3>
+            <div class="form-group">
+                <label for="indirizzo">Indirizzo Completo:</label>
+                <input type="text" id="indirizzo" name="indirizzo" value="{{ ente.indirizzo or '' }}"
+                       placeholder="es: Via Roma 123, 20100 Milano (MI)">
+                <small style="color: #666; font-size: 0.9em;">
+                    Utilizzare il Geocoding Interattivo per la localizzazione precisa.
+                </small>
+            </div>
+            <div class="form-group">
+                <label for="telefono">Telefono:</label>
+                <input type="tel" id="telefono" name="telefono" value="{{ ente.telefono or '' }}">
+            </div>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" value="{{ ente.email or '' }}">
+            </div>
+            <button type="submit">Aggiorna Ente</button>
+        </form>
+
+        <br>
+        <a href="{{ url_for('enti_militari.organigramma', view=return_view if return_view else none, search=return_search if return_search else none) }}" class="cancel-link">Annulla e torna all'Organigramma</a>
+        
+        <!-- CORREZIONE: Aggiunta la sezione di eliminazione -->
+        <hr style="margin-top: 30px; margin-bottom: 20px; border-color: #d9534f;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="color: #d9534f; margin: 0;">Zona Pericolosa</h3>
+            <form action="{{ url_for('enti_militari.elimina_militare', id=ente.id, view=return_view if return_view else none, search=return_search if return_search else none) }}" method="POST" onsubmit="return confirm('Sei sicuro di voler eliminare questo ente? L\'azione è irreversibile.') && confirm('ATTENZIONE: Confermi definitivamente l\'eliminazione?');">
+                <button type="submit" style="background-color: #d9534f; color: white; padding: 10px 20px; border: none; cursor: pointer; border-radius: 4px;">Elimina Ente</button>
+            </form>
+        </div>
+
+    </div>
+{% endblock %}

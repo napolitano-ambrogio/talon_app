@@ -1,0 +1,301 @@
+{% extends "shared/_base.html" %}
+
+{% block title %}Dashboard di Analisi - TALON{% endblock %}
+
+{% block additional_css %}
+<style>
+    /* Assicurati che il corpo della pagina rispetti l'header */
+    body {
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+    
+    /* Header deve rimanere fisso e seguire la sidebar */
+    header {
+        position: fixed !important;
+        top: 0 !important;
+        left: var(--sidebar-width-collapsed, 60px) !important; /* Inizia dopo la sidebar collassata */
+        right: 0 !important;
+        z-index: 1040 !important;
+        height: 60px !important; /* Altezza standard header */
+        transition: left 0.5s cubic-bezier(0.4, 0.0, 0.2, 1) !important; /* Stessa transizione della sidebar */
+    }
+    
+    /* Header quando sidebar è espansa - selettori più generici */
+    .sidebar.expanded ~ .page-wrapper header,
+    .sidebar.pinned ~ .page-wrapper header,
+    .sidebar.locked ~ .page-wrapper header,
+    body:has(.sidebar.expanded) header,
+    body:has(.sidebar.pinned) header,
+    body:has(.sidebar.locked) header {
+        left: var(--sidebar-width-expanded, 260px) !important; /* Si sposta quando sidebar è espansa */
+    }
+    
+    /* Stile per pagina fullscreen con iframe */
+    .main-content {
+        padding: 0 !important;
+        margin: 0 !important;
+        margin-top: 60px !important; /* Spazio per header fisso */
+        padding-top: 0 !important;
+        height: calc(100vh - 120px) !important; /* Altezza finestra meno header (60px) e footer (60px) */
+        min-height: calc(100vh - 120px) !important;
+    }
+    
+    .superset-container {
+        width: 100%;
+        height: 100%;
+        border: none;
+        overflow: hidden;
+        position: relative;
+        top: 0;
+    }
+    
+    .superset-iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        display: block;
+    }
+    
+    .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        background-color: #f8f9fa;
+    }
+    
+    .loading-spinner {
+        width: 60px;
+        height: 60px;
+        border: 6px solid #f3f3f3;
+        border-top: 6px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+        font-size: 18px;
+        color: #6c757d;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    /* Nascondi elementi non necessari per la vista embedded */
+    .breadcrumb {
+        display: none !important;
+    }
+    
+    /* Assicurati che il container sia a tutta altezza ma rispetti il footer */
+    .flex-grow-1 {
+        height: calc(100vh - 120px) !important;
+        min-height: calc(100vh - 120px) !important;
+    }
+    
+    /* Forza il footer a rimanere in basso - con supporto sidebar */
+    #page-footer {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: var(--sidebar-width-collapsed, 60px) !important; /* Larghezza sidebar collassata default */
+        right: 0 !important;
+        z-index: 1030 !important;
+        margin-top: 0 !important;
+        transition: left 0.5s cubic-bezier(0.4, 0.0, 0.2, 1) !important; /* Stessa transizione della sidebar */
+    }
+    
+    /* Footer quando sidebar è espansa */
+    .sidebar.expanded ~ main #page-footer,
+    .sidebar.pinned ~ main #page-footer,
+    .sidebar.locked ~ main #page-footer {
+        left: var(--sidebar-width-expanded, 260px) !important; /* Larghezza sidebar espansa */
+    }
+    
+    /* Aggiusta il contenuto per header e footer fissi */
+    main {
+        padding-top: 60px !important; /* Spazio per header fisso */
+        padding-bottom: 60px !important; /* Spazio per footer fisso */
+        min-height: calc(100vh - 120px) !important;
+    }
+    
+    /* Assicurati che il layout sia corretto */
+    .page-wrapper {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="superset-container" id="supersetContainer">
+    <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Caricamento dashboard di analisi...</div>
+        <div class="mt-3 text-muted">
+            <small>Connessione a Superset in corso</small>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block additional_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Aggiungi un messaggio informativo per l'utente
+    console.info('[TALON] Caricamento dashboard Superset...');
+    
+    // Nota per sviluppatori
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        console.info('[TALON] Modalità sviluppo: eventuali warning di Superset sono normali e non influenzano il funzionamento');
+    }
+    
+    // Carica Superset usando Guest Token (SSO corretto)
+    setTimeout(function() {
+        const container = document.getElementById('supersetContainer');
+        
+        // Usa proxy frame TALON che mantiene la sessione SSO
+        console.log('[TALON] Caricamento Superset tramite proxy frame...');
+        
+        const iframe = document.createElement('iframe');
+        iframe.src = '/superset-proxy-frame';  // Endpoint proxy che mantiene SSO
+        iframe.className = 'superset-iframe';
+        iframe.frameBorder = '0';
+        iframe.allowFullscreen = true;
+        
+        // Gestione eventi iframe
+        iframe.onload = function() {
+            console.log('[TALON] Proxy frame Superset caricato');
+        };
+        
+        iframe.onerror = function() {
+            console.error('[TALON] Errore caricamento proxy frame');
+            container.innerHTML = `
+                <div class="alert alert-warning text-center">
+                    <h5>Errore di caricamento</h5>
+                    <p>Impossibile caricare Superset. Riprova più tardi.</p>
+                    <button class="btn btn-primary" onclick="window.reloadSuperset()">Ricarica</button>
+                </div>
+            `;
+        };
+        
+        container.innerHTML = '';
+        container.appendChild(iframe);
+    }, 500);
+    
+    // JavaScript per sincronizzare header con sidebar (fallback per browser che non supportano :has())
+    function syncHeaderWithSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        const header = document.querySelector('header');
+        
+        if (!sidebar || !header) return;
+        
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    const isExpanded = sidebar.classList.contains('expanded') || 
+                                     sidebar.classList.contains('pinned') || 
+                                     sidebar.classList.contains('locked');
+                    
+                    if (isExpanded) {
+                        header.style.left = 'var(--sidebar-width-expanded, 260px)';
+                    } else {
+                        header.style.left = 'var(--sidebar-width-collapsed, 60px)';
+                    }
+                }
+            });
+        });
+        
+        // Osserva cambiamenti nella classe della sidebar
+        observer.observe(sidebar, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+        
+        // Imposta stato iniziale
+        const isExpanded = sidebar.classList.contains('expanded') || 
+                          sidebar.classList.contains('pinned') || 
+                          sidebar.classList.contains('locked');
+        
+        if (isExpanded) {
+            header.style.left = 'var(--sidebar-width-expanded, 260px)';
+        } else {
+            header.style.left = 'var(--sidebar-width-collapsed, 60px)';
+        }
+    }
+    
+    // Avvia sincronizzazione
+    syncHeaderWithSidebar();
+});
+
+// Funzione per ricaricare Superset in caso di errore
+window.reloadSuperset = function() {
+    const container = document.getElementById('supersetContainer');
+    container.innerHTML = `
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Ricaricamento dashboard...</div>
+        </div>
+    `;
+    
+    setTimeout(function() {
+        const iframe = document.createElement('iframe');
+        iframe.src = `/superset-proxy-frame?t=${Date.now()}`;
+        iframe.className = 'superset-iframe';
+        iframe.frameBorder = '0';
+        iframe.allowFullscreen = true;
+        // Rimosso sandbox per permettere l'SSO corretto
+        // iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox';
+        
+        iframe.onload = function() {
+            console.log('Superset ricaricato con successo');
+            // Tenta di filtrare errori nell'iframe ricaricato
+            try {
+                const iframeWindow = iframe.contentWindow;
+                if (iframeWindow && iframeWindow.console) {
+                    const originalError = iframeWindow.console.error;
+                    const originalWarn = iframeWindow.console.warn;
+                    
+                    iframeWindow.console.error = function(...args) {
+                        const message = args.join(' ');
+                        if (message.includes('configure') || message.includes('entry.js')) {
+                            console.debug('[Iframe Reload Filtered Error]:', message);
+                            return;
+                        }
+                        originalError.apply(iframeWindow.console, args);
+                    };
+                    
+                    iframeWindow.console.warn = function(...args) {
+                        const message = args.join(' ');
+                        if (message.includes('configure') || message.includes('entry.js')) {
+                            console.debug('[Iframe Reload Filtered Warning]:', message);
+                            return;
+                        }
+                        originalWarn.apply(iframeWindow.console, args);
+                    };
+                }
+            } catch(e) {
+                console.debug('[TALON] Cross-origin iframe reload - filtro non applicabile');
+            }
+        };
+        
+        iframe.onerror = function() {
+            console.warn('Errore nel ricaricamento Superset');
+            container.innerHTML = `
+                <div class="alert alert-danger text-center">
+                    <h5>Errore persistente</h5>
+                    <p>Impossibile caricare Superset. Contatta l'amministratore.</p>
+                </div>
+            `;
+        };
+        
+        container.innerHTML = '';
+        container.appendChild(iframe);
+    }, 1000);
+};
+</script>
+{% endblock %}

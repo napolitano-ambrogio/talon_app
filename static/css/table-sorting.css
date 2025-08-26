@@ -1,0 +1,140 @@
+/**
+ * ========================================
+ * TALON - STILI UNIFICATI PER ORDINAMENTO TABELLE
+ * File: static/css/table-sorting.css
+ * 
+ * Versione: 1.0.0
+ * Data: 2025
+ * Descrizione: Stili uniformi per frecce di ordinamento in tutte le tabelle
+ * ========================================
+ */
+
+/* ===== HEADER ORDINABILI ===== */
+.sortable {
+    cursor: pointer;
+    position: relative;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.sortable:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
+/* ===== LABEL E FRECCE ===== */
+.th-label {
+    margin-right: 20px;
+    font-weight: 600;
+}
+
+.th-arrow {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    line-height: 1;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Frecce con pseudo-elementi per design più pulito */
+.th-arrow::before,
+.th-arrow::after {
+    display: block;
+    transition: all 0.2s ease;
+    font-size: 10px;
+}
+
+/* Freccia su */
+.th-arrow::before {
+    content: '▲';
+    color: #d1d5db;
+    opacity: 0.6;
+}
+
+/* Freccia giù */
+.th-arrow::after {
+    content: '▼';
+    color: #d1d5db;
+    opacity: 0.6;
+}
+
+/* ===== STATI ORDINAMENTO ===== */
+
+/* Hover sulle frecce */
+.sortable:hover .th-arrow::before,
+.sortable:hover .th-arrow::after {
+    opacity: 0.8;
+}
+
+/* Ordinamento Ascendente */
+.sorted-asc .th-arrow::before {
+    color: #007bff;
+    opacity: 1;
+    transform: scale(1.2);
+}
+
+.sorted-asc .th-arrow::after {
+    color: #d1d5db;
+    opacity: 0.3;
+}
+
+/* Ordinamento Discendente */
+.sorted-desc .th-arrow::before {
+    color: #d1d5db;
+    opacity: 0.3;
+}
+
+.sorted-desc .th-arrow::after {
+    color: #007bff;
+    opacity: 1;
+    transform: scale(1.2);
+}
+
+/* ===== ANIMAZIONI ===== */
+@keyframes sortPulse {
+    0% { transform: scale(1) translateY(-50%); }
+    50% { transform: scale(1.1) translateY(-50%); }
+    100% { transform: scale(1) translateY(-50%); }
+}
+
+.sortable.sorting .th-arrow {
+    animation: sortPulse 0.3s ease-out;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .th-label {
+        margin-right: 15px;
+        font-size: 0.9rem;
+    }
+    
+    .th-arrow {
+        right: 5px;
+    }
+    
+    .th-arrow::before,
+    .th-arrow::after {
+        font-size: 9px;
+    }
+}
+
+/* ===== TEMA SCURO (opzionale) ===== */
+@media (prefers-color-scheme: dark) {
+    .sortable:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+    
+    .th-arrow::before,
+    .th-arrow::after {
+        color: #6b7280;
+    }
+    
+    .sorted-asc .th-arrow::before,
+    .sorted-desc .th-arrow::after {
+        color: #3b82f6;
+    }
+}

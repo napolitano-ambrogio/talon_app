@@ -70,13 +70,14 @@ def dashboard():
     stats = get_dashboard_stats(user_role)
     
     return render_template(
-        'dashboard_new.html',
+        'dashboard/dashboard.html',
         user_info=user_info,
         user_role=user_role,
         stats=stats,
         SUPERSET_BASE_URL='http://127.0.0.1:8088',  # URL Superset
         SUPERSET_PROXY_URL='/superset-proxy'        # URL del nostro proxy
     )
+
 
 @main_bp.route('/dashboard_admin')
 @admin_required
@@ -98,7 +99,7 @@ def dashboard_admin():
     )
     
     return render_template(
-        'dashboard_admin.html',
+        'admin/impostazioni.html',
         user_info=user_info,
         stats=stats
     )
@@ -132,7 +133,7 @@ def impostazioni():
         'impostazioni'
     )
     
-    return render_template('impostazioni.html', user_info=user_info)
+    return render_template('admin/impostazioni.html', user_info=user_info)
 
 @main_bp.route('/impostazioni/utenti')
 @admin_required
@@ -1100,7 +1101,7 @@ def superset_embedded():
         'superset'
     )
     
-    return render_template('superset_embedded.html', 
+    return render_template('superset/superset_embedded.html', 
                              user_info=user_info,
                              page_title="Dashboard di Analisi")
 
@@ -1456,7 +1457,7 @@ def backup_dashboard():
         )
         
         return render_template(
-            'admin/backup_dashboard.html',
+            'admin/backup.html',
             user_info=user_info,
             backup_status=backup_status,
             db_stats=db_stats,

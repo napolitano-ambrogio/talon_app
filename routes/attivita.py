@@ -605,11 +605,29 @@ def inserisci_attivita_form():
                 )
                 esercitazioni = cur.fetchall()
 
+                # Operazioni temporanee (non validate)
+                cur.execute(
+                    '''SELECT id, nome_missione, nome_breve, teatro_operativo, nazione
+                       FROM operazioni_temp 
+                       WHERE validato = FALSE
+                       ORDER BY data_inserimento DESC'''
+                )
+                operazioni_temp = cur.fetchall()
+
+                # Esercitazioni temporanee (non validate)
+                cur.execute(
+                    '''SELECT id, nome, nome_breve, anno
+                       FROM esercitazioni_temp
+                       WHERE validato = FALSE
+                       ORDER BY data_inserimento DESC'''
+                )
+                esercitazioni_temp = cur.fetchall()
+
             tipologie_organizzate = get_tipologie_organizzate(conn)
 
     except Exception as e:
         flash(f'Errore nel caricamento dei dati del form: {str(e)}', 'error')
-        enti_militari, enti_civili, operazioni, esercitazioni, tipologie_organizzate = [], [], [], [], {}
+        enti_militari, enti_civili, operazioni, esercitazioni, operazioni_temp, esercitazioni_temp, tipologie_organizzate = [], [], [], [], [], [], {}
     finally:
         conn.close()
 
@@ -627,6 +645,8 @@ def inserisci_attivita_form():
         enti_civili=enti_civili,
         operazioni=operazioni,
         esercitazioni=esercitazioni,
+        operazioni_temp=operazioni_temp,
+        esercitazioni_temp=esercitazioni_temp,
         tipologie=tipologie_organizzate
     )
 
@@ -928,6 +948,24 @@ def modifica_attivita_form(id):
                 )
                 esercitazioni = cur.fetchall()
 
+                # Operazioni temporanee (non validate)
+                cur.execute(
+                    '''SELECT id, nome_missione, nome_breve, teatro_operativo, nazione
+                       FROM operazioni_temp 
+                       WHERE validato = FALSE
+                       ORDER BY data_inserimento DESC'''
+                )
+                operazioni_temp = cur.fetchall()
+
+                # Esercitazioni temporanee (non validate)
+                cur.execute(
+                    '''SELECT id, nome, nome_breve, anno
+                       FROM esercitazioni_temp
+                       WHERE validato = FALSE
+                       ORDER BY data_inserimento DESC'''
+                )
+                esercitazioni_temp = cur.fetchall()
+
                 tipologie_organizzate = get_tipologie_organizzate(conn)
 
                 # Recupera tutti i dettagli specifici
@@ -1004,6 +1042,8 @@ def modifica_attivita_form(id):
         enti_civili=enti_civili,
         operazioni=operazioni,
         esercitazioni=esercitazioni,
+        operazioni_temp=operazioni_temp,
+        esercitazioni_temp=esercitazioni_temp,
         tipologie=tipologie_organizzate
     )
 

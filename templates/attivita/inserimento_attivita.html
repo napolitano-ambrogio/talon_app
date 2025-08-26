@@ -1,28 +1,194 @@
-{% extends "_base.html" %}
+{% extends "shared/_base.html" %}
 
 {% block title %}TEST MODIFICA 123 - TALON{% endblock %}
 
 {% block head %}
 <!-- CSS specifico per form attività -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/form_attivita.css') }}?v={{ cache_buster }}&t=20250822">
+<!-- CSS per opzioni "Aggiungi nuovo..." nei dropdown -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown_add_new.css') }}?v={{ cache_buster }}">
+<!-- CSS fix per problemi visualizzazione form -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/form_fixes.css') }}?v={{ cache_buster }}">
 <style>
-/* Test immediato - colora TUTTO il form */
-.attivita-form {
-    background-color: yellow !important;
+/* OVERRIDE FINALE - PRIORITÀ MASSIMA */
+body .form-container,
+body .attivita-form-container,
+#inserimento-attivita-container {
+    display: block !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 20px !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 1200px !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+    min-height: calc(100vh - 120px) !important;
 }
 
-/* Test visibilità stili */
-#seriale_vettore_stratevac {
-    border: 5px solid red !important;
-    background-color: lightpink !important;
-    height: 50px !important;
-    padding: 12px !important;
+/* SEZIONI FORM SEMPRE VISIBILI */
+body .form-section {
+    background: white !important;
+    border-radius: 10px !important;
+    padding: 25px !important;
+    margin-bottom: 20px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+    display: block !important;
+    overflow: visible !important;
 }
 
-/* Test per searchable select */
-.searchable-select[data-select-id="tipo_vettore_stratevac"] input {
-    border: 5px solid blue !important;
-    background-color: lightblue !important;
+/* INPUT STANDARDIZZATI */
+body .form-control,
+body input[type="text"],
+body input[type="number"],
+body input[type="date"],
+body input[type="email"],
+body select,
+#inserimento-attivita-container input,
+#inserimento-attivita-container select,
+.attivita-form input,
+.attivita-form select {
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 10px 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 5px !important;
+    font-size: 0.95rem !important;
+}
+
+/* TEXTAREA SPECIFICHE */
+body textarea,
+#inserimento-attivita-container textarea,
+.attivita-form textarea {
+    height: auto !important;
+    min-height: 80px !important;
+    padding: 10px 12px !important;
+}
+
+/* SEARCHABLE SELECT */
+body .searchable-select-input,
+.searchable-select input {
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 10px 35px 10px 12px !important;
+}
+
+/* DROPDOWN SCROLLABILI */
+body .searchable-select-dropdown {
+    max-height: 300px !important;
+    overflow-y: auto !important;
+    background: white !important;
+    border: 1px solid #667eea !important;
+    z-index: 1001 !important;
+}
+</style>
+<style>
+/* Stili per gli switch toggle */
+.toggle-section {
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+}
+
+.toggle-label {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.toggle-label > span {
+    font-size: 14px;
+    flex-grow: 1;
+}
+
+/* Override del CSS globale per i div toggle dentro .form-group */
+.form-group .toggle-label {
+    display: flex !important;
+    margin-bottom: 0 !important;
+}
+
+/* Assicuriamoci che lo switch non abbia margini indesiderati */
+.toggle-label .switch {
+    margin: 0;
+    margin-bottom: 0 !important;
+    flex-shrink: 0;
+}
+
+/* Override per label.switch dentro form-group */
+.form-group label.switch {
+    display: inline-block !important;
+    margin-bottom: 0 !important;
+}
+
+/* Switch stile iOS */
+.switch {
+    position: relative;
+    display: inline-block !important;
+    width: 50px;
+    height: 24px;
+    vertical-align: middle;
+}
+
+.switch input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    z-index: 1;
+}
+
+.switch .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.switch .slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.switch input[type="checkbox"]:checked + .slider {
+    background-color: #007bff;
+}
+
+.switch input[type="checkbox"]:focus + .slider {
+    box-shadow: 0 0 1px #007bff;
+}
+
+.switch input[type="checkbox"]:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+/* Container per i dropdown */
+#operazione-container,
+#esercitazione-container {
+    margin-top: 10px;
+    padding-left: 20px;
+    border-left: 3px solid #007bff;
 }
 </style>
 {% endblock %}
@@ -71,38 +237,85 @@
             </div>
 
             <div class="form-group">
-                <label for="operazione_id">Operazione</label>
-                <div class="searchable-select" data-select-id="operazione_id"></div>
-                <select name="operazione_id" id="operazione_id" style="display: none;">
-                    <option value="">-- Seleziona un'operazione (opzionale) --</option>
-                    {% for op in operazioni %}
-                        <option value="{{ op.id }}"
-                                data-nome-missione="{{ op.nome_missione }}"
-                                data-nome-breve="{{ op.nome_breve or '' }}"
-                                data-teatro-operativo="{{ op.teatro_operativo or '' }}"
-                                data-nazione="{{ op.nazione or '' }}"
-                                data-details="{% if op.nome_breve %}{{ op.nome_breve }} • {% endif %}{% if op.teatro_operativo %}{{ op.teatro_operativo }}{% endif %}{% if op.nazione %} • {{ op.nazione }}{% endif %}">
-                            {{ op.nome_missione }}
+                <div style="margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-weight: 600; color: #333;">Operazione</span>
+                        <div style="position: relative; display: inline-block; width: 50px; height: 24px; background-color: #ccc; border-radius: 24px; cursor: pointer;" onclick="toggleSwitch('operazione')">
+                            <input type="checkbox" id="toggle-operazione" style="display: none;">
+                            <div id="operazione-slider-button" style="position: absolute; height: 18px; width: 18px; left: 3px; top: 3px; background-color: white; transition: transform 0.3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="operazione-container" style="display: none;">
+                    <div class="searchable-select" data-select-id="operazione_id"></div>
+                    <select name="operazione_id" id="operazione_id" style="display: none;">
+                        <option value="">-- Seleziona un'operazione (opzionale) --</option>
+                        <option value="new" data-action="new-operazione" style="font-style: italic; color: #007bff; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 8px;">
+                            ➕ Aggiungi nuova operazione...
                         </option>
-                    {% endfor %}
-                </select>
+                        {% for op in operazioni %}
+                            <option value="{{ op.id }}"
+                                    data-nome-missione="{{ op.nome_missione }}"
+                                    data-nome-breve="{{ op.nome_breve or '' }}"
+                                    data-teatro-operativo="{{ op.teatro_operativo or '' }}"
+                                    data-nazione="{{ op.nazione or '' }}"
+                                    data-details="{% if op.nome_breve %}{{ op.nome_breve }} • {% endif %}{% if op.teatro_operativo %}{{ op.teatro_operativo }}{% endif %}{% if op.nazione %} • {{ op.nazione }}{% endif %}">
+                                {{ op.nome_missione }}
+                            </option>
+                        {% endfor %}
+                        {% for op_temp in operazioni_temp %}
+                            <option value="temp_{{ op_temp.id }}"
+                                    data-temp="true"
+                                    data-nome-missione="{{ op_temp.nome_missione }}"
+                                    data-nome-breve="{{ op_temp.nome_breve or '' }}"
+                                    data-teatro-operativo="{{ op_temp.teatro_operativo or '' }}"
+                                    data-nazione="{{ op_temp.nazione or '' }}"
+                                    data-details="[NON VALIDATA] {% if op_temp.nome_breve %}{{ op_temp.nome_breve }} • {% endif %}{% if op_temp.teatro_operativo %}{{ op_temp.teatro_operativo }}{% endif %}{% if op_temp.nazione %} • {{ op_temp.nazione }}{% endif %}">
+                                [TEMP] {{ op_temp.nome_missione }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
 
             <div class="form-group">
-                <label for="esercitazione_id">Esercitazione</label>
-                <div class="searchable-select" data-select-id="esercitazione_id"></div>
-                <select name="esercitazione_id" id="esercitazione_id" style="display: none;">
-                    <option value="">-- Seleziona un'esercitazione (opzionale) --</option>
-                    {% for eserc in esercitazioni %}
-                        <option value="{{ eserc.id }}"
-                                data-nome="{{ eserc.nome }}"
-                                data-nome-breve="{{ eserc.nome_breve or '' }}"
-                                data-anno="{{ eserc.anno or '' }}"
-                                data-details="{% if eserc.nome_breve %}{{ eserc.nome_breve }} • {% endif %}{% if eserc.anno %}{{ eserc.anno }}{% endif %}">
-                            {{ eserc.nome }}
+                <div style="margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-weight: 600; color: #333;">Esercitazione</span>
+                        <div style="position: relative; display: inline-block; width: 50px; height: 24px; background-color: #ccc; border-radius: 24px; cursor: pointer;" onclick="toggleSwitch('esercitazione')">
+                            <input type="checkbox" id="toggle-esercitazione" style="display: none;">
+                            <div id="esercitazione-slider-button" style="position: absolute; height: 18px; width: 18px; left: 3px; top: 3px; background-color: white; transition: transform 0.3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="esercitazione-container" style="display: none;">
+                    <div class="searchable-select" data-select-id="esercitazione_id"></div>
+                    <select name="esercitazione_id" id="esercitazione_id" style="display: none;">
+                        <option value="">-- Seleziona un'esercitazione (opzionale) --</option>
+                        <option value="new" data-action="new-esercitazione" style="font-style: italic; color: #007bff; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 8px;">
+                            ➕ Aggiungi nuova esercitazione...
                         </option>
-                    {% endfor %}
-                </select>
+                        {% for eserc in esercitazioni %}
+                            <option value="{{ eserc.id }}"
+                                    data-nome="{{ eserc.nome }}"
+                                    data-nome-breve="{{ eserc.nome_breve or '' }}"
+                                    data-anno="{{ eserc.anno or '' }}"
+                                    data-details="{% if eserc.nome_breve %}{{ eserc.nome_breve }} • {% endif %}{% if eserc.anno %}{{ eserc.anno }}{% endif %}">
+                                {{ eserc.nome }}
+                            </option>
+                        {% endfor %}
+                        {% for eserc_temp in esercitazioni_temp %}
+                            <option value="temp_{{ eserc_temp.id }}"
+                                    data-temp="true"
+                                    data-nome="{{ eserc_temp.nome }}"
+                                    data-nome-breve="{{ eserc_temp.nome_breve or '' }}"
+                                    data-anno="{{ eserc_temp.anno or '' }}"
+                                    data-details="[NON VALIDATA] {% if eserc_temp.nome_breve %}{{ eserc_temp.nome_breve }} • {% endif %}{% if eserc_temp.anno %}{{ eserc_temp.anno }}{% endif %}">
+                                [TEMP] {{ eserc_temp.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
 
             <div class="form-row">
@@ -601,20 +814,238 @@
     <br>
     <a href="{{ url_for('attivita.lista_attivita') }}" class="cancel-link">Annulla</a>
 </div>
+
+<!-- Modal per nuova operazione -->
+<div id="modal-nuova-operazione" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Aggiungi Nuova Operazione (Temporanea)</h3>
+            <span class="modal-close" onclick="closeModal('modal-nuova-operazione')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p style="color: #856404; background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <strong>Nota:</strong> Questa operazione sarà salvata come temporanea e dovrà essere validata dall'amministratore.
+            </p>
+            <form id="form-nuova-operazione">
+                <div class="form-group">
+                    <label for="new-op-nome">Nome Missione <span class="required">*</span></label>
+                    <input type="text" id="new-op-nome" class="form-control" required style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label for="new-op-nome-breve">Nome Breve</label>
+                    <input type="text" id="new-op-nome-breve" class="form-control" style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label for="new-op-teatro">Teatro Operativo</label>
+                    <input type="text" id="new-op-teatro" class="form-control" style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label for="new-op-nazione">Nazione</label>
+                    <input type="text" id="new-op-nazione" class="form-control" style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label for="new-op-note">Note</label>
+                    <textarea id="new-op-note" class="form-control" rows="2" style="text-transform: uppercase;"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('modal-nuova-operazione')">Annulla</button>
+            <button type="button" class="btn btn-primary" onclick="salvaOperazioneTemp()">Salva Operazione</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal per nuova esercitazione -->
+<div id="modal-nuova-esercitazione" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Aggiungi Nuova Esercitazione (Temporanea)</h3>
+            <span class="modal-close" onclick="closeModal('modal-nuova-esercitazione')">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p style="color: #856404; background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <strong>Nota:</strong> Questa esercitazione sarà salvata come temporanea e dovrà essere validata dall'amministratore.
+            </p>
+            <form id="form-nuova-esercitazione">
+                <div class="form-group">
+                    <label for="new-eserc-nome">Nome Esercitazione <span class="required">*</span></label>
+                    <input type="text" id="new-eserc-nome" class="form-control" required style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label for="new-eserc-nome-breve">Nome Breve</label>
+                    <input type="text" id="new-eserc-nome-breve" class="form-control" style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label for="new-eserc-anno">Anno</label>
+                    <input type="number" id="new-eserc-anno" class="form-control" min="2020" max="2030" value="2025">
+                </div>
+                <div class="form-group">
+                    <label for="new-eserc-note">Note</label>
+                    <textarea id="new-eserc-note" class="form-control" rows="2" style="text-transform: uppercase;"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('modal-nuova-esercitazione')">Annulla</button>
+            <button type="button" class="btn btn-primary" onclick="salvaEsercitazioneTemp()">Salva Esercitazione</button>
+        </div>
+    </div>
+</div>
+
+<!-- Stili per i modal -->
+<style>
+.modal {
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    border: 1px solid #888;
+    width: 90%;
+    max-width: 600px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.modal-header {
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.modal-close {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.modal-close:hover,
+.modal-close:focus {
+    color: #000;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    border-radius: 0 0 10px 10px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
-<!-- I file JavaScript delle attività sono già caricati da _base.html:
+<!-- JavaScript fix per container form -->
+<script src="{{ url_for('static', filename='js/attivita/form_container_fixes.js') }}?v={{ cache_buster }}"></script>
+
+<!-- I file JavaScript delle attività sono già caricati da shared/_base.html:
      - static/js/attivita/attivita_utils.js
      - static/js/attivita/attivita_forms.js  
      - static/js/attivita/inserimento_attivita.js
      Quindi non serve includerli nuovamente -->
 
 <script>
+// Funzione globale per gestire i toggle switch
+function toggleSwitch(type) {
+    const checkbox = document.getElementById('toggle-' + type);
+    const container = document.getElementById(type + '-container');
+    const button = document.getElementById(type + '-slider-button');
+    const switchDiv = button.parentElement;
+    const select = document.getElementById(type === 'operazione' ? 'operazione_id' : 'esercitazione_id');
+    
+    // Toggle lo stato
+    checkbox.checked = !checkbox.checked;
+    
+    if (checkbox.checked) {
+        // Attiva lo switch
+        switchDiv.style.backgroundColor = '#007bff';
+        button.style.transform = 'translateX(26px)';
+        container.style.display = 'block';
+    } else {
+        // Disattiva lo switch
+        switchDiv.style.backgroundColor = '#ccc';
+        button.style.transform = 'translateX(0)';
+        container.style.display = 'none';
+        // Pulisci la selezione
+        if (select) {
+            select.value = '';
+            // Pulisci anche il searchable select se presente
+            const searchableWrapper = container.querySelector('.searchable-select');
+            if (searchableWrapper) {
+                const searchableInput = searchableWrapper.querySelector('input');
+                if (searchableInput) {
+                    searchableInput.value = '';
+                }
+            }
+        }
+    }
+}
+
 // Inizializzazione specifica per questa vista
 document.addEventListener('DOMContentLoaded', function() {
     // Il modulo TalonInserimentoAttivita si auto-inizializza
     console.log('[Inserimento Attività] Pagina pronta');
+    
+    // Riferimenti agli elementi
+    const toggleOperazione = document.getElementById('toggle-operazione');
+    const toggleEsercitazione = document.getElementById('toggle-esercitazione');
+    const operazioneContainer = document.getElementById('operazione-container');
+    const esercitazioneContainer = document.getElementById('esercitazione-container');
+    const operazioneSelect = document.getElementById('operazione_id');
+    const esercitazioneSelect = document.getElementById('esercitazione_id');
+    
+    // Se c'è già un valore preselezionato (in caso di modifica), attiva il toggle corrispondente
+    if (operazioneSelect && operazioneSelect.value) {
+        toggleSwitch('operazione');
+    }
+    
+    if (esercitazioneSelect && esercitazioneSelect.value) {
+        toggleSwitch('esercitazione');
+    }
+    
+    // Gestione selezione "Aggiungi nuovo..."
+    if (operazioneSelect) {
+        operazioneSelect.addEventListener('change', function() {
+            if (this.value === 'new') {
+                openModal('modal-nuova-operazione');
+                this.value = ''; // Reset selezione
+            }
+        });
+    }
+    
+    if (esercitazioneSelect) {
+        esercitazioneSelect.addEventListener('change', function() {
+            if (this.value === 'new') {
+                openModal('modal-nuova-esercitazione');
+                this.value = ''; // Reset selezione
+            }
+        });
+    }
     
     // Gestione forza_armata e ente_appartenenza per stratevac
     const forzaArmataSelect = document.getElementById('forza_armata');
@@ -691,5 +1122,227 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 1000); // Attendi 1 secondo per essere sicuri che tutto sia caricato
 });
 
+// Funzioni per gestire i modal
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        // Reset form nel modal
+        const form = modal.querySelector('form');
+        if (form) {
+            form.reset();
+        }
+    }
+}
+
+// Funzione per salvare operazione temporanea
+function salvaOperazioneTemp() {
+    const nome = document.getElementById('new-op-nome').value.toUpperCase();
+    const nomeBreve = document.getElementById('new-op-nome-breve').value.toUpperCase();
+    const teatro = document.getElementById('new-op-teatro').value.toUpperCase();
+    const nazione = document.getElementById('new-op-nazione').value.toUpperCase();
+    const note = document.getElementById('new-op-note').value.toUpperCase();
+    
+    if (!nome) {
+        alert('Il nome missione è obbligatorio!');
+        return;
+    }
+    
+    // Chiamata AJAX per salvare
+    fetch('/api/operazioni_temp', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            nome_missione: nome,
+            nome_breve: nomeBreve,
+            teatro_operativo: teatro,
+            nazione: nazione,
+            note: note
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Aggiungi la nuova opzione al select
+            const select = document.getElementById('operazione_id');
+            const option = new Option(
+                '[TEMP] ' + nome,
+                'temp_' + data.id,
+                false,
+                true // Seleziona automaticamente
+            );
+            option.setAttribute('data-temp', 'true');
+            option.setAttribute('data-nome-missione', nome);
+            option.setAttribute('data-nome-breve', nomeBreve);
+            option.setAttribute('data-teatro-operativo', teatro);
+            option.setAttribute('data-nazione', nazione);
+            
+            // Inserisci dopo l'opzione "Aggiungi nuovo..." (che ora è in cima)
+            const newOption = select.querySelector('option[value="new"]');
+            const nextElement = newOption.nextElementSibling;
+            if (nextElement) {
+                select.insertBefore(option, nextElement);
+            } else {
+                select.appendChild(option);
+            }
+            
+            // Chiudi modal
+            closeModal('modal-nuova-operazione');
+            
+            // Mostra messaggio di successo
+            alert('Operazione temporanea salvata con successo!');
+        } else {
+            alert('Errore nel salvataggio: ' + (data.error || 'Errore sconosciuto'));
+        }
+    })
+    .catch(error => {
+        console.error('Errore:', error);
+        alert('Errore di connessione al server');
+    });
+}
+
+// Funzione per salvare esercitazione temporanea
+function salvaEsercitazioneTemp() {
+    const nome = document.getElementById('new-eserc-nome').value.toUpperCase();
+    const nomeBreve = document.getElementById('new-eserc-nome-breve').value.toUpperCase();
+    const anno = document.getElementById('new-eserc-anno').value;
+    const note = document.getElementById('new-eserc-note').value.toUpperCase();
+    
+    if (!nome) {
+        alert('Il nome esercitazione è obbligatorio!');
+        return;
+    }
+    
+    // Chiamata AJAX per salvare
+    fetch('/api/esercitazioni_temp', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            nome: nome,
+            nome_breve: nomeBreve,
+            anno: parseInt(anno) || null,
+            note: note
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Aggiungi la nuova opzione al select
+            const select = document.getElementById('esercitazione_id');
+            const option = new Option(
+                '[TEMP] ' + nome,
+                'temp_' + data.id,
+                false,
+                true // Seleziona automaticamente
+            );
+            option.setAttribute('data-temp', 'true');
+            option.setAttribute('data-nome', nome);
+            option.setAttribute('data-nome-breve', nomeBreve);
+            option.setAttribute('data-anno', anno);
+            
+            // Inserisci dopo l'opzione "Aggiungi nuovo..." (che ora è in cima)
+            const newOption = select.querySelector('option[value="new"]');
+            const nextElement = newOption.nextElementSibling;
+            if (nextElement) {
+                select.insertBefore(option, nextElement);
+            } else {
+                select.appendChild(option);
+            }
+            
+            // Chiudi modal
+            closeModal('modal-nuova-esercitazione');
+            
+            // Mostra messaggio di successo
+            alert('Esercitazione temporanea salvata con successo!');
+        } else {
+            alert('Errore nel salvataggio: ' + (data.error || 'Errore sconosciuto'));
+        }
+    })
+    .catch(error => {
+        console.error('Errore:', error);
+        alert('Errore di connessione al server');
+    });
+}
+
+// Chiudi modal cliccando fuori
+window.onclick = function(event) {
+    if (event.target.classList.contains('modal')) {
+        event.target.style.display = 'none';
+    }
+}
+
+// CORREZIONE: Assicura che l'ultimo elemento del dropdown sia sempre visibile
+function fixDropdownScrolling() {
+    // Trova tutti i dropdown searchable-select
+    const dropdowns = document.querySelectorAll('.searchable-select-dropdown');
+    
+    dropdowns.forEach(dropdown => {
+        if (dropdown.style.display !== 'none') {
+            const optionsContainer = dropdown.querySelector('.searchable-select-options');
+            if (optionsContainer) {
+                // Assicura che l'altezza sia corretta
+                const options = optionsContainer.querySelectorAll('.searchable-select-option');
+                if (options.length > 0) {
+                    // Calcola l'altezza totale necessaria
+                    let totalHeight = 0;
+                    options.forEach(option => {
+                        totalHeight += option.offsetHeight;
+                    });
+                    
+                    // Se l'altezza totale è maggiore del max-height, assicura lo scroll
+                    if (totalHeight > 380) {
+                        optionsContainer.style.maxHeight = '380px';
+                        optionsContainer.style.overflowY = 'auto';
+                        optionsContainer.style.paddingBottom = '8px';
+                        
+                        // Verifica se il dropdown è tagliato dalla finestra
+                        const dropdownRect = dropdown.getBoundingClientRect();
+                        const windowHeight = window.innerHeight;
+                        
+                        if (dropdownRect.bottom > windowHeight - 20) {
+                            // Posiziona il dropdown sopra il campo
+                            dropdown.classList.add('dropdown-above');
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Applica la correzione quando si aprono i dropdown
+document.addEventListener('DOMContentLoaded', function() {
+    // Observer per rilevare quando i dropdown vengono aperti
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                const target = mutation.target;
+                if (target.classList.contains('searchable-select-dropdown')) {
+                    if (target.style.display === 'block') {
+                        // Dropdown aperto, applica le correzioni
+                        setTimeout(fixDropdownScrolling, 100);
+                    }
+                }
+            }
+        });
+    });
+    
+    // Osserva tutti i dropdown
+    const dropdowns = document.querySelectorAll('.searchable-select-dropdown');
+    dropdowns.forEach(dropdown => {
+        observer.observe(dropdown, { attributes: true, attributeFilter: ['style'] });
+    });
+});
 </script>
 {% endblock %}

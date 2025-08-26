@@ -1,0 +1,1064 @@
+<!-- shared/_base.html - TALON Application Template -->
+<!DOCTYPE html>
+<html lang="it" class="h-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="user-role" content="{{ session.get('ruolo_nome', 'GUEST') }}">
+    <meta name="user-name" content="{{ session.get('username', 'Utente') }}">
+    
+    <!-- FORZA NO CACHE PER RISOLVERE PROBLEMA F5 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <title>{% block title %}{{ app_name or 'TALON System' }}{% endblock %}</title>
+
+    <!-- Librerie Offline - Tutte le risorse sono locali per funzionamento su chiavetta USB -->
+    
+    <!-- Bootstrap CSS (locale) -->
+    <link href="/external/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- FontAwesome CSS (locale) -->
+    <link href="/external/fontawesome/css/all.min.css" rel="stylesheet">
+
+    <!-- CSS Sistema con cache busting FORZATO -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v={{ cache_buster }}&t={{ moment().unix() if moment else range(999999) | random }}">
+    
+    
+    <!-- Blocco per CSS aggiuntivi specifici per pagina -->
+    {% block additional_css %}{% endblock %}
+    
+    <!-- Blocco legacy per compatibilità -->
+    {% block extra_css %}{% endblock %}
+    
+    <!-- Preload fonts per performance -->
+    <link rel="preload" href="/external/fontawesome/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/external/fontawesome/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
+</head>
+<body class="h-100 {% if session.get('ruolo_nome') %}role-{{ session.get('ruolo_nome').lower() }}{% endif %} {% block body_class %}{% endblock %}"
+      data-user-role="{{ session.get('ruolo_nome', 'GUEST') }}"
+      data-user-name="{{ session.get('username', 'Utente') }}"
+      data-page="{{ request.endpoint }}"
+
+
+    <!-- Variabili globali JS dal backend -->
+    <script>
+        // Configurazione Sistema
+        window.TALON_CONFIG = {
+            // Dati utente
+            user: {
+                id: {{ session.get('user_id', 'null') }},
+                role: "{{ session.get('ruolo_nome', 'GUEST') }}",
+                username: "{{ session.get('username', 'Utente') }}",
+                fullName: "{{ (session.get('nome','') ~ ' ' ~ session.get('cognome','')).strip() or session.get('username','Utente') }}",
+                email: "{{ session.get('email', '') }}",
+                isLoggedIn: {{ session.get('logged_in')|lower }},
+                permissions: {{ session.get('permissions', [])|tojson|safe }}
+            },
+            // Info applicazione
+            app: {
+                name: "{{ app_name|default('TALON System') }}",
+                version: "{{ app_version|default('2.0.0') }}",
+                year: {{ current_year|default(2025) }},
+                ssoEnabled: {{ sso_enabled|lower }},
+                offlineMode: true,
+                spaEnabled: false,
+                cacheBuster: "{{ cache_buster|default('') }}"
+            },
+            // Flag debug
+            debug: {
+                enabled: {{ debug_mode|lower }},
+                isDebug: {{ is_debug|lower }}
+            },
+            // URLs API e Routes
+            api: {
+                baseUrl: "{{ url_for('main.dashboard', _external=False) }}".replace('/dashboard', ''),
+                csrfToken: "{{ csrf_token() }}"
+            },
+        };
+        
+        // Retrocompatibilità con vecchie variabili
+        window.FLASK_USER_ROLE = window.TALON_CONFIG.user.role;
+        window.FLASK_USER_NAME = window.TALON_CONFIG.user.username;
+        window.FLASK_USER_FULL_NAME = window.TALON_CONFIG.user.fullName;
+        window.FLASK_IS_LOGGED_IN = window.TALON_CONFIG.user.isLoggedIn;
+        window.FLASK_DEBUG = window.TALON_CONFIG.debug.enabled;
+        window.FLASK_IS_DEBUG = window.TALON_CONFIG.debug.isDebug;
+        window.TALON_APP = window.TALON_CONFIG.app;
+    </script>
+
+    <!-- Hidden per compatibilità -->
+    <input type="hidden" id="hidden-user-role" value="{{ session.get('ruolo_nome', 'GUEST') }}">
+
+
+
+    <div class="d-flex h-100">
+        {% if session.get('logged_in') %}
+            {% include 'components/sidebar.html' %}
+        {% endif %}
+
+        <main class="flex-grow-1 d-flex flex-column {% if not session.get('logged_in') %}mx-auto{% endif %} page-wrapper" id="main-wrapper">
+            {% if session.get('logged_in') %}
+            <header class="talon-header border-bottom page-header" id="page-header">
+                <canvas id="header-neural-canvas" class="header-neural-background"></canvas>
+                <div class="header-content">
+                    <div class="talon-title-container">
+                        <div class="talon-brand">
+                            <h1 class="talon-title">TALON</h1>
+                            <p class="talon-subtitle">Task Analysis & Logistics Operations Node</p>
+                        </div>
+                        {% if self.page_title() %}
+                        <div class="page-title-section">
+                            <h2 class="page-title">{% block page_title %}{% endblock %}</h2>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if self.page_controls() %}
+                    <div class="page-controls">
+                        {% block page_controls %}{% endblock %}
+                    </div>
+                    {% endif %}
+                </div>
+            </header>
+            {% endif %}
+
+
+            <!-- Flash messages iniziali (solo primo caricamento) -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="flash-messages p-3" id="initial-flash-messages">
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show shadow-sm" role="alert">
+                        <i class="fas fa-{{ 'exclamation-circle' if category == 'error' else 'info-circle' if category == 'info' else 'check-circle' if category == 'success' else 'exclamation-triangle' }}"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Chiudi"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Container per toast notifications -->
+            <div id="toast-container" class="position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
+
+            <!-- Main Content Area -->
+            <div class="flex-grow-1 p-3 main-content" id="main-content">
+                {% block content %}
+                <div class="text-center text-muted">
+                    <p>Contenuto non disponibile</p>
+                </div>
+                {% endblock %}
+            </div>
+
+            <footer class="bg-light border-top py-2 px-3 mt-auto page-footer" id="page-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        <a href="#" onclick="showCredits(); return false;" class="text-decoration-none text-muted">
+                            <i class="fas fa-info-circle"></i> Crediti
+                        </a>
+                        <span class="mx-2">|</span>
+                        <a href="#" onclick="showFeedback(); return false;" class="text-decoration-none text-muted">
+                            <i class="fas fa-comment"></i> Feedback
+                        </a>
+                        {% if debug_mode or is_debug %}
+                        <span class="badge bg-warning text-dark ms-2">
+                            <i class="fas fa-bug"></i> DEBUG MODE
+                        </span>
+                        {% endif %}
+                    </small>
+
+                    {% if session.get('logged_in') %}
+                    <small class="text-muted">
+                        <span id="user-role-status" class="text-success">
+                            <i class="fas fa-shield-alt"></i> {{ session.get('ruolo_nome', 'GUEST') }} (Online)
+                        </span>
+                        <span class="mx-2">|</span>
+                        <i class="fas fa-clock"></i> Sessione:
+                        <span id="session-timer">00:00</span>
+                    </small>
+                    {% endif %}
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- JavaScript Libraries - Tutte locali per funzionamento offline -->
+    
+    <!-- jQuery (locale) -->
+    <script src="/external/jquery/jquery-3.7.1.min.js"></script>
+    
+    <!-- Bootstrap Bundle JS (locale) -->
+    <script src="/external/bootstrap/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- FontAwesome JS (locale) -->
+    <script src="/external/fontawesome/js/all.min.js"></script>
+    
+    <!-- Chart.js (locale) - per grafici -->
+    <script src="/external/chartjs/chart.umd.min.js"></script>
+
+    <!-- ============================== -->
+    <!-- ERROR HANDLING FOR SUPERSET -->
+    <!-- ============================== -->
+    <script>
+    // Filtro avanzato per errori di Superset
+    (function() {
+        // Backup delle funzioni originali
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        const originalLog = console.log;
+        
+        // Lista dei pattern di errori di Superset da filtrare
+        const supersetErrorPatterns = [
+            'You should call configure',
+            'configure(...) before calling',
+            '.entry.js:',
+            'spa.07bd1ab9f42922656077',
+            '9601.50a1fa9bff1b3b70dcbe',
+            'chunk loading failed',
+            'superset configuration'
+        ];
+        
+        function shouldFilterMessage(message) {
+            const msgStr = String(message).toLowerCase();
+            return supersetErrorPatterns.some(pattern => 
+                msgStr.includes(pattern.toLowerCase())
+            );
+        }
+        
+        // Override console.error
+        console.error = function(...args) {
+            const message = args.join(' ');
+            if (shouldFilterMessage(message)) {
+                console.debug('[Filtered Superset Error]:', message);
+                return;
+            }
+            originalError.apply(console, args);
+        };
+        
+        // Override console.warn  
+        console.warn = function(...args) {
+            const message = args.join(' ');
+            if (shouldFilterMessage(message)) {
+                console.debug('[Filtered Superset Warning]:', message);
+                return;
+            }
+            originalWarn.apply(console, args);
+        };
+        
+        // Filtra errori window.onerror
+        const originalOnError = window.onerror;
+        window.onerror = function(message, source, lineno, colno, error) {
+            if (shouldFilterMessage(message) || shouldFilterMessage(source)) {
+                console.debug('[Filtered Window Error]:', message, 'from:', source);
+                return true; // Previene la propagazione
+            }
+            if (originalOnError) {
+                return originalOnError.apply(this, arguments);
+            }
+            return false;
+        };
+        
+        // Filtra eventi di errore non gestiti
+        window.addEventListener('error', function(e) {
+            const message = e.message || '';
+            const source = e.filename || '';
+            
+            if (shouldFilterMessage(message) || shouldFilterMessage(source)) {
+                console.debug('[Filtered Error Event]:', message, 'from:', source);
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }, true);
+        
+        // Filtra promise rejections non gestite
+        window.addEventListener('unhandledrejection', function(e) {
+            const message = String(e.reason);
+            if (shouldFilterMessage(message)) {
+                console.debug('[Filtered Promise Rejection]:', message);
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        console.log('[TALON] Filtro errori Superset attivato');
+    })();
+    </script>
+
+    <!-- ============================== -->
+    <!-- CORE APPLICATION SCRIPTS -->
+    <!-- ============================== -->
+    
+    <!-- Core Script (sempre caricato) -->
+    <script src="{{ url_for('static', filename='js/script.js') }}?v={{ cache_buster }}&t={{ moment().unix() if moment else range(999999) | random }}"></script>
+    
+    <!-- Login Script (solo se non loggato) -->
+    {% if not session.get('logged_in') %}
+    <script src="{{ url_for('static', filename='js/neural-network.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/login.js') }}?v={{ cache_buster }}"></script>
+    {% endif %}
+    
+    <!-- Scripts Sistema (caricati solo se loggato) -->
+    {% if session.get('logged_in') %}
+    
+    <!-- UI Components -->
+    
+    
+    <!-- Sistema Components -->
+    <script src="{{ url_for('static', filename='js/sidebar.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/sidebar-role-manager.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/searchable_select.js') }}?v={{ cache_buster }}"></script>
+    
+    <!-- Moduli Dashboard -->
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ cache_buster }}"></script>
+    {% if session.get('ruolo_nome') == 'ADMIN' %}
+    <script src="{{ url_for('static', filename='js/dashboard_admin.js') }}?v={{ cache_buster }}"></script>
+    {% endif %}
+    
+    <!-- Moduli Principali -->
+    <script src="{{ url_for('static', filename='js/enti-militari.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/enti-civili.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/operazioni.js') }}?v={{ cache_buster }}"></script>
+    
+    <!-- Modulo Attività con tutti i suoi componenti -->
+    <script src="{{ url_for('static', filename='js/attivita/attivita_utils.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/attivita/attivita_forms.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/attivita/attivita.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/attivita/inserimento_attivita.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/attivita/modifica_attivita.js') }}?v={{ cache_buster }}"></script>
+    
+    {% endif %}
+
+    <!-- Script Inizializzazione Sistema -->
+    <script>
+        
+        // ============================
+        // SISTEMA PERMESSI
+        // ============================
+        
+        (function () {
+            const config = window.TALON_CONFIG;
+            const role = config.user.role.toUpperCase();
+            
+            window.TalonPermissions = {
+                userRole: role || 'GUEST',
+                canEdit: ['ADMIN', 'OPERATORE'].includes(role),
+                canDelete: role === 'ADMIN',
+                canCreate: ['ADMIN', 'OPERATORE'].includes(role),
+                canViewReports: ['ADMIN', 'OPERATORE', 'VISUALIZZATORE'].includes(role),
+                isAdmin: role === 'ADMIN',
+                isOperatore: role === 'OPERATORE',
+                isVisualizzatore: role === 'VISUALIZZATORE',
+                isLoggedIn: config.user.isLoggedIn
+            };
+        })();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            
+            // ============================
+            // GESTIONE STATO CONNESSIONE
+            // ============================
+            
+            function updateConnectionStatus() {
+                const userRoleStatus = document.getElementById('user-role-status');
+                const userRole = window.TALON_CONFIG ? window.TALON_CONFIG.user.role : 'GUEST';
+                
+                if (!navigator.onLine) {
+                    if (userRoleStatus) {
+                        userRoleStatus.innerHTML = `<i class="fas fa-shield-alt"></i> ${userRole} (Offline)`;
+                        userRoleStatus.className = 'text-danger';
+                    }
+                    if (window.TalonApp && window.TalonApp.showToast) {
+                        TalonApp.showToast('Modalità offline attiva', 'warning');
+                    }
+                } else {
+                    if (userRoleStatus) {
+                        userRoleStatus.innerHTML = `<i class="fas fa-shield-alt"></i> ${userRole} (Online)`;
+                        userRoleStatus.className = 'text-success';
+                    }
+                }
+            }
+            
+            window.addEventListener('online', updateConnectionStatus);
+            window.addEventListener('offline', updateConnectionStatus);
+            
+            // Initial update with a small delay to ensure DOM is ready
+            setTimeout(() => {
+                updateConnectionStatus();
+            }, 100);
+            
+            // ============================
+            // SESSION KEEP-ALIVE
+            // ============================
+            
+            function setupSessionKeepAlive() {
+                if (!window.TALON_CONFIG || !window.TALON_CONFIG.user.isLoggedIn) {
+                    return;
+                }
+                
+                // Ping della sessione ogni 5 minuti per mantenerla attiva
+                const KEEP_ALIVE_INTERVAL = 5 * 60 * 1000; // 5 minuti
+                
+                function pingSession() {
+                    fetch('/api/ping-session', {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin'
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            if (response.status === 401) {
+                                // Sessione scaduta, reindirizza al login
+                                window.location.href = '/login?expired=true';
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        // Silent error handling
+                    });
+                }
+                
+                // Ping iniziale dopo 5 minuti
+                setTimeout(pingSession, KEEP_ALIVE_INTERVAL);
+                
+                // Poi ogni 5 minuti
+                setInterval(pingSession, KEEP_ALIVE_INTERVAL);
+                
+                // Ping anche quando l'utente interagisce con la pagina
+                let lastActivity = Date.now();
+                const ACTIVITY_THRESHOLD = 60 * 1000; // 1 minuto
+                
+                function handleUserActivity() {
+                    const now = Date.now();
+                    if (now - lastActivity > ACTIVITY_THRESHOLD) {
+                        lastActivity = now;
+                        pingSession();
+                    }
+                }
+                
+                // Monitora attività utente
+                document.addEventListener('click', handleUserActivity);
+                document.addEventListener('keypress', handleUserActivity);
+                document.addEventListener('scroll', handleUserActivity);
+            }
+            
+            // Inizializza keep-alive
+            setupSessionKeepAlive();
+            
+            // ============================
+            // TIMER SESSIONE
+            // ============================
+            
+            if (window.TALON_CONFIG.user.isLoggedIn) {
+                // Usa il tempo di caricamento della pagina come fallback se login_time non è disponibile
+                const loginTime = "{{ session.get('login_time', '') }}" || new Date().toISOString();
+                let sessionStartTime = null;
+                
+                // Prova a parsare il tempo di login dal backend
+                try {
+                    sessionStartTime = new Date(loginTime);
+                    // Se la data non è valida, usa il tempo corrente
+                    if (isNaN(sessionStartTime.getTime())) {
+                        sessionStartTime = new Date();
+                    }
+                } catch (e) {
+                    // Se il parsing fallisce, usa il tempo corrente
+                    sessionStartTime = new Date();
+                }
+                
+                function updateSessionTimer() {
+                    const timerEl = document.getElementById('session-timer');
+                    if (!timerEl) return;
+                    
+                    const now = new Date();
+                    const diff = Math.floor((now - sessionStartTime) / 1000);
+                    
+                    const hours = Math.floor(diff / 3600);
+                    const minutes = Math.floor((diff % 3600) / 60);
+                    const seconds = diff % 60;
+                    
+                    // Mostra ore:minuti:secondi se la sessione è più di 1 ora, altrimenti minuti:secondi
+                    if (hours > 0) {
+                        timerEl.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                    } else {
+                        timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                    }
+                }
+                
+                // Aggiorna immediatamente e poi ogni secondo
+                updateSessionTimer();
+                setInterval(updateSessionTimer, 1000); // Aggiorna ogni secondo
+            }
+            
+            // ============================
+            // NEURAL NETWORK HEADER ANIMATION
+            // ============================
+            
+            function initHeaderNeuralNetwork() {
+                const canvas = document.getElementById('header-neural-canvas');
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                let animationId;
+                let nodes = [];
+                
+                // Configurazione
+                const config = {
+                    nodeCount: 50,
+                    nodeSize: 2,
+                    nodeColor: 'rgba(13, 27, 42, 0.6)',  // Nodi più visibili
+                    connectionColor: 'rgba(13, 27, 42, 0.3)',  // Connessioni più visibili
+                    connectionDistance: 100,
+                    speed: 0.3
+                };
+                
+                // Ridimensiona canvas
+                function resizeCanvas() {
+                    const header = canvas.parentElement;
+                    canvas.width = header.offsetWidth;
+                    canvas.height = header.offsetHeight;
+                }
+                
+                // Inizializza nodi
+                function initNodes() {
+                    nodes = [];
+                    for (let i = 0; i < config.nodeCount; i++) {
+                        nodes.push({
+                            x: Math.random() * canvas.width,
+                            y: Math.random() * canvas.height,
+                            vx: (Math.random() - 0.5) * config.speed,
+                            vy: (Math.random() - 0.5) * config.speed,
+                            size: Math.random() * config.nodeSize + 0.5
+                        });
+                    }
+                }
+                
+                // Anima nodi
+                function animate() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Aggiorna posizioni
+                    nodes.forEach(node => {
+                        node.x += node.vx;
+                        node.y += node.vy;
+                        
+                        // Rimbalza ai bordi
+                        if (node.x < 0 || node.x > canvas.width) node.vx *= -1;
+                        if (node.y < 0 || node.y > canvas.height) node.vy *= -1;
+                        
+                        // Mantieni nei limiti
+                        node.x = Math.max(0, Math.min(canvas.width, node.x));
+                        node.y = Math.max(0, Math.min(canvas.height, node.y));
+                    });
+                    
+                    // Disegna connessioni
+                    ctx.strokeStyle = config.connectionColor;
+                    ctx.lineWidth = 0.5;
+                    
+                    for (let i = 0; i < nodes.length; i++) {
+                        for (let j = i + 1; j < nodes.length; j++) {
+                            const dx = nodes[i].x - nodes[j].x;
+                            const dy = nodes[i].y - nodes[j].y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            
+                            if (distance < config.connectionDistance) {
+                                ctx.beginPath();
+                                ctx.moveTo(nodes[i].x, nodes[i].y);
+                                ctx.lineTo(nodes[j].x, nodes[j].y);
+                                ctx.globalAlpha = 1 - (distance / config.connectionDistance);
+                                ctx.stroke();
+                            }
+                        }
+                    }
+                    
+                    // Disegna nodi
+                    ctx.fillStyle = config.nodeColor;
+                    ctx.globalAlpha = 1;
+                    
+                    nodes.forEach(node => {
+                        ctx.beginPath();
+                        ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    
+                    animationId = requestAnimationFrame(animate);
+                }
+                
+                // Inizializza
+                resizeCanvas();
+                initNodes();
+                animate();
+                
+                // Gestione resize
+                window.addEventListener('resize', () => {
+                    resizeCanvas();
+                    initNodes();
+                });
+                
+                // Cleanup
+                return () => {
+                    if (animationId) {
+                        cancelAnimationFrame(animationId);
+                    }
+                };
+            }
+            
+            // ============================
+            // SINCRONIZZAZIONE HEADER/FOOTER CON SIDEBAR
+            // ============================
+            
+            function syncHeaderFooterWithSidebar() {
+                const sidebar = document.querySelector('.sidebar');
+                const header = document.querySelector('.talon-header');
+                const footer = document.querySelector('.page-footer');
+                
+                if (!sidebar || !header || !footer) return;
+                
+                // Osserva i cambiamenti di classe della sidebar
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                            updateHeaderFooterPosition();
+                        }
+                    });
+                });
+                
+                observer.observe(sidebar, {
+                    attributes: true,
+                    attributeFilter: ['class']
+                });
+                
+                function updateHeaderFooterPosition() {
+                    const isExpanded = sidebar.classList.contains('expanded') || sidebar.classList.contains('pinned');
+                    const isMobile = window.innerWidth <= 768;
+                    
+                    if (isMobile) {
+                        header.style.left = '0px';
+                        footer.style.left = '0px';
+                    } else {
+                        const leftValue = isExpanded ? '260px' : '60px';
+                        header.style.left = leftValue;
+                        footer.style.left = leftValue;
+                    }
+                    
+                    // Aggiorna posizione dinamica del page-wrapper basato sull'altezza reale dell'header
+                    updatePageWrapperTop();
+                }
+                
+                function updatePageWrapperTop() {
+                    const header = document.querySelector('.talon-header');
+                    const mainContent = document.querySelector('#main-content');
+                    
+                    if (header && mainContent) {
+                        // Calcola l'altezza effettiva dell'header
+                        const headerHeight = header.offsetHeight;
+                        const extraMargin = 0; // Margine minimale per massimizzare spazio
+                        
+                        // Per elementi fixed, devo usare 'top' invece di padding-top
+                        mainContent.style.top = `${headerHeight + extraMargin}px`;
+                        
+                        
+                        // Aggiorna anche eventuali elementi con classe page-header-fixed
+                        const fixedHeaders = document.querySelectorAll('.page-header-fixed');
+                        fixedHeaders.forEach(fixedHeader => {
+                            fixedHeader.style.top = `${headerHeight + extraMargin}px`;
+                        });
+                    }
+                }
+                
+                // Inizializza posizione
+                updateHeaderFooterPosition();
+                
+                // Aggiorna al resize
+                window.addEventListener('resize', updateHeaderFooterPosition);
+                
+                // Osserva i cambiamenti di dimensioni dell'header per aggiornare il layout dinamicamente
+                if (header && window.ResizeObserver) {
+                    const headerResizeObserver = new ResizeObserver(function(entries) {
+                        updatePageWrapperTop();
+                    });
+                    headerResizeObserver.observe(header);
+                }
+                
+                // Fallback per browser più vecchi - aggiorna ogni 500ms se necessario
+                if (!window.ResizeObserver) {
+                    let lastHeaderHeight = header ? header.offsetHeight : 0;
+                    setInterval(function() {
+                        if (header) {
+                            const currentHeight = header.offsetHeight;
+                            if (currentHeight !== lastHeaderHeight) {
+                                lastHeaderHeight = currentHeight;
+                                updatePageWrapperTop();
+                            }
+                        }
+                    }, 500);
+                }
+            }
+            
+            // ============================
+            // INIZIALIZZAZIONE COMPONENTI
+            // ============================
+            
+            function initializePageComponents() {
+                // Inizializza neural network nell'header
+                if (window.TALON_CONFIG && window.TALON_CONFIG.user.isLoggedIn) {
+                    initHeaderNeuralNetwork();
+                }
+                // Reinizializza tooltip Bootstrap
+                const tooltipTriggerList = [].slice.call(
+                    document.querySelectorAll('[data-bs-toggle="tooltip"]')
+                );
+                tooltipTriggerList.map(function(tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+                
+                // Reinizializza popover Bootstrap
+                const popoverTriggerList = [].slice.call(
+                    document.querySelectorAll('[data-bs-toggle="popover"]')
+                );
+                popoverTriggerList.map(function(popoverTriggerEl) {
+                    return new bootstrap.Popover(popoverTriggerEl);
+                });
+                
+                // Reinizializza searchable select se presente
+                if (window.initializeSearchableSelects) {
+                    window.initializeSearchableSelects();
+                }
+                
+                // Components initialized silently
+            }
+            
+            // Inizializza componenti al primo caricamento
+            initializePageComponents();
+            
+            // Inizializza sincronizzazione sidebar
+            syncHeaderFooterWithSidebar();
+            
+            // Forza aggiornamento layout iniziale dopo breve delay
+            setTimeout(function() {
+                const header = document.querySelector('.talon-header');
+                const mainContent = document.querySelector('#main-content');
+                if (header && mainContent) {
+                    const headerHeight = header.offsetHeight;
+                    const extraMargin = 0;
+                    mainContent.style.top = `${headerHeight + extraMargin}px`;
+                }
+            }, 100);
+            
+            // Auto-hide flash messages iniziali
+            setTimeout(function() {
+                const flashMessages = document.getElementById('initial-flash-messages');
+                if (flashMessages) {
+                    flashMessages.style.transition = 'opacity 0.5s';
+                    flashMessages.style.opacity = '0';
+                    setTimeout(() => flashMessages.remove(), 500);
+                }
+            }, 5000);
+        });
+        
+        // ============================
+        // FUNZIONI FOOTER
+        // ============================
+        
+        function showCredits() {
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fas fa-info-circle text-primary"></i> Crediti
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="text-center mb-3">
+                                <h6 class="fw-bold">Sistema TALON</h6>
+                                <p class="text-muted">Tactical Application for Logistics Operational Network</p>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-code"></i> Sviluppo</h6>
+                                    <ul class="list-unstyled small">
+                                        <li>• Architettura Flask/Python</li>
+                                        <li>• Database PostgreSQL/PostGIS</li>
+                                        <li>• Frontend Bootstrap/JavaScript</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-map"></i> Cartografia</h6>
+                                    <ul class="list-unstyled small">
+                                        <li>• Leaflet.js</li>
+                                        <li>• OpenStreetMap</li>
+                                        <li>• PostGIS Extensions</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="text-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-shield-alt"></i> 
+                                    Sistema sviluppato dal Magg. tramat. RN Ambrogio Napolitano<br>
+                                    per la Sala Operativa Logistica del Comando Logistico dell'Esercito
+                                </small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            modal.addEventListener('hidden.bs.modal', () => modal.remove());
+        }
+        
+        function showFeedback() {
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fas fa-comment text-success"></i> Feedback TALON
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Il tuo feedback è importante per migliorare il sistema TALON.</p>
+                            <form id="feedbackForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Tipo di feedback</label>
+                                    <select class="form-select" id="feedbackType" required>
+                                        <option value="">Seleziona...</option>
+                                        <option value="bug">Segnalazione Bug</option>
+                                        <option value="feature">Richiesta Funzionalità</option>
+                                        <option value="improvement">Miglioramento</option>
+                                        <option value="general">Feedback Generale</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Messaggio</label>
+                                    <textarea class="form-control" id="feedbackMessage" rows="4" 
+                                              placeholder="Descrivi il tuo feedback..." required></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                            <button type="button" class="btn btn-success" onclick="submitFeedback()">
+                                <i class="fas fa-paper-plane"></i> Invia Feedback
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            modal.addEventListener('hidden.bs.modal', () => modal.remove());
+        }
+        
+        function submitFeedback() {
+            const type = document.getElementById('feedbackType').value;
+            const message = document.getElementById('feedbackMessage').value;
+            
+            if (!type || !message) {
+                if (window.TalonApp && window.TalonApp.showToast) {
+                    TalonApp.showToast('Compila tutti i campi richiesti', 'warning');
+                } else {
+                    alert('Compila tutti i campi richiesti');
+                }
+                return;
+            }
+            
+            // Disabilita il pulsante per evitare doppi invii
+            const submitBtn = document.querySelector('.modal .btn-success');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Invio in corso...';
+            
+            // Prepara i dati del feedback
+            const feedbackData = {
+                tipo: type,
+                messaggio: message,
+                pagina_origine: window.location.pathname
+            };
+            
+            // Invia il feedback al server
+            fetch('/api/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(feedbackData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Successo
+                    if (window.TalonApp && window.TalonApp.showToast) {
+                        TalonApp.showToast('Grazie per il tuo feedback! È stato registrato con successo.', 'success');
+                    } else {
+                        alert('Grazie per il tuo feedback! È stato registrato con successo.');
+                    }
+                    
+                    // Chiudi il modal
+                    const modal = document.querySelector('.modal.show');
+                    if (modal) {
+                        bootstrap.Modal.getInstance(modal).hide();
+                    }
+                    
+                    // Reset form
+                    document.getElementById('feedbackType').value = '';
+                    document.getElementById('feedbackMessage').value = '';
+                } else {
+                    // Errore
+                    const errorMsg = data.error || 'Errore durante l\'invio del feedback';
+                    if (window.TalonApp && window.TalonApp.showToast) {
+                        TalonApp.showToast(errorMsg, 'error');
+                    } else {
+                        alert('Errore: ' + errorMsg);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Errore invio feedback:', error);
+                const errorMsg = 'Errore di connessione durante l\'invio del feedback';
+                if (window.TalonApp && window.TalonApp.showToast) {
+                    TalonApp.showToast(errorMsg, 'error');
+                } else {
+                    alert(errorMsg);
+                }
+            })
+            .finally(() => {
+                // Riabilita il pulsante
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            });
+        }
+
+        // ============================
+        // SETUP AJAX GLOBALE
+        // ============================
+        
+        (function () {
+            const csrfToken = window.TALON_CONFIG.api.csrfToken;
+            if (csrfToken && window.jQuery) {
+                $.ajaxSetup({
+                    beforeSend: function(xhr, settings) {
+                        if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                            xhr.setRequestHeader("X-CSRFToken", csrfToken);
+                        }
+                    }
+                });
+            }
+        })();
+
+        // Debug info removed for production
+    </script>
+
+    <!-- Blocco per JavaScript aggiuntivi specifici per pagina -->
+    {% block additional_js %}{% endblock %}
+    
+    <!-- Blocco legacy per compatibilità -->
+    {% block extra_js %}{% endblock %}
+    
+    <!-- Script per Superset SSO Embedded -->
+    <script>
+        /**
+         * Apre Superset in modalità embedded con SSO
+         */
+        function openSupersetEmbedded(event) {
+            if (event) {
+                event.preventDefault();
+            }
+            
+            // Mostra loading
+            const loadingHtml = `
+                <div class="text-center p-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Caricamento Superset...</span>
+                    </div>
+                    <p class="mt-3">Caricamento dashboard di analisi...</p>
+                </div>
+            `;
+            
+            // Crea modal per contenere l'iframe
+            const modalHtml = `
+                <div class="modal fade" id="supersetModal" tabindex="-1" role="dialog" aria-labelledby="supersetModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl" style="max-width: 95%; height: 90vh;" role="document">
+                        <div class="modal-content" style="height: 100%;">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="supersetModalLabel">
+                                    <i class="fas fa-chart-bar"></i> Dashboard di Analisi
+                                </h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body p-0" style="height: calc(100% - 60px);">
+                                <div id="supersetContainer" style="height: 100%;">
+                                    ${loadingHtml}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Rimuovi modal esistente se presente
+            const existingModal = document.getElementById('supersetModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Aggiungi nuovo modal al DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Mostra il modal
+            $('#supersetModal').modal('show');
+            
+            // Crea iframe che punta al nostro endpoint di login automatico
+            const iframeHtml = `
+                <iframe 
+                    src="/superset-login"
+                    style="width: 100%; height: 100%; border: none;"
+                    frameborder="0"
+                    allowfullscreen
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation allow-popups-to-escape-sandbox"
+                    onload="console.log('Superset iframe caricato')">
+                </iframe>
+            `;
+            
+            // Sostituisci loading con iframe
+            document.getElementById('supersetContainer').innerHTML = iframeHtml;
+        }
+        
+        // Apri Superset embedded nel modal
+        function openSupersetNewTab() {
+            openSupersetEmbedded();
+        }
+        
+        // Funzione temporanea per testare: forza nuovo login e apri Superset
+        window.forceSupsersetReauth = function() {
+            // Questa funzione può essere chiamata dalla console per debug
+            fetch('/logout', { method: 'POST' })
+                .then(() => {
+                    window.location.href = '/login';
+                });
+        }
+    </script>
+</body>
+</html>

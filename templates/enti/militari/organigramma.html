@@ -1,0 +1,603 @@
+{% macro render_tree(nodes, is_root=true) %}
+    <ul{% if is_root %} class="tree"{% endif %}>
+        {% for node in nodes %}
+            <li data-nome="{{ node.nome or '' }}" 
+                data-codice="{{ node.codice or '' }}" 
+                data-indirizzo="{{ node.indirizzo or '' }}" 
+                data-telefono="{{ node.telefono or '' }}" 
+                data-email="{{ node.email or '' }}">
+                <div class="node-content">
+                    {% if node.children %}
+                        <span class="toggle-btn" onclick="toggleNode(this); event.stopPropagation();" title="Espandi albero"></span>
+                    {% else %}
+                        <span style="width: 20px; display: inline-block;"></span>
+                    {% endif %}
+                    <div class="ente-name">
+                        <a href="{{ url_for('enti_militari.visualizza_ente', id=node.id, view=request.args.get('view', ''), search=request.args.get('search', '')) }}">
+                            <strong>{{ node.nome }}</strong>
+                        </a>
+                    </div>
+                </div>
+                {% if node.children %}
+                    {{ render_tree(node.children, false) }}
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{% endmacro %}
+
+{% extends "shared/_base.html" %}
+
+{% block title %}Enti Militari - TALON{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Stili per l'organigramma */
+    .tree {
+        list-style: none;
+        padding-left: 0;
+        margin: 0;
+    }
+
+    .tree ul {
+        list-style: none;
+        padding-left: 30px;
+        margin: 0;
+        position: relative;
+    }
+
+    .tree li {
+        position: relative;
+        padding: 5px 0;
+        display: block;
+    }
+
+    .node-content {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .node-content:hover {
+        background-color: #e9ecef;
+        border-color: #adb5bd;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        margin-right: 8px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .toggle-btn:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+        border-radius: 3px;
+    }
+
+    .toggle-btn::before {
+        content: '▶';
+        font-size: 10px;
+        color: #495057;
+        font-weight: bold;
+        line-height: 1;
+    }
+
+    .tree li.expanded > .node-content .toggle-btn::before {
+        content: '▼';
+    }
+
+    /* Nascondi figli quando collassato */
+    .tree li:not(.expanded) > ul {
+        display: none;
+    }
+
+    /* Mostra figli quando espanso */
+    .tree li.expanded > ul {
+        display: block;
+    }
+
+
+    .ente-name {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .ente-name a {
+        color: #333;
+        text-decoration: none;
+        display: block;
+    }
+
+    .ente-name a:hover {
+        color: #007bff;
+        text-decoration: underline;
+    }
+
+    /* Allineamento elementi alla stessa larghezza del campo di ricerca */
+    .list-container .search-bar,
+    .list-container .expand-collapse-buttons,
+    .list-container .tree {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    
+    .list-container .expand-collapse-buttons {
+        display: flex !important;
+        gap: 10px !important;
+        align-items: flex-start !important;
+        justify-content: flex-start !important;
+    }
+    
+    /* Rimuovi eventuali padding/margin dal tree ul di primo livello */
+    .list-container .tree {
+        padding-left: 0 !important;
+        margin-left: 0 !important;
+    }
+    
+    /* Forza l'allineamento del contenitore principale */
+    .list-container {
+        width: 100% !important;
+        max-width: none !important;
+        padding: 20px !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Assicura che la tabella in alto non influenzi il layout sotto */
+    .list-container > table {
+        width: 100% !important;
+        margin-bottom: 20px !important;
+    }
+    
+    /* Gli stili per search-bar sono ora gestiti dal CSS globale */
+
+    .search-highlighted > .node-content {
+        background-color: #fff3cd;
+        border-color: #ffc107;
+    }
+
+    /* Toggle switch personalizzato */
+    .talon-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+    }
+
+    .talon-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .talon-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 24px;
+    }
+
+    .talon-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    .talon-switch input:checked + .talon-slider {
+        background-color: #007bff;
+    }
+
+    .talon-switch input:checked + .talon-slider:before {
+        transform: translateX(26px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <!-- Header fisso con titolo e pulsante -->
+    <div class="fixed-page-header">
+        <div class="detail-header">
+            <h3>Struttura Ordinativa</h3>
+            {% if user_role in ['ADMIN', 'OPERATORE'] %}
+            <a href="{{ url_for('enti_militari.inserisci_militare_form') }}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Nuovo Ente Militare
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Contenuto scrollabile -->
+    <div class="scrollable-content">
+    
+    <div class="list-container">
+        <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse;">
+            <tbody>
+                <tr>
+                    <td style="text-align: left; vertical-align: middle; padding: 0;"></td>
+                    <td style="text-align: right; vertical-align: middle; padding: 0;">
+                        <div style="display: inline-flex; align-items: center;">
+                            <label class="talon-switch">
+                                <input type="checkbox" 
+                                       id="view-toggle-checkbox"
+                                       onchange="toggleViewMode(this)"
+                                       {% if view_all %}checked{% endif %}>
+                                <span class="talon-slider"></span>
+                            </label>
+                            <label for="view-toggle-checkbox" style="font-size: 0.9em; cursor: pointer; margin-left: 8px; white-space: nowrap;">
+                                Visualizza Struttura Organizzativa di Forza Armata
+                            </label>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="search-bar">
+            <input type="search" 
+                   id="organigrammaSearchInput" 
+                   placeholder="CERCA PER NOME, CODICE, INDIRIZZO, TELEFONO, EMAIL..."
+                   onkeyup="searchTree(this.value)">
+        </div>
+
+        <div class="expand-collapse-buttons" style="margin-bottom: 10px;">
+            <button type="button" onclick="expandAll()" class="btn btn-sm btn-outline-primary">Espandi Tutto</button>
+            <button type="button" onclick="collapseAll()" class="btn btn-sm btn-outline-secondary">Comprimi Tutto</button>
+        </div>
+
+        <p id="no-results-message" style="display: none; text-align: center;">Nessun risultato trovato.</p>
+
+        {% if tree %}
+            {{ render_tree(tree) }}
+        {% else %}
+            <p style="text-align: center;">Nessuna struttura disponibile.</p>
+        {% endif %}
+    </div>
+    </div>
+</div>
+
+<style>
+/* Override main-content layout da shared/_base.html per questa pagina */
+.main-content {
+    overflow-y: auto !important;
+    height: 100vh !important;
+    margin-bottom: 0 !important;
+}
+
+/* Header fisso della pagina - SOTTO HEADER PRINCIPALE */
+.fixed-page-header {
+    position: fixed !important;
+    top: 96px !important;
+    left: 60px !important;
+    right: 0 !important;
+    z-index: 1010 !important;
+    background: var(--bg-body) !important;
+    border-bottom: 2px solid var(--gray-200) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    height: 80px !important;
+    transition: left 0.5s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
+}
+
+/* Sincronizzazione con sidebar */
+.sidebar.expanded ~ .page-wrapper .fixed-page-header,
+.sidebar.pinned ~ .page-wrapper .fixed-page-header {
+    left: 260px !important;
+}
+
+/* Contenuto scrollabile - SPAZIO PER HEADER PAGINA - OTTIMIZZATO */
+.scrollable-content {
+    margin-top: 176px !important;
+    padding: var(--spacing-sm) !important;
+    min-height: calc(100vh + 100px) !important;
+    overflow-y: visible !important;
+    overflow-x: hidden !important;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .fixed-page-header {
+        left: 0 !important;
+        top: 60px !important;
+        height: 70px !important;
+    }
+    
+    .sidebar.expanded ~ .page-wrapper .fixed-page-header,
+    .sidebar.pinned ~ .page-wrapper .fixed-page-header {
+        left: 0 !important;
+    }
+    
+    .scrollable-content {
+        margin-top: 130px !important;
+        padding: var(--spacing) !important;
+        height: calc(100vh - 160px) !important;
+    }
+}
+
+/* Miglioramenti detail-header quando fisso */
+.fixed-page-header .detail-header {
+    margin-bottom: 0 !important;
+    padding: var(--spacing-lg) !important;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.98) 100%) !important;
+    backdrop-filter: blur(10px) !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    height: 80px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.fixed-page-header .detail-header h3 {
+    color: var(--text-primary) !important;
+    font-weight: 700 !important;
+    margin: 0 !important;
+}
+
+/* Migliora il pulsante quando fisso */
+.fixed-page-header .btn-success {
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3) !important;
+    transition: all var(--transition) !important;
+}
+
+.fixed-page-header .btn-success:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ========================================
+// FUNZIONI ORGANIGRAMMA
+// ========================================
+
+// Toggle espansione/compressione nodo
+function toggleNode(button) {
+    const listItem = button.closest('li');
+    if (listItem) {
+        if (listItem.classList.contains('expanded')) {
+            listItem.classList.remove('expanded');
+            button.title = 'Espandi albero';
+        } else {
+            listItem.classList.add('expanded');
+            button.title = 'Comprimi albero';
+        }
+    }
+}
+
+// Toggle modalità visualizzazione (albero vs tutti)
+function toggleViewMode(checkbox) {
+    const currentUrl = new URL(window.location.href);
+    
+    if (checkbox.checked) {
+        // Visualizza tutti gli enti
+        currentUrl.searchParams.set('view', 'all');
+    } else {
+        // Visualizza solo albero gerarchico
+        currentUrl.searchParams.delete('view');
+    }
+    
+    window.location.href = currentUrl.href;
+}
+
+// Ricerca nell'albero
+function searchTree(searchTerm) {
+    const normalizedSearch = searchTerm.toUpperCase().trim();
+    const treeItems = document.querySelectorAll('.tree li');
+    const noResultsMessage = document.getElementById('no-results-message');
+    let hasResults = false;
+    
+    // Rimuovi completamente la cella che contiene il messaggio e l'icona
+    const unwantedCell = document.querySelector('#no-results-row > td');
+    if (unwantedCell) {
+        unwantedCell.style.display = 'none';
+    }
+    
+    
+    if (!normalizedSearch) {
+        // Reset visualizzazione
+        treeItems.forEach(item => {
+            item.style.display = '';
+            item.classList.remove('search-highlighted');
+        });
+        if (noResultsMessage) {
+            noResultsMessage.style.display = 'none';
+        }
+        return;
+    }
+    
+    // Nascondi tutti inizialmente
+    treeItems.forEach(item => {
+        item.style.display = 'none';
+        item.classList.remove('search-highlighted');
+    });
+    
+    // Mostra solo quelli che corrispondono
+    treeItems.forEach(item => {
+        // Cerca in tutti i campi dell'ente
+        const nome = item.dataset.nome || '';
+        const codice = item.dataset.codice || '';
+        const indirizzo = item.dataset.indirizzo || '';
+        const telefono = item.dataset.telefono || '';
+        const email = item.dataset.email || '';
+        
+        // Combina tutti i campi per la ricerca
+        const searchableText = [nome, codice, indirizzo, telefono, email]
+            .join(' ').toUpperCase();
+        
+        if (searchableText.includes(normalizedSearch)) {
+            // Mostra elemento
+            item.style.display = '';
+            item.classList.add('search-highlighted');
+            hasResults = true;
+            
+            // Mostra tutti i parent
+            let parent = item.parentElement.closest('li');
+            while (parent) {
+                parent.style.display = '';
+                parent.classList.add('expanded');
+                parent = parent.parentElement.closest('li');
+            }
+            
+            // Mostra tutti i figli
+            const children = item.querySelectorAll('li');
+            children.forEach(child => {
+                child.style.display = '';
+            });
+        }
+    });
+    
+    // Gestione messaggio nessun risultato
+    if (noResultsMessage) {
+        noResultsMessage.style.display = hasResults ? 'none' : 'block';
+    }
+}
+
+// Espandi tutto
+function expandAll() {
+    const allItems = document.querySelectorAll('.tree li');
+    allItems.forEach(item => {
+        const toggleBtn = item.querySelector('.toggle-btn');
+        if (toggleBtn) {
+            item.classList.add('expanded');
+            toggleBtn.title = 'Comprimi albero';
+        }
+    });
+}
+
+// Comprimi tutto
+function collapseAll() {
+    const allItems = document.querySelectorAll('.tree li');
+    allItems.forEach(item => {
+        const toggleBtn = item.querySelector('.toggle-btn');
+        if (toggleBtn) {
+            item.classList.remove('expanded');
+            toggleBtn.title = 'Espandi albero';
+        }
+    });
+}
+
+// ========================================
+// INIZIALIZZAZIONE AL CARICAMENTO
+// ========================================
+
+// ========================================
+// SINCRONIZZAZIONE FIXED HEADER CON SIDEBAR
+// ========================================
+
+function syncFixedHeaderWithSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const fixedHeader = document.querySelector('.fixed-page-header');
+    
+    if (!sidebar || !fixedHeader) {
+        console.log('[Organigramma] Sidebar o fixed header non trovati');
+        return;
+    }
+    
+    function updateHeaderPosition() {
+        const isExpanded = sidebar.classList.contains('expanded') || 
+                          sidebar.classList.contains('pinned');
+        
+        if (window.innerWidth <= 768) {
+            fixedHeader.style.left = '0px';
+        } else {
+            fixedHeader.style.left = isExpanded ? '260px' : '60px';
+        }
+    }
+    
+    // Observer per i cambiamenti della sidebar
+    const observer = new MutationObserver(() => {
+        setTimeout(updateHeaderPosition, 50);
+    });
+    
+    observer.observe(sidebar, {
+        attributes: true,
+        attributeFilter: ['class']
+    });
+    
+    // Aggiorna posizione iniziale
+    updateHeaderPosition();
+    
+    // Listener per il resize della finestra
+    window.addEventListener('resize', updateHeaderPosition);
+    
+    console.log('[Organigramma] Sincronizzazione header attivata');
+}
+
+// ========================================
+// INIZIALIZZAZIONE AL CARICAMENTO
+// ========================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[Organigramma] Script inizializzato');
+    
+    // Attiva sincronizzazione header
+    syncFixedHeaderWithSidebar();
+    
+    // Test che le funzioni siano disponibili
+    if (typeof toggleNode === 'function') {
+        console.log('[Organigramma] toggleNode function is available');
+    } else {
+        console.error('[Organigramma] toggleNode function is NOT available');
+    }
+    
+    // Conta i toggle buttons
+    const toggleButtons = document.querySelectorAll('.toggle-btn');
+    console.log('[Organigramma] Found ' + toggleButtons.length + ' toggle buttons');
+    
+    // NON espandere nulla all'avvio - tutto rimane compresso di default
+    // Il codice che espandeva il primo livello è stato rimosso
+    
+    // Aggiungi gestione click su node-content per espandere/comprimere
+    const nodeContents = document.querySelectorAll('.tree .node-content');
+    nodeContents.forEach(function(node) {
+        node.addEventListener('click', function(e) {
+            // Se il click è sul link, lascia che venga gestito normalmente
+            if (e.target.closest('a')) {
+                return;
+            }
+            
+            // Se il click è sul toggle button, è già gestito dall'onclick
+            if (e.target.classList.contains('toggle-btn')) {
+                return;
+            }
+            
+            // Altrimenti, se c'è un toggle button, attivalo
+            const toggleBtn = this.querySelector('.toggle-btn');
+            if (toggleBtn) {
+                e.preventDefault();
+                toggleNode(toggleBtn);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

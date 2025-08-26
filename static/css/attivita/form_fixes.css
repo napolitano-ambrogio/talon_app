@@ -1,0 +1,494 @@
+/**
+ * ========================================
+ * TALON - FORM FIXES
+ * File: static/css/attivita/form_fixes.css
+ * 
+ * Versione: 1.1.0
+ * Fix specifici per problemi di visualizzazione form
+ * PRIORITY: HIGH - Override del CSS sistema
+ * ========================================
+ */
+
+/* ========================================
+   OVERRIDE COMPLETO CSS SISTEMA
+   Priorità massima per sovrascrivere forms.css
+   ======================================== */
+
+/* CONTAINER PRINCIPALE SEMPRE VISIBILE */
+body .form-container,
+body .attivita-form-container,
+#inserimento-attivita-container,
+#modifica-attivita-container {
+    display: block !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    height: auto !important;
+    min-height: calc(100vh - 120px) !important;
+    padding: 20px !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 1200px !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+}
+
+/* ========================================
+   FIX CONTAINER PRINCIPALI - CON PRIORITÀ ALTA
+   ======================================== */
+
+.form-container,
+.attivita-form-container {
+    /* Assicura che il container non vada in overflow */
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    min-height: 100vh !important;
+    
+    /* Fix per container che si tagliano */
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 1200px !important;
+    padding: 20px !important;
+    margin: 0 auto !important;
+    
+    /* Assicura che ci sia sempre scroll se necessario */
+    height: auto !important;
+    position: relative !important;
+}
+
+/* Fix per container che perdono il padding sui lati */
+@media (min-width: 1201px) {
+    .form-container,
+    .attivita-form-container {
+        padding: 20px 40px !important;
+    }
+}
+
+/* ========================================
+   FIX FORM SECTIONS
+   ======================================== */
+
+.form-section {
+    /* Previene che le sezioni si sovrappongano */
+    position: relative !important;
+    z-index: 1 !important;
+    
+    /* Assicura spazio sufficiente per tutti i contenuti */
+    min-height: fit-content !important;
+    overflow: visible !important;
+    
+    /* Fix margin collapsing */
+    display: flow-root !important;
+    
+    /* Padding e margin consistenti */
+    padding: 25px !important;
+    margin-bottom: 20px !important;
+    
+    /* Background e bordi */
+    background: white !important;
+    border-radius: 10px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Fix per sezioni nascoste che creano spazio vuoto */
+.form-section[style*="display: none"],
+.detail-section[data-active="false"] {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* ========================================
+   FIX FORM GROUPS E ROWS
+   ======================================== */
+
+.form-group {
+    /* Previene che i form-group si sovrappongano */
+    position: relative !important;
+    z-index: auto !important;
+    
+    /* Assicura che il contenuto sia visibile */
+    overflow: visible !important;
+    
+    /* Fix per margin consistency */
+    margin-bottom: 20px !important;
+    min-height: fit-content !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.form-row {
+    /* Fix per flex wrap su mobile */
+    flex-wrap: wrap;
+    gap: 15px;
+    
+    /* Previene overflow orizzontale */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.form-row .form-group {
+    /* Assicura che i campi in row abbiano spazio sufficiente */
+    flex: 1 1 auto;
+    min-width: 0; /* Previene overflow di flexbox */
+    margin-bottom: 15px;
+}
+
+/* ========================================
+   FIX CONTROLLI FORM
+   ======================================== */
+
+/* OVERRIDE FORZATO DEL CSS SISTEMA */
+.form-control,
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="email"],
+select,
+textarea,
+.attivita-form input[type="text"],
+.attivita-form input[type="number"],
+.attivita-form input[type="date"],
+.attivita-form input[type="email"],
+.attivita-form select,
+.attivita-form textarea {
+    /* Assicura che tutti i controlli abbiano la stessa altezza */
+    height: 42px !important;
+    min-height: 42px !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+    
+    /* Fix per input che si tagliano */
+    width: 100% !important;
+    max-width: 100% !important;
+    
+    /* Padding standard */
+    padding: 10px 12px !important;
+    
+    /* Border e styling */
+    border: 1px solid #ced4da !important;
+    border-radius: 5px !important;
+    
+    /* Font e text */
+    font-size: 0.95rem !important;
+    line-height: 1.5 !important;
+}
+
+/* Fix specifico per textarea */
+textarea.form-control,
+.attivita-form textarea {
+    height: auto !important;
+    min-height: 80px !important;
+    resize: vertical !important;
+    
+    /* Previene che la textarea vada oltre i bordi */
+    max-width: 100% !important;
+    overflow-wrap: break-word !important;
+    overflow-y: auto !important;
+}
+
+/* ========================================
+   FIX SEARCHABLE SELECT
+   ======================================== */
+
+.searchable-select {
+    /* Fix per dropdown che vanno fuori schermo */
+    position: relative !important;
+    width: 100% !important;
+    z-index: 1000 !important;
+    margin-bottom: 5px !important;
+}
+
+.searchable-select .searchable-select-input,
+.searchable-select input {
+    /* Consistenza altezza con altri input */
+    height: 42px !important;
+    min-height: 42px !important;
+    box-sizing: border-box !important;
+    
+    /* Fix per input che si tagliano */
+    width: 100% !important;
+    padding: 10px 35px 10px 12px !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 5px !important;
+    background: white !important;
+    font-size: 0.95rem !important;
+}
+
+.searchable-select-dropdown {
+    /* Fix per dropdown positioning */
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1001 !important;
+    
+    /* Styling */
+    background: white !important;
+    border: 1px solid #667eea !important;
+    border-top: none !important;
+    border-radius: 0 0 5px 5px !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+    
+    /* Limiti visibili con scrollbar */
+    max-height: 300px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    
+    /* Previene che vada oltre i bordi del container */
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Fix per dropdown che vanno sopra quando non c'è spazio sotto */
+.searchable-select-dropdown.dropdown-above {
+    top: auto;
+    bottom: 100%;
+    border-radius: 5px 5px 0 0;
+}
+
+.searchable-select-options {
+    /* Fix per opzioni che non si vedono completamente */
+    padding-bottom: 5px;
+}
+
+.searchable-select-option {
+    /* Assicura che tutte le opzioni siano cliccabili */
+    min-height: 35px;
+    display: flex;
+    align-items: center;
+    
+    /* Previene testo che va a capo */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ========================================
+   FIX MODAL
+   ======================================== */
+
+.modal {
+    /* Fix per modal che non si centrano */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.modal-content {
+    /* Fix per modal responsive */
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    
+    /* Fix per modal che escono dallo schermo */
+    margin: auto;
+    position: relative;
+}
+
+.modal-body {
+    /* Previene che il contenuto del modal vada in overflow */
+    overflow-x: hidden;
+    word-wrap: break-word;
+}
+
+/* ========================================
+   FIX RESPONSIVE
+   ======================================== */
+
+/* Fix per tablet */
+@media (max-width: 992px) {
+    .form-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .form-row .form-group {
+        flex: none;
+        width: 100%;
+        margin-bottom: 15px;
+    }
+    
+    /* Fix per grid layouts */
+    .personnel-row,
+    .getra-row {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+    }
+}
+
+/* Fix per mobile */
+@media (max-width: 768px) {
+    .form-container,
+    .attivita-form-container {
+        padding: 15px;
+        margin: 0;
+    }
+    
+    .form-section {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .form-row {
+        gap: 10px;
+    }
+    
+    .personnel-row,
+    .getra-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    
+    /* Fix per dropdown su mobile */
+    .searchable-select-dropdown {
+        max-height: 200px;
+        font-size: 14px;
+    }
+    
+    /* Fix per modal su mobile */
+    .modal {
+        padding: 10px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        max-height: 85vh;
+    }
+}
+
+/* Fix per mobile molto piccolo */
+@media (max-width: 576px) {
+    .personnel-row,
+    .getra-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    /* Fix per input troppo piccoli */
+    .form-control,
+    input,
+    select,
+    textarea {
+        font-size: 16px; /* Previene zoom su iOS */
+        min-height: 44px; /* Touch target iOS */
+    }
+}
+
+/* ========================================
+   FIX SPECIFICI PER SEZIONI PROBLEMATICHE
+   ======================================== */
+
+/* Fix per sezione STRATEVAC */
+#dettagli-stratevac .form-row {
+    align-items: flex-end;
+}
+
+#dettagli-stratevac .form-group {
+    flex: 1;
+    min-width: 150px;
+}
+
+/* Fix per container operazione/esercitazione */
+#operazione-container,
+#esercitazione-container {
+    margin-top: 10px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border-left: 3px solid #007bff;
+    
+    /* Fix per animazione smooth */
+    transition: all 0.3s ease-in-out;
+}
+
+/* Fix per toggle switches */
+.toggle-section {
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    
+    /* Previene che si sovrappongano */
+    z-index: 1;
+    position: relative;
+}
+
+/* ========================================
+   FIX ACCESSIBILITÀ E USABILITÀ
+   ======================================== */
+
+/* Fix per focus visibile */
+.form-control:focus,
+input:focus,
+select:focus,
+textarea:focus,
+.searchable-select-input:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Fix per required fields */
+.form-group label .required {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* Fix per messaggi di errore visibili */
+.invalid-feedback {
+    display: block;
+    margin-top: 5px;
+    color: #dc3545;
+    font-size: 0.875rem;
+}
+
+/* ========================================
+   FIX PERFORMANCE
+   ======================================== */
+
+/* Ottimizza le animazioni per performance */
+.form-section,
+.searchable-select-dropdown,
+.modal-content {
+    will-change: transform, opacity;
+}
+
+/* Fix per GPU acceleration */
+.form-section {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+/* ========================================
+   FIX PRINT
+   ======================================== */
+
+@media print {
+    .form-container,
+    .attivita-form-container {
+        max-width: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .form-section {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        margin-bottom: 10px;
+        page-break-inside: avoid;
+    }
+    
+    /* Nascondi elementi non necessari per la stampa */
+    .modal,
+    .searchable-select-dropdown,
+    .btn,
+    .form-actions {
+        display: none !important;
+    }
+}

@@ -9,3 +9,18 @@ from .attivita import attivita_bp
 from .esercitazioni import esercitazioni_bp
 from .drill_down_chart import drill_down_bp
 from .geografia import geografia_bp
+
+# Blueprint per test
+from flask import Blueprint, render_template
+
+test_bp = Blueprint('test', __name__, url_prefix='/test')
+
+@test_bp.route('/dashboard')
+def dashboard_test():
+    """Pagina di test per verificare template e stili"""
+    return render_template('dashboard_test.html')
+
+@test_bp.route('/dashboard-fixed')
+def dashboard_fixed():
+    """Dashboard con layout corretto per Chart.js"""
+    return render_template('dashboard_fixed.html')

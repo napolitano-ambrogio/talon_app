@@ -3,8 +3,8 @@
  * TALON - VISUALIZZA ATTIVITÀ STYLES
  * File: static/css/attivita/visualizza_attivita.css
  * 
- * Versione: 2.0.0 - Stile Militare Sobrio
- * Design pulito a 3 colonne per ambiente militare
+ * Versione: 3.0.0 - Layout Responsive a Colonne Multiple
+ * Design responsive che utilizza tutta la larghezza della pagina
  * ========================================
  */
 
@@ -13,18 +13,14 @@
    ======================================== */
 
 body {
-    background-color: white !important;
     font-family: 'Arial', sans-serif;
 }
 
-/* Forza sfondo bianco su tutti gli elementi principali */
-#main-content, .main-content, .page-wrapper {
-    background-color: white !important;
+/* Permette sfondo sfumato del dashboard__scroll-content */
+#main-content, .main-content {
+    background: transparent !important;
 }
 
-html {
-    background-color: white !important;
-}
 
 /* ========================================
    CONTAINER PRINCIPALE
@@ -34,14 +30,45 @@ html {
     max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
-    background-color: white !important;
-    background: white !important;
     min-height: 100vh;
 }
 
 /* ========================================
    HEADER ATTIVITÀ
    ======================================== */
+
+/* Badge di stato nell'header */
+.header-status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-left: 15px;
+    vertical-align: middle;
+}
+
+.header-status-conclusa {
+    background-color: #dc3545;
+    color: white;
+}
+
+.header-status-attiva {
+    background-color: #28a745;
+    color: white;
+}
+
+.header-status-in-corso {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.header-status-pianificata {
+    background-color: #17a2b8;
+    color: white;
+}
 
 .attivita-header {
     background: #f8f9fa;
@@ -86,7 +113,7 @@ html {
    ======================================== */
 
 .section {
-    background: white;
+    background: rgba(255, 255, 255, 0.95);
     border: 1px solid #dee2e6;
     margin-bottom: 25px;
     border-radius: 4px;
@@ -391,12 +418,10 @@ html {
     max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
-    background-color: white !important;
-    background: white !important;
 }
 
 .detail-card {
-    background: white;
+    background: transparent;
 }
 
 .detail-header {
@@ -424,7 +449,7 @@ html {
 }
 
 .detail-section {
-    background: white;
+    background: rgba(255, 255, 255, 0.95);
     border: 1px solid #dee2e6;
     margin-bottom: 25px;
     border-radius: 4px;
@@ -480,6 +505,7 @@ html {
     color: #495057;
     text-transform: uppercase;
     margin: 0;
+    text-align: left !important;
 }
 
 .action-buttons {
@@ -514,4 +540,295 @@ html {
     background-color: #f8d7da;
     color: #721c24;
     border: 1px solid #f5c6cb;
+}
+
+/* ========================================
+   NUOVO LAYOUT RESPONSIVE A COLONNE MULTIPLE
+   ======================================== */
+
+/* Status Badge */
+.status-badge {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 20px;
+}
+
+.status-attiva {
+    background-color: #d1e7dd;
+    color: #0f5132;
+    border: 1px solid #a3cfbb;
+}
+
+.status-conclusa {
+    background-color: #e2e3e5;
+    color: #383d41;
+    border: 1px solid #ced4da;
+}
+
+.status-pianificata {
+    background-color: #cff4fc;
+    color: #055160;
+    border: 1px solid #9eeaf9;
+}
+
+.status-in-corso {
+    background-color: #fff3cd;
+    color: #664d03;
+    border: 1px solid #ffecb5;
+}
+
+/* Activity Title */
+.activity-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #212529;
+    margin-bottom: 30px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Info Sections */
+.info-section {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.section-title {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 15px 25px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0;
+    border-bottom: 1px solid #dee2e6;
+    text-align: left !important;
+}
+
+/* Grid responsive per le informazioni */
+.responsive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    padding: 25px;
+}
+
+.grid-item {
+    display: flex;
+    flex-direction: column;
+    min-height: 60px;
+}
+
+.grid-item-wide {
+    grid-column: 1 / -1; /* Occupa tutta la larghezza disponibile */
+}
+
+.grid-item dt {
+    font-weight: 600;
+    color: #6c757d;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.grid-item dd {
+    color: #212529;
+    font-size: 1rem;
+    line-height: 1.4;
+    margin: 0;
+    flex-grow: 1;
+    word-wrap: break-word;
+}
+
+/* Grid speciale per il personale */
+.personnel-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.personnel-item {
+    text-align: center;
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 20px 15px;
+    border: 1px solid #dee2e6;
+}
+
+.personnel-item dt {
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+}
+
+.personnel-count {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #495057;
+}
+
+.personnel-total {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.personnel-total .personnel-count.total {
+    color: #212529;
+    font-size: 2.2rem;
+}
+
+/* Grid per i dettagli specifici */
+.details-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+/* Note content */
+.note-content {
+    padding: 25px;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #495057;
+    background: #f8f9fa;
+    border-left: 4px solid #007bff;
+    white-space: pre-wrap;
+}
+
+/* Vettore decoded styling */
+.vettore-decoded {
+    font-size: 0.8rem !important;
+    color: #6c757d !important;
+    margin-top: 8px !important;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border-left: 3px solid #007bff;
+}
+
+.vettore-decoded .decode-eng {
+    font-style: italic;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.vettore-decoded .decode-ita {
+    font-weight: 500;
+    display: block;
+}
+
+/* ========================================
+   MEDIA QUERIES RESPONSIVE
+   ======================================== */
+
+/* Large desktops */
+@media (min-width: 1400px) {
+    .responsive-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+    
+    .personnel-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+    
+    .details-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Standard desktops */
+@media (min-width: 1200px) and (max-width: 1399px) {
+    .responsive-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .personnel-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+    
+    .details-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Medium screens */
+@media (min-width: 992px) and (max-width: 1199px) {
+    .responsive-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .personnel-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+    
+    .details-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Small desktops / large tablets */
+@media (min-width: 768px) and (max-width: 991px) {
+    .responsive-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        padding: 20px;
+    }
+    
+    .personnel-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .details-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .activity-title {
+        font-size: 1.8rem;
+    }
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+    .responsive-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        padding: 15px;
+    }
+    
+    .personnel-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .details-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .activity-title {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+    }
+    
+    .section-title {
+        padding: 12px 15px;
+        font-size: 1rem;
+        text-align: left !important;
+    }
+    
+    .personnel-item {
+        padding: 15px 10px;
+    }
+    
+    .personnel-count {
+        font-size: 1.8rem;
+    }
+    
+    .personnel-total .personnel-count.total {
+        font-size: 2rem;
+    }
 }

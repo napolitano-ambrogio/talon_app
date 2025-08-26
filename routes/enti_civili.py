@@ -203,7 +203,7 @@ def enti_civili():
 def inserisci_civile_form():
     user_id = request.current_user['user_id']
     log_user_action(user_id, 'ACCESS_CREATE_ENTE_CIVILE_FORM', 'Accesso form creazione ente civile')
-    return render_template('inserimento_civile.html')
+    return render_template('enti/civili/inserimento_civile.html')
 
 @enti_civili_bp.route('/salva_civile', methods=['POST'])
 @operatore_or_admin_required
@@ -319,7 +319,7 @@ def visualizza_civile(id):
             f'Visualizzato ente civile: {ente["nome"]}',
             'ente_civile', id
         )
-        return render_template('descrizione_civile.html',
+        return render_template('enti/civili/descrizione_civile.html',
                                ente=ente,
                                related_stats=related_stats,
                                user_role=user_role)
@@ -347,7 +347,7 @@ def modifica_civile_form(id):
             f'Accesso form modifica ente civile: {ente["nome"]}',
             'ente_civile', id
         )
-        return render_template('modifica_civile.html', ente=ente)
+        return render_template('enti/civili/modifica_civile.html', ente=ente)
     except Exception as e:
         flash(f'Errore nel caricamento dell\'ente: {str(e)}', 'error')
         return redirect(url_for('enti_civili.enti_civili'))
