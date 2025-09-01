@@ -46,9 +46,17 @@ Dettaglio {{ attivita.tipologia_nome }}
 {% endblock %}
 
 {% block page_controls %}
+{% if from_drilldown %}
+<a href="{{ url_for('main.dashboard') }}#drilldown-restore" 
+   class="btn btn-secondary" 
+   id="back-to-drilldown-btn">
+    <i class="fas fa-arrow-left"></i> Torna al Dashboard
+</a>
+{% else %}
 <a href="{{ url_for('attivita.lista_attivita') }}" class="btn btn-secondary">
     <i class="fas fa-arrow-left"></i> Torna all'Elenco
 </a>
+{% endif %}
 {% if can_edit %}
 <a href="{{ url_for('attivita.modifica_attivita_form', id=attivita.id) }}" class="btn btn-primary">
     <i class="fas fa-edit"></i> Modifica
@@ -287,5 +295,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     {% endif %}
 });
+
+{% if from_drilldown %}
+// Script per ricostruzione stato drilldown
+document.getElementById('back-to-drilldown-btn').addEventListener('click', function(e) {
+    e.preventDefault();
+    
+    // Stato drilldown incorporato direttamente nel JavaScript
+    const drilldownState = {{ drilldown_state | tojson | safe }};
+    console.log('[Activity] Ricostruzione stato drilldown:', drilldownState);
+    
+    // Salva stato nel sessionStorage per recuperarlo nella dashboard
+    sessionStorage.setItem('drilldown_restore_state', JSON.stringify(drilldownState));
+    
+    // Naviga verso dashboard
+    window.location.href = this.href;
+});
+{% endif %}
 </script>
 {% endblock %}

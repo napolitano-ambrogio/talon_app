@@ -419,6 +419,35 @@
   border: 1px solid rgba(231, 76, 60, 0.3);
 }
 
+/* Badge per advanced-table (stessi stili di .table .badge) */
+.advanced-table .badge {
+  display: inline-block !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.advanced-table .badge.success {
+  background: rgba(39, 174, 96, 0.15) !important;
+  color: #27ae60 !important;
+  border: 1px solid rgba(39, 174, 96, 0.4) !important;
+}
+
+.advanced-table .badge.warning {
+  background: rgba(243, 156, 18, 0.15) !important;
+  color: #f39c12 !important;
+  border: 1px solid rgba(243, 156, 18, 0.4) !important;
+}
+
+.advanced-table .badge.error {
+  background: rgba(231, 76, 60, 0.15) !important;
+  color: #e74c3c !important;
+  border: 1px solid rgba(231, 76, 60, 0.4) !important;
+}
+
 /* Tooltip per celle troncate */
 .table .truncate {
   max-width: 200px;

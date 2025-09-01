@@ -1,0 +1,215 @@
+{% extends "shared/_base.html" %}
+
+{% block title %}Nuovo Evento - TALON{% endblock %}
+
+{% block additional_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/advanced-table.css') }}?v=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/slim-searchable-select.css') }}?v=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/eventi-inserisci-styles.css') }}?v={{ cache_buster }}">
+{% endblock %}
+
+{% block extra_css %}
+{% endblock %}
+
+{% block page_title %}Nuovo Evento{% endblock %}
+
+{% block page_controls %}
+<button type="submit" form="form-nuovo-evento" class="btn btn-primary">
+    <i class="fas fa-save"></i> Salva Evento
+</button>
+<button type="button" class="btn btn-secondary" id="btn-annulla">
+    <i class="fas fa-times"></i> Annulla
+</button>
+{% endblock %}
+
+{% block content %}
+<main class="dashboard__content-wrapper" role="main">
+    <section class="dashboard__scroll-content" aria-label="Form nuovo evento">
+        
+        <div class="form-container">
+            <form action="{{ url_for('eventi.salva_evento') }}" method="POST" id="form-nuovo-evento">
+                
+                <div class="form-section">
+                    <h4 class="section-title">DATI EVENTO</h4>
+                    
+                    <div class="form-group">
+                        <label for="ente_id">Ente Militare <span class="required">*</span></label>
+                        <select name="ente_id" id="ente_id" required aria-label="Seleziona ente militare" autocomplete="organization">
+                            <option value="" disabled selected>-- Seleziona ente militare --</option>
+                            {% for ente in enti_militari %}
+                                <option value="{{ ente.id }}"
+                                        data-codice="{{ ente.codice or '' }}"
+                                        data-indirizzo="{{ ente.indirizzo or '' }}"
+                                        data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{% if ente.indirizzo %}{{ ente.indirizzo }}{% endif %}"
+                                        data-html="{{ ente.nome }}{% if ente.indirizzo %}<br><small style='font-size: 0.85em; font-style: italic; color: #666;'>{{ ente.indirizzo }}</small>{% endif %}">
+                                    {{ ente.nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="prot_msg_evento">Protocollo Messaggio Evento <span class="required">*</span></label>
+                            <input type="text" id="prot_msg_evento" name="prot_msg_evento" class="form-control" required
+                                   placeholder="Numero protocollo del messaggio evento" 
+                                   aria-label="Protocollo messaggio evento" autocomplete="off">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="data_msg_evento">Data Messaggio Evento <span class="required">*</span></label>
+                            <input type="date" id="data_msg_evento" name="data_msg_evento" class="form-control" required
+                                   aria-label="Data messaggio evento" autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="data_evento">Data Evento</label>
+                            <input type="date" id="data_evento" name="data_evento" class="form-control" 
+                                   value="" placeholder="" aria-label="Data evento" autocomplete="off">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="carattere">Carattere Evento <span class="required">*</span></label>
+                            <select name="carattere" id="carattere" class="form-control" required
+                                    aria-label="Carattere evento" autocomplete="off">
+                                <option value="" disabled selected>-- Seleziona carattere --</option>
+                                <option value="positivo">POSITIVO</option>
+                                <option value="negativo">NEGATIVO</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="tipo_evento">Tipo Evento <span class="required">*</span></label>
+                            <select name="tipo_evento" id="tipo_evento" class="form-control" required
+                                    aria-label="Tipo evento" autocomplete="off">
+                                <option value="" disabled selected>-- Seleziona tipo --</option>
+                                <option value="tipo_a">TIPO A</option>
+                                <option value="tipo_b">TIPO B</option>
+                                <option value="tipo_c">TIPO C</option>
+                                <option value="tipo_d">TIPO D</option>
+                                <option value="tipo_e">TIPO E</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipologia_evento_id">Tipologia Evento <span class="required">*</span></label>
+                        <select name="tipologia_evento_id" id="tipologia_evento_id" required aria-label="Seleziona tipologia evento" autocomplete="off">
+                            <option value="" disabled selected>-- Seleziona tipologia evento --</option>
+                            {% for tipologia in tipologie_evento %}
+                                <option value="{{ tipologia.id }}"
+                                        data-descrizione="{{ tipologia.descrizione or '' }}">
+                                    {{ tipologia.nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="note">Note Aggiuntive</label>
+                        <textarea id="note" name="note" class="form-control" 
+                                  placeholder="Eventuali note aggiuntive (MAIUSCOLO)"
+                                  aria-label="Note aggiuntive" autocomplete="off"></textarea>
+                    </div>
+
+                    <div class="form-group eventi-seguiti-section">
+                        <button type="button" class="btn btn-secondary btn-aggiungi-seguiti" onclick="aprirModalSeguiti()" 
+                                aria-label="Apri modal per aggiungere eventi seguiti">
+                            <i class="fas fa-plus"></i> Aggiungi seguiti
+                        </button>
+                        
+                        <input type="hidden" name="seguiti_eventi" id="seguiti_eventi" value="">
+                        
+                        <div id="lista-seguiti" class="mt-3 eventi-lista-seguiti">
+                            <h6>Eventi seguiti collegati:</h6>
+                            <div id="seguiti-container" class="border rounded p-2 bg-light">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+        
+    </section>
+</main>
+
+<div class="modal fade" id="modalSeguiti" tabindex="-1" aria-labelledby="modalSeguitiLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-ricerca-seguiti">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalSeguitiLabel">
+                    <i class="fas fa-search"></i> Ricerca Eventi Seguiti
+                </h5>
+                <button type="button" class="btn-close btn-close-custom" onclick="chiudiModalSeguiti()" data-close-modal aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="search-protocollo" class="form-label">Protocollo Messaggio</label>
+                        <input type="text" class="form-control eventi-search-protocollo" id="search-protocollo" 
+                               name="search-protocollo" placeholder="Es. 0085506" 
+                               aria-label="Ricerca per protocollo" autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="search-data" class="form-label">Data Messaggio</label>
+                        <input type="date" class="form-control eventi-search-data" id="search-data" 
+                               name="search-data" aria-label="Ricerca per data messaggio" 
+                               autocomplete="off">
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <button type="button" class="btn btn-primary" onclick="cercaEventi()" 
+                                aria-label="Avvia ricerca eventi">
+                            <i class="fas fa-search"></i> Cerca Eventi
+                        </button>
+                        <button type="button" class="btn btn-secondary ms-2" onclick="resetRicerca()" 
+                                aria-label="Reimposta campi di ricerca">
+                            <i class="fas fa-eraser"></i> Reset
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="risultati-ricerca">
+                    <div class="alert alert-info" id="info-ricerca">
+                        <i class="fas fa-info-circle"></i> Inserisci i criteri di ricerca e premi "Cerca Eventi"
+                    </div>
+                </div>
+                
+                <div id="seguiti-selezionati" class="eventi-seguiti-selezionati">
+                    <hr>
+                    <h6>Eventi selezionati come seguiti:</h6>
+                    <div id="lista-seguiti-modal" class="border rounded p-2 bg-light">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="chiudiModalSeguiti()" 
+                        data-close-modal aria-label="Chiudi modal senza salvare">
+                    <i class="fas fa-times"></i> Annulla
+                </button>
+                <button type="button" class="btn btn-success" onclick="confermaSeguitiSelezionati()" 
+                        aria-label="Conferma selezione eventi seguiti">
+                    <i class="fas fa-check"></i> Conferma Selezione
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Core Dependencies -->
+<script src="{{ url_for('static', filename='js/components/advanced-table.js') }}?v={{ cache_buster }}"></script>
+<script src="{{ url_for('static', filename='js/components/slim-searchable-select.js') }}?v={{ cache_buster }}"></script>
+
+<!-- Eventi Module Dependencies -->
+<script src="{{ url_for('static', filename='js/components/eventi-slim-select-initializer.js') }}?v={{ cache_buster }}"></script>
+<script src="{{ url_for('static', filename='js/components/eventi-form-handler.js') }}?v={{ cache_buster }}"></script>
+<script src="{{ url_for('static', filename='js/components/eventi-modal-manager.js') }}?v={{ cache_buster }}"></script>
+<script src="{{ url_for('static', filename='js/components/eventi-search-api.js') }}?v={{ cache_buster }}"></script>
+{% endblock %}

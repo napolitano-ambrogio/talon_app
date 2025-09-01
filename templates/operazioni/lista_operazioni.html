@@ -2,632 +2,235 @@
 
 {% block title %}Elenco Operazioni - TALON{% endblock %}
 
+{% block additional_css %}
+<!-- CSS Advanced Table Component -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/advanced-table.css') }}?v=1.0">
+{% endblock %}
+
+{% block page_title %}Operazioni Estere e Missioni{% endblock %}
+
+{% block page_controls %}
+{% if user_role in ['ADMIN', 'OPERATORE'] %}
+<a href="{{ url_for('operazioni.inserisci_operazione_form') }}" class="btn btn-success">
+    <i class="fas fa-plus"></i> Nuova Operazione
+</a>
+{% endif %}
+{% endblock %}
+
 {% block content %}
-<div class="main-content">
-    <!-- Header fisso con titolo e pulsante -->
-    <div class="fixed-page-header">
-        <div class="detail-header">
-            <h3>Elenco Operazioni Estere</h3>
-            {% if user_role in ['ADMIN', 'OPERATORE'] %}
-            <a href="{{ url_for('operazioni.inserisci_operazione_form') }}" class="btn btn-success">
-                <i class="fas fa-plus"></i> Nuova Operazione
-            </a>
-            {% endif %}
-        </div>
-    </div>
-    
-    <!-- Contenuto scrollabile -->
-    <div class="scrollable-content">
-    
-    <div class="list-container">
+<main class="dashboard__content-wrapper" role="main">
+    <section class="dashboard__scroll-content" aria-label="Contenuto principale lista operazioni">
+        <!-- Barra di ricerca -->
         <div class="search-bar">
-            <input type="search" id="searchInput" class="form-control" placeholder="CERCA PER NOME, TEATRO, NAZIONE...">
+            <input type="search" 
+                   id="searchInput" 
+                   class="form-control search-input" 
+                   placeholder="CERCA PER NOME, TEATRO, NAZIONE O MISSIONE..."
+                   aria-label="Cerca operazioni">
         </div>
-        
-        <div class="table-responsive" style="height: 100%; overflow-y: auto; overflow-x: hidden; border-radius: 0;">
-            <table class="styled-table">
+
+        <!-- Paginazione superiore -->
+        <div class="pagination-wrapper top-pagination" id="topPagination">
+            <div class="pagination-info">
+                <span id="topPageInfo">Pagina 1 di 1 ({{ operazioni|length }} operazioni totali)</span>
+            </div>
+            <div class="pagination-controls" id="topPaginationControls">
+                <!-- Controlli generati dinamicamente -->
+            </div>
+        </div>
+
+        <!-- Tabella operazioni -->
+        <div class="table-responsive">
+            <table class="advanced-table" id="operazioniTable">
                 <thead>
                     <tr>
-                        <th class="sortable" data-column="0">
+                        <th class="sortable" data-column="0" data-sort-type="text">
                             <span class="th-label">Nome Breve</span>
-                            <span class="th-arrow"></span>
                         </th>
-                        <th class="sortable" data-column="1">
+                        <th class="sortable" data-column="1" data-sort-type="text">
                             <span class="th-label">Nome Missione</span>
-                            <span class="th-arrow"></span>
                         </th>
-                        <th class="sortable" data-column="2">
+                        <th class="sortable" data-column="2" data-sort-type="text">
                             <span class="th-label">Teatro Operativo</span>
-                            <span class="th-arrow"></span>
                         </th>
-                        <th class="sortable" data-column="3">
+                        <th class="sortable" data-column="3" data-sort-type="text">
                             <span class="th-label">Nazione</span>
-                            <span class="th-arrow"></span>
                         </th>
-                        <th class="sortable" data-column="4">
+                        <th class="sortable" data-column="4" data-sort-type="date">
                             <span class="th-label">Data Inizio</span>
-                            <span class="th-arrow"></span>
                         </th>
-                        <th class="sortable" data-column="5">
+                        <th class="sortable" data-column="5" data-sort-type="status">
                             <span class="th-label">Stato</span>
-                            <span class="th-arrow"></span>
                         </th>
-                        <th>Immagine</th>
+                        <th>
+                            <span class="th-label">Immagine</span>
+                        </th>
                     </tr>
                 </thead>
-                <tbody id="operazioniTableBody">
+                <tbody id="operazioniTableBody" class="operazioni-tbody">
                     {% for op in operazioni %}
-                    <tr class="clickable-row" data-href="{{ url_for('operazioni.visualizza_operazione', id=op.id) }}">
-                        <td><strong>{{ op.nome_breve or 'N/D' }}</strong></td>
-                        <td>{{ op.nome_missione }}</td>
-                        <td>{{ op.teatro_operativo or 'N/D' }}</td>
-                        <td>{{ op.nazione or 'N/D' }}</td>
-                        <td data-sort="{{ op.data_inizio or '9999-12-31' }}">{{ op.data_inizio|datetime_format('%d/%m/%Y') if op.data_inizio else 'N/D' }}</td>
+                    <tr class="clickable-row" 
+                        data-href="{{ url_for('operazioni.visualizza_operazione', id=op.id) }}"
+                        data-operazione-id="{{ op.id }}">
+                        <td title="{{ op.nome_breve or 'N/D' }}">
+                            <strong>{{ op.nome_breve or 'N/D' }}</strong>
+                        </td>
+                        <td title="{{ op.nome_missione }}">
+                            {{ op.nome_missione }}
+                        </td>
+                        <td title="{{ op.teatro_operativo or 'N/D' }}">
+                            {{ op.teatro_operativo or 'N/D' }}
+                        </td>
+                        <td title="{{ op.nazione or 'N/D' }}">
+                            {{ op.nazione or 'N/D' }}
+                        </td>
+                        <td data-sort="{{ op.data_inizio.isoformat() if op.data_inizio else '' }}" title="{{ op.data_inizio.strftime('%d/%m/%Y') if op.data_inizio else 'N/D' }}">
+                            {{ op.data_inizio.strftime('%d/%m/%Y') if op.data_inizio else 'N/D' }}
+                        </td>
                         <td>
                             {% if op.stato == 'attiva' %}
-                                <span class="stato-attiva">In corso</span>
+                                <span class="badge success">IN CORSO</span>
                             {% elif op.stato == 'conclusa' %}
-                                <span class="stato-conclusa">Conclusa</span>
+                                <span class="badge error">CONCLUSA</span>
                             {% elif op.stato == 'pianificata' %}
-                                <span class="stato-pianificata">Pianificata</span>
+                                <span class="badge warning">PIANIFICATA</span>
                             {% else %}
-                                <span class="stato-nd">N/D</span>
+                                <span class="badge">N/D</span>
                             {% endif %}
                         </td>
-                        <td style="text-align: center;">
+                        <td class="image-column">
                             {% if op.immagine_path %}
                                 <img src="{{ op.immagine_path }}" alt="Preview operazione" 
-                                     style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;"
+                                     class="operation-thumb"
                                      title="{{ op.immagine_nome }}">
                             {% else %}
-                                <span style="color: #999; font-size: 0.8em;">Nessuna</span>
+                                <span class="no-image">—</span>
                             {% endif %}
                         </td>
                     </tr>
                     {% else %}
-                    <tr>
-                        <td colspan="7" class="text-center">Nessuna operazione inserita.</td>
+                    <tr class="no-data-row">
+                        <td colspan="7" style="text-align: center;">Nessuna operazione inserita.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        
-        <div id="no-results" class="alert alert-info text-center" style="display: none;">
-            Nessun risultato trovato.
+
+        <!-- Paginazione inferiore -->
+        <div class="pagination-wrapper bottom-pagination" id="bottomPagination">
+            <div class="pagination-info">
+                <span id="bottomPageInfo">Pagina 1 di 1 ({{ operazioni|length }} operazioni totali)</span>
+            </div>
+            <div class="pagination-controls" id="bottomPaginationControls">
+                <!-- Controlli generati dinamicamente -->
+            </div>
         </div>
-    </div>
-    </div>
-</div>
+        
+    </section>
+</main>
 
-<style>
-/* Header fisso della pagina - SOTTO HEADER PRINCIPALE */
-.fixed-page-header {
-    position: fixed !important;
-    top: 96px !important;
-    left: 60px !important;
-    right: 0 !important;
-    z-index: 1010 !important;
-    background: var(--bg-body) !important;
-    border-bottom: 2px solid var(--gray-200) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-    height: 80px !important;
-    transition: left 0.5s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
-}
+{% endblock %}
 
-/* Sincronizzazione con sidebar */
-.sidebar.expanded ~ .page-wrapper .fixed-page-header,
-.sidebar.pinned ~ .page-wrapper .fixed-page-header {
-    left: 260px !important;
-}
+{% block extra_js %}
+<!-- Advanced Table Component JS -->
+<script src="{{ url_for('static', filename='js/components/advanced-table.js') }}?v={{ cache_buster }}"></script>
 
-/* Override main-content layout da shared/_base.html per questa pagina */
-.main-content {
-    height: auto !important;
-    margin-bottom: 0 !important;
-    overflow-y: visible !important;
-}
-
-/* Contenuto scrollabile - SPAZIO PER HEADER PAGINA - OTTIMIZZATO */
-.scrollable-content {
-    margin-top: 176px !important;
-    padding: var(--spacing-sm) !important;
-    height: calc(100vh - 214px) !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-}
-
-/* Mobile */
-@media (max-width: 768px) {
-    .fixed-page-header {
-        left: 0 !important;
-        top: 60px !important;
-        height: 70px !important;
-    }
-    
-    .sidebar.expanded ~ .page-wrapper .fixed-page-header,
-    .sidebar.pinned ~ .page-wrapper .fixed-page-header {
-        left: 0 !important;
-    }
-    
-    .scrollable-content {
-        margin-top: 130px !important;
-        padding: var(--spacing) !important;
-        height: calc(100vh - 160px) !important;
-    }
-}
-
-/* Miglioramenti detail-header quando fisso */
-.fixed-page-header .detail-header {
-    margin-bottom: 0 !important;
-    padding: var(--spacing-lg) !important;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.98) 100%) !important;
-    backdrop-filter: blur(10px) !important;
-    box-shadow: none !important;
-    border: none !important;
-    border-radius: 0 !important;
-    height: 80px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-}
-
-.fixed-page-header .detail-header h3 {
-    color: var(--text-primary) !important;
-    font-weight: 700 !important;
-    margin: 0 !important;
-}
-
-/* Migliora il pulsante quando fisso */
-.fixed-page-header .btn-success {
-    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3) !important;
-    transition: all var(--transition) !important;
-}
-
-.fixed-page-header .btn-success:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
-}
-
-
-/* Stili per gli stati delle operazioni */
-.stato-attiva {
-    color: #28a745;
-    font-weight: 600;
-}
-
-.stato-conclusa {
-    color: #dc3545;
-    font-weight: 600;
-}
-
-.stato-pianificata {
-    color: #ffc107;
-    font-weight: 600;
-}
-
-.stato-nd {
-    color: #6c757d;
-    font-weight: 600;
-}
-
-/* Riduzione altezza righe tabella */
-.styled-table tbody tr {
-    height: 35px !important;
-}
-
-.styled-table tbody td {
-    padding: 4px 12px !important;
-    vertical-align: middle !important;
-    line-height: 1.2 !important;
-    font-size: 0.9rem !important;
-}
-
-.styled-table thead th {
-    padding: 8px 12px !important;
-    line-height: 1.1 !important;
-    font-size: 0.9rem !important;
-    position: relative !important;
-    cursor: move !important;
-    user-select: none !important;
-    min-width: 80px !important;
-    transition: all 0.2s ease !important;
-}
-
-/* Resizer per ridimensionamento colonne - Versione 2025 */
-.column-resizer {
-    position: absolute;
-    top: 0;
-    right: -2px;
-    width: 4px;
-    height: 100%;
-    background: transparent;
-    cursor: col-resize;
-    z-index: 20;
-    border-radius: 2px;
-    transition: background-color 0.2s ease;
-}
-
-.column-resizer:hover {
-    background: var(--secondary-color);
-    box-shadow: 0 0 3px rgba(74, 144, 226, 0.5);
-}
-
-.column-resizer:active {
-    background: var(--primary-color);
-}
-
-/* Drag & Drop states moderni */
-.styled-table thead th.dragging {
-    opacity: 0.6 !important;
-    transform: rotate(3deg) scale(1.02) !important;
-    z-index: 1000 !important;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.15) !important;
-    background: linear-gradient(135deg, rgba(74, 144, 226, 0.1) 0%, rgba(74, 144, 226, 0.05) 100%) !important;
-}
-
-.styled-table thead th.drag-over {
-    background: linear-gradient(135deg, rgba(74, 144, 226, 0.15) 0%, rgba(74, 144, 226, 0.25) 100%) !important;
-    transform: scale(1.01) !important;
-    border-left: 3px solid var(--secondary-color) !important;
-}
-
-/* Feedback visivo durante drag */
-.styled-table thead th:not(.dragging):hover {
-    background: linear-gradient(135deg, rgba(74, 144, 226, 0.05) 0%, rgba(74, 144, 226, 0.1) 100%) !important;
-}
-
-/* Stili per il ridimensionamento attivo */
-.styled-table.resizing {
-    cursor: col-resize !important;
-}
-
-.styled-table.resizing * {
-    cursor: col-resize !important;
-    user-select: none !important;
-}
-</style>
-
-<script src="{{ url_for('static', filename='js/table-sorting.js') }}?v={{ cache_buster }}"></script>
 <script>
+// Inizializzazione operazioni con AdvancedTable
 document.addEventListener('DOMContentLoaded', function() {
-    // Sincronizzazione header fisso con sidebar
-    function syncFixedHeaderWithSidebar() {
-        const sidebar = document.querySelector('.sidebar');
-        const fixedHeader = document.querySelector('.fixed-page-header');
-        
-        if (!sidebar || !fixedHeader) return;
-        
-        function updateFixedHeaderPosition() {
-            const isExpanded = sidebar.classList.contains('expanded') || sidebar.classList.contains('pinned');
-            const isMobile = window.innerWidth <= 768;
+    console.log('[Lista Operazioni] DOM caricato, inizializzazione tabella...');
+    
+    // Aspetta che AdvancedTable sia disponibile
+    setTimeout(function() {
+        if (typeof AdvancedTable !== 'undefined') {
+            console.log('[Lista Operazioni] AdvancedTable disponibile, inizializzazione...');
             
-            if (isMobile) {
-                fixedHeader.style.left = '0px';
-            } else {
-                const leftValue = isExpanded ? '260px' : '60px';
-                fixedHeader.style.left = leftValue;
-            }
-        }
-        
-        // Observer per cambiamenti classe sidebar
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                    updateFixedHeaderPosition();
-                }
-            });
-        });
-        
-        observer.observe(sidebar, {
-            attributes: true,
-            attributeFilter: ['class']
-        });
-        
-        // Inizializza e aggiorna al resize
-        updateFixedHeaderPosition();
-        window.addEventListener('resize', updateFixedHeaderPosition);
-    }
-    
-    // Inizializza sincronizzazione
-    syncFixedHeaderWithSidebar();
-    
-    // Inizializza gestione colonne
-    initColumnManagement();
-    
-    // Click su righe
-    document.querySelectorAll('.clickable-row').forEach(row => {
-        row.addEventListener('click', function() {
-            window.location.href = this.dataset.href;
-        });
-    });
-    
-    // Ricerca
-    const searchInput = document.getElementById('searchInput');
-    const tableBody = document.getElementById('operazioniTableBody');
-    const allRows = tableBody.querySelectorAll('tr.clickable-row');
-    const noResults = document.getElementById('no-results');
-    
-    searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toUpperCase();
-        let visibleRows = 0;
-        
-        allRows.forEach(row => {
-            const rowText = row.textContent.toUpperCase();
-            if (rowText.includes(searchTerm)) {
-                row.style.display = '';
-                visibleRows++;
-            } else {
-                row.style.display = 'none';
-            }
-        });
-        
-        noResults.style.display = (visibleRows === 0 && allRows.length > 0) ? 'block' : 'none';
-    });
-    
-    // Inizializza ordinamento tabella con gestione custom per colonne speciali
-    TalonTableSort.init({
-        tableSelector: '.styled-table',
-        bodyId: 'operazioniTableBody',
-        maintainSearch: true,
-        customSort: function(cellA, cellB, column, order) {
-            // Gestione speciale per colonna stato
-            if (column === 5) {
-                const stateOrder = {
-                    'In corso': 1,
-                    'Pianificata': 2,
-                    'Conclusa': 3,
-                    'N/D': 4
-                };
+            // Verifica che la tabella esista
+            const tableElement = document.querySelector('#operazioniTable');
+            if (tableElement) {
+                console.log('[Lista Operazioni] Tabella trovata:', tableElement);
                 
-                const valueA = cellA.textContent.trim();
-                const valueB = cellB.textContent.trim();
-                
-                const orderA = stateOrder[valueA] || 999;
-                const orderB = stateOrder[valueB] || 999;
-                
-                return order === 'asc' ? orderA - orderB : orderB - orderA;
-            }
-            // Per altre colonne usa ordinamento standard
-            return undefined;
-        }
-    });
-    
-    // Gestione colonne ridimensionabili e riposizionabili - Versione 2025 Stabile
-    function initColumnManagement() {
-        const table = document.querySelector('.styled-table');
-        if (!table) return;
-        
-        // Inizializza ridimensionamento colonne
-        initColumnResizing(table);
-        
-        // Inizializza drag & drop colonne  
-        initColumnDragDrop(table);
-        
-        // Carica configurazione salvata
-        loadColumnConfig();
-    }
-    
-    // Ridimensionamento colonne - Pattern moderno 2025
-    function initColumnResizing(table) {
-        const headers = table.querySelectorAll('thead th');
-        
-        headers.forEach((header, index) => {
-            if (index === headers.length - 1) return; // Skip ultima colonna
-            
-            const resizer = document.createElement('div');
-            resizer.className = 'column-resizer';
-            header.appendChild(resizer);
-            
-            let isResizing = false;
-            let startX = 0;
-            let startWidth = 0;
-            let currentHeader = null;
-            
-            // Event listeners con gestione errori
-            resizer.addEventListener('mousedown', startResize);
-            
-            function startResize(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                isResizing = true;
-                currentHeader = header;
-                startX = e.pageX;
-                startWidth = parseInt(getComputedStyle(header).width, 10);
-                
-                document.body.style.cursor = 'col-resize';
-                document.body.style.userSelect = 'none';
-                
-                document.addEventListener('mousemove', doResize);
-                document.addEventListener('mouseup', stopResize);
-                
-                // Previeni altri eventi durante il resize
-                table.style.pointerEvents = 'none';
-                table.classList.add('resizing');
-            }
-            
-            function doResize(e) {
-                if (!isResizing || !currentHeader) return;
-                
-                const diff = e.pageX - startX;
-                const newWidth = Math.max(80, startWidth + diff); // Min 80px
-                
-                // Applica larghezza con requestAnimationFrame per smoothness
-                requestAnimationFrame(() => {
-                    currentHeader.style.width = newWidth + 'px';
-                    
-                    // Applica a tutte le celle della colonna
-                    const colIndex = Array.from(currentHeader.parentNode.children).indexOf(currentHeader);
-                    const cells = table.querySelectorAll(`tbody tr td:nth-child(${colIndex + 1})`);
-                    cells.forEach(cell => {
-                        cell.style.width = newWidth + 'px';
+                // Inizializza la Advanced Table con tutte le funzionalità
+                try {
+                    window.operazioniTable = new AdvancedTable({
+                        tableSelector: '#operazioniTable',
+                        searchInputSelector: '#searchInput',
+                        itemsPerPage: 50,
+                        enableSorting: true,
+                        enableDragDrop: true,
+                        enablePagination: true,
+                        enableColumnResize: true,
+                        topControlsSelector: '#topPaginationControls',
+                        bottomControlsSelector: '#bottomPaginationControls',
+                        topInfoSelector: '#topPageInfo',
+                        bottomInfoSelector: '#bottomPageInfo',
+                        persistConfig: true,
+                        configKey: 'talon-operazioni-table-config',
+                        customSortFunctions: {
+                            'status': function(a, b, order) {
+                                const stateOrder = {
+                                    'In corso': 1,
+                                    'Pianificata': 2,
+                                    'Conclusa': 3,
+                                    'N/D': 4
+                                };
+                                
+                                const valueA = a.textContent.trim();
+                                const valueB = b.textContent.trim();
+                                
+                                const orderA = stateOrder[valueA] || 999;
+                                const orderB = stateOrder[valueB] || 999;
+                                
+                                return order === 'asc' ? orderA - orderB : orderB - orderA;
+                            },
+                            'date': function(a, b, order) {
+                                const dateA = new Date(a.getAttribute('data-sort') || a.textContent);
+                                const dateB = new Date(b.getAttribute('data-sort') || b.textContent);
+                                
+                                return order === 'asc' ? dateA - dateB : dateB - dateA;
+                            }
+                        },
+                        onRowClick: function(row) {
+                            const href = row.getAttribute('data-href');
+                            if (href) {
+                                window.location.href = href;
+                            }
+                        }
                     });
-                });
+                    
+                    console.log('[Lista Operazioni] Tabella avanzata inizializzata:', window.operazioniTable);
+                    
+                } catch (error) {
+                    console.error('[Lista Operazioni] Errore durante inizializzazione:', error);
+                }
+            } else {
+                console.error('[Lista Operazioni] Tabella #operazioniTable non trovata nel DOM!');
             }
-            
-            function stopResize() {
-                if (!isResizing) return;
-                
-                isResizing = false;
-                currentHeader = null;
-                
-                document.body.style.cursor = '';
-                document.body.style.userSelect = '';
-                table.style.pointerEvents = '';
-                table.classList.remove('resizing');
-                
-                document.removeEventListener('mousemove', doResize);
-                document.removeEventListener('mouseup', stopResize);
-                
-                saveColumnConfig();
-            }
-        });
-    }
-    
-    // Drag & Drop colonne - Pattern HTML5 moderno
-    function initColumnDragDrop(table) {
-        const headers = table.querySelectorAll('thead th');
-        let draggedColumn = null;
-        let draggedIndex = -1;
-        
-        headers.forEach((header, index) => {
-            header.draggable = true;
-            header.style.cursor = 'move';
-            
-            // Drag events
-            header.addEventListener('dragstart', handleDragStart);
-            header.addEventListener('dragover', handleDragOver);
-            header.addEventListener('dragenter', handleDragEnter);
-            header.addEventListener('dragleave', handleDragLeave);
-            header.addEventListener('drop', handleDrop);
-            header.addEventListener('dragend', handleDragEnd);
-        });
-        
-        function handleDragStart(e) {
-            // Non dragare se si sta ridimensionando
-            if (e.target.classList.contains('column-resizer')) {
-                e.preventDefault();
-                return false;
-            }
-            
-            draggedColumn = this;
-            draggedIndex = Array.from(headers).indexOf(this);
-            
-            this.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', this.outerHTML);
-        }
-        
-        function handleDragOver(e) {
-            if (e.preventDefault) e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            return false;
-        }
-        
-        function handleDragEnter(e) {
-            if (this !== draggedColumn) {
-                this.classList.add('drag-over');
-            }
-        }
-        
-        function handleDragLeave(e) {
-            this.classList.remove('drag-over');
-        }
-        
-        function handleDrop(e) {
-            if (e.stopPropagation) e.stopPropagation();
-            
-            if (draggedColumn !== this) {
-                const dropIndex = Array.from(headers).indexOf(this);
-                moveColumn(draggedIndex, dropIndex);
-            }
-            
-            return false;
-        }
-        
-        function handleDragEnd(e) {
-            headers.forEach(header => {
-                header.classList.remove('dragging', 'drag-over');
-            });
-            
-            draggedColumn = null;
-            draggedIndex = -1;
-        }
-    }
-    
-    // Spostamento colonne ottimizzato
-    function moveColumn(fromIndex, toIndex) {
-        const table = document.querySelector('.styled-table');
-        const headerRow = table.querySelector('thead tr');
-        const bodyRows = table.querySelectorAll('tbody tr');
-        
-        // Sposta header
-        const headerToMove = headerRow.children[fromIndex];
-        const targetHeader = headerRow.children[toIndex];
-        
-        if (fromIndex < toIndex) {
-            headerRow.insertBefore(headerToMove, targetHeader.nextSibling);
         } else {
-            headerRow.insertBefore(headerToMove, targetHeader);
+            console.error('[Lista Operazioni] AdvancedTable non disponibile!');
         }
         
-        // Sposta celle in tutte le righe
-        bodyRows.forEach(row => {
-            const cellToMove = row.children[fromIndex];
-            const targetCell = row.children[toIndex];
-            
-            if (fromIndex < toIndex) {
-                row.insertBefore(cellToMove, targetCell.nextSibling);
-            } else {
-                row.insertBefore(cellToMove, targetCell);
-            }
-        });
-        
-        saveColumnConfig();
-    }
-    
-    // Persistenza configurazione
-    function saveColumnConfig() {
-        try {
-            const headers = document.querySelectorAll('.styled-table thead th');
-            const config = {
-                widths: Array.from(headers).map(h => h.style.width || 'auto'),
-                order: Array.from(headers).map(h => h.querySelector('.th-label')?.textContent || ''),
-                timestamp: Date.now()
-            };
-            
-            localStorage.setItem('talon-operazioni-table-config', JSON.stringify(config));
-        } catch (e) {
-            console.warn('Errore salvataggio configurazione:', e);
-        }
-    }
-    
-    function loadColumnConfig() {
-        try {
-            const config = localStorage.getItem('talon-operazioni-table-config');
-            if (!config) return;
-            
-            const parsed = JSON.parse(config);
-            const headers = document.querySelectorAll('.styled-table thead th');
-            
-            // Applica larghezze salvate
-            headers.forEach((header, index) => {
-                if (parsed.widths[index] && parsed.widths[index] !== 'auto') {
-                    header.style.width = parsed.widths[index];
-                    
-                    // Applica alle celle
-                    const table = document.querySelector('.styled-table');
-                    const cells = table.querySelectorAll(`tbody tr td:nth-child(${index + 1})`);
-                    cells.forEach(cell => {
-                        cell.style.width = parsed.widths[index];
-                    });
+        // Event listener alternativo per il click sulle righe (fallback)
+        const clickableRows = document.querySelectorAll('#operazioniTable .clickable-row');
+        clickableRows.forEach(function(row) {
+            row.addEventListener('click', function(e) {
+                // Evita il click se si clicca su un link o bottone
+                if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') {
+                    return;
+                }
+                
+                const href = row.getAttribute('data-href');
+                if (href) {
+                    console.log('[Lista Operazioni] Click su riga, reindirizzamento a:', href);
+                    window.location.href = href;
+                } else {
+                    console.warn('[Lista Operazioni] Nessun href trovato per la riga');
                 }
             });
-        } catch (e) {
-            console.warn('Errore caricamento configurazione:', e);
-        }
-    }
+        });
+        
+    }, 100);
 });
 </script>
 {% endblock %}

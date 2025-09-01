@@ -218,7 +218,7 @@
             // Create options container
             this.elements.optionsContainer = document.createElement('div');
             this.elements.optionsContainer.className = this.config.CLASSES.OPTIONS;
-            this.elements.optionsContainer.style.maxHeight = this.config.UI.DROPDOWN_MAX_HEIGHT + 'px';
+            // Rimuoviamo il maxHeight inline per usare il CSS del template
             
             // Create loading indicator
             this.elements.loadingIndicator = document.createElement('div');

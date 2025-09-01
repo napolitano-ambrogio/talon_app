@@ -412,3 +412,84 @@
         border-width: 3px;
     }
 }
+
+/* ========================================
+   BADGE COLORATI PER ADVANCED-TABLE
+   ======================================== */
+
+/* Badge base per advanced-table */
+.advanced-table .badge {
+    display: inline-block !important;
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    white-space: nowrap !important;
+}
+
+/* Badge SUCCESS (verde) - per stati attivi */
+.advanced-table .badge.success {
+    background-color: #d4edda !important;
+    color: #155724 !important;
+    border: 1px solid #c3e6cb !important;
+}
+
+/* Badge WARNING (arancione) - per stati pianificati */
+.advanced-table .badge.warning {
+    background-color: #fff3cd !important;
+    color: #856404 !important;
+    border: 1px solid #ffeaa7 !important;
+}
+
+/* Badge ERROR (rosso) - per stati conclusi */
+.advanced-table .badge.error {
+    background-color: #f8d7da !important;
+    color: #721c24 !important;
+    border: 1px solid #f5c6cb !important;
+}
+
+/* ========================================
+   COLONNA IMMAGINE OPERAZIONI
+   ======================================== */
+
+/* Centratura colonna immagine */
+.advanced-table .image-column {
+    text-align: center !important;
+    vertical-align: middle !important;
+    padding: 4px !important;
+}
+
+/* Thumbnail immagine operazione */
+.advanced-table .operation-thumb {
+    width: 30px !important;
+    height: 30px !important;
+    object-fit: cover !important;
+    border-radius: 3px !important;
+    border: 1px solid #ddd !important;
+    display: inline-block !important;
+}
+
+/* Placeholder per nessuna immagine */
+.advanced-table .no-image {
+    color: #999 !important;
+    font-size: 0.8em !important;
+    display: inline-block !important;
+}
+
+/* ========================================
+   RIGHE CLICCABILI
+   ======================================== */
+
+/* Righe cliccabili con cursore pointer e hover */
+.advanced-table .clickable-row {
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.advanced-table .clickable-row:hover {
+    background-color: rgba(74, 144, 226, 0.08) !important;
+    transform: translateX(2px) !important;
+    box-shadow: -3px 0 0 #4a90e2, 0 2px 4px rgba(0,0,0,0.1) !important;
+}

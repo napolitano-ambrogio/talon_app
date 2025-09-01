@@ -175,7 +175,7 @@ def enti_civili():
         )
 
         return render_template(
-            'enti_civili.html',
+            'enti/civili/lista.html',
             enti_civili=enti_civili_list,
             province=province,
             citta_options=citta_opts,

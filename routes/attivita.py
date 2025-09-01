@@ -855,6 +855,21 @@ def visualizza_attivita(id):
     can_edit = 'EDIT_ATTIVITA' in user_permissions
     can_delete = 'DELETE_ATTIVITA' in user_permissions
 
+    # Controlla se proviene dal drilldown
+    from_drilldown = request.args.get('from') == 'drilldown'
+    
+    # Estrae parametri dello stato del drilldown
+    drilldown_state = {}
+    if from_drilldown:
+        drilldown_state = {
+            'level': request.args.get('level', '0'),
+            'period': request.args.get('period', 'year'),
+            'category': request.args.get('category', ''),
+            'subcategory': request.args.get('subcategory', ''),
+            'start_date': request.args.get('start_date', ''),
+            'end_date': request.args.get('end_date', '')
+        }
+
     return render_template(
         'attivita/visualizza_attivita.html',
         attivita=attivita_completa,
@@ -863,7 +878,9 @@ def visualizza_attivita(id):
         dettagli_specifici=dettagli_specifici,
         can_edit=can_edit,
         can_delete=can_delete,
-        today=date.today()
+        today=date.today(),
+        from_drilldown=from_drilldown,
+        drilldown_state=drilldown_state
     )
 
 @attivita_bp.route('/attivita/modifica/<int:id>')

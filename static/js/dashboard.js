@@ -21,7 +21,7 @@ const Dashboard = {
     },
 
     init() {
-        console.log('Dashboard caricata');
+        // Dashboard caricata (log rimosso per produzione)
         this.loadAutoRefreshSettings();
         this.bindEvents();
     },

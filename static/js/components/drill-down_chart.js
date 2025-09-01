@@ -17,8 +17,47 @@ let state = {
 };
 
 // ========================================
-// FUNZIONI UI HELPER
+// FUNZIONI UI HELPER - VERSION 4.0 UPDATED
 // ========================================
+
+console.log('🚀 DRILL-DOWN CHART VERSION 4.1 - ERRORI JAVASCRIPT RISOLTI - ROTAZIONE INTELLIGENTE ATTIVA!');
+
+function getCarattereFiltro() {
+    // Ottieni il valore del toggle carattere dal DOM
+    const carattereToggle = document.querySelector('input[name="carattere"]:checked');
+    return carattereToggle ? carattereToggle.value : '';
+}
+
+function formatLabelForChart(label) {
+    // Formatta le etichette lunghe per il grafico, dividendole su più righe
+    if (typeof label !== 'string' || label.length <= 20) {
+        return label;
+    }
+    
+    const words = label.split(' ');
+    const lines = [];
+    let currentLine = '';
+    
+    words.forEach(word => {
+        // Se la parola da sola è più lunga di 20 caratteri, la tronchiamo
+        if (word.length > 20) {
+            if (currentLine) {
+                lines.push(currentLine);
+                currentLine = '';
+            }
+            lines.push(word.substring(0, 17) + '...');
+        } else if ((currentLine + (currentLine ? ' ' : '') + word).length <= 20) {
+            currentLine += (currentLine ? ' ' : '') + word;
+        } else {
+            if (currentLine) lines.push(currentLine);
+            currentLine = word;
+        }
+    });
+    if (currentLine) lines.push(currentLine);
+    
+    // Limita a massimo 2 righe per evitare grafici troppo alti
+    return lines.slice(0, 2);
+}
 
 function cleanName(name) {
     // Rimuove caratteri "/" iniziali dai nomi
@@ -117,14 +156,16 @@ function updateBreadcrumb() {
         return;
     }
     
+    // Usa il titolo configurato nel template, fallback su "ATTIVITÀ"
+    const breadcrumbTitle = window.TALON_CONFIG?.breadcrumbTitle || 'ATTIVITÀ';
     
     let html = '';
     
     // Aggiungi breadcrumb per ogni livello (3 livelli istogramma: 0,1,2)
     if (state.currentLevel === 0) {
-        html = '<div class="breadcrumb-item active" data-level="0">ATTIVITÀ</div>';
+        html = `<div class="breadcrumb-item active" data-level="0">${breadcrumbTitle}</div>`;
     } else {
-        html = '<div class="breadcrumb-item" data-level="0" onclick="navigateToLevel(0)">ATTIVITÀ</div>';
+        html = `<div class="breadcrumb-item" data-level="0" onclick="navigateToLevel(0)">${breadcrumbTitle}</div>`;
         
         if (state.breadcrumb.length > 0 && state.currentLevel >= 1) {
             html += ' → ';
@@ -166,7 +207,8 @@ async function updateInfoCardsForCurrentLevel(data) {
     
     // Carica il totale generale delle attività (sempre fisso)
     try {
-        let statsUrl = `/drill-down/api/statistiche?period=${state.currentPeriod}`;
+        const endpoints = window.TALON_CONFIG?.api?.endpoints || {};
+        let statsUrl = `${endpoints.statistiche || '/drill-down/api/statistiche'}?period=${state.currentPeriod}`;
         if (state.currentPeriod === 'custom' && state.customStartDate && state.customEndDate) {
             statsUrl += `&start_date=${state.customStartDate}&end_date=${state.customEndDate}`;
         }
@@ -194,7 +236,8 @@ async function updateInfoCardsForCurrentLevel(data) {
     
     // Carica il numero di enti coinvolti per il livello specifico
     try {
-        let url = `/drill-down/api/enti-coinvolti?period=${state.currentPeriod}&level=${state.currentLevel}`;
+        const endpoints = window.TALON_CONFIG?.api?.endpoints || {};
+        let url = `${endpoints.enti_coinvolti || '/drill-down/api/enti-coinvolti'}?period=${state.currentPeriod}&level=${state.currentLevel}`;
         
         // Aggiungi date personalizzate se presenti
         if (state.currentPeriod === 'custom' && state.customStartDate && state.customEndDate) {
@@ -234,7 +277,8 @@ async function updateInfoCardsForCurrentLevel(data) {
 
 async function loadStatistics() {
     try {
-        let url = `/drill-down/api/statistiche?period=${state.currentPeriod}`;
+        const endpoints = window.TALON_CONFIG?.api?.endpoints || {};
+        let url = `${endpoints.statistiche || '/drill-down/api/statistiche'}?period=${state.currentPeriod}`;
         if (state.currentPeriod === 'custom' && state.customStartDate && state.customEndDate) {
             url += `&start_date=${state.customStartDate}&end_date=${state.customEndDate}`;
         }
@@ -249,9 +293,18 @@ async function loadStatistics() {
         if (response.ok) {
             const result = await response.json();
             if (result.success && result.stats) {
-                document.getElementById('totalValue').textContent = result.stats.totale || '0';
-                document.getElementById('specificActivitiesValue').textContent = '0'; // Sarà aggiornato dinamicamente
-                document.getElementById('entitiesValue').textContent = result.stats.enti || '0'; // Sarà sovrascritto dal calcolo per livello
+                // Aggiorna gli elementi che esistono nella dashboard eventi
+                const totalValueEl = document.getElementById('totalValue');
+                if (totalValueEl) totalValueEl.textContent = result.stats.totale || '0';
+                
+                const positiveValueEl = document.getElementById('positiveValue');
+                if (positiveValueEl) positiveValueEl.textContent = result.stats.positivi || '0';
+                
+                const negativeValueEl = document.getElementById('negativeValue');
+                if (negativeValueEl) negativeValueEl.textContent = result.stats.negativi || '0';
+                
+                const entitiesValueEl = document.getElementById('entitiesValue');
+                if (entitiesValueEl) entitiesValueEl.textContent = result.stats.enti_coinvolti || '0';
                 
                 // Calcola giorni in base al periodo
                 let days;
@@ -283,26 +336,110 @@ function navigateToLevel(level) {
 }
 
 // ========================================
+// CALCOLO ALTEZZA OTTIMALE CHART
+// ========================================
+
+function calculateOptimalChartHeight() {
+    try {
+        const mainContent = document.getElementById('main-content');
+        const periodSelector = document.querySelector('.period-selector');
+        const infoCards = document.querySelector('.info-cards');
+        const detailsPanel = document.getElementById('detailsPanel');
+        const padding = 60; // Margini e padding vari
+        
+        if (!mainContent) {
+            console.warn('📊 [Chart Height Dashboard] main-content non trovato, usando altezza di default');
+            return 350; // Default fallback
+        }
+        
+        let availableHeight = mainContent.offsetHeight;
+        
+        // Sottrai altezza degli altri elementi
+        if (periodSelector) availableHeight -= periodSelector.offsetHeight;
+        if (infoCards) availableHeight -= infoCards.offsetHeight;
+        if (detailsPanel && detailsPanel.style.display !== 'none') {
+            availableHeight -= 300; // Spazio per la tabella dettagli
+        }
+        
+        // TEMPORANEO: Test con altezza più aggressiva per debug
+        const aggressiveHeight = Math.floor(window.innerHeight * 0.6); // 60% del viewport
+        const conservativeHeight = Math.max(
+            250, // Minimo per leggibilità
+            Math.min(
+                Math.floor((availableHeight - padding) * 0.5),
+                Math.floor(window.innerHeight * 0.45), // Max 45% viewport height
+                500 // Massimo assoluto per non essere troppo grande
+            )
+        );
+        
+        // Usa l'altezza più grande tra le due per test
+        const chartHeight = Math.max(conservativeHeight, aggressiveHeight);
+        
+        console.log('📊 [Chart Height Dashboard] Calcolo altezza:', {
+            mainContentHeight: mainContent.offsetHeight,
+            availableHeight: availableHeight,
+            conservativeHeight: conservativeHeight,
+            aggressiveHeight: aggressiveHeight,
+            finalChartHeight: chartHeight,
+            viewportHeight: window.innerHeight,
+            periodSelectorHeight: periodSelector ? periodSelector.offsetHeight : 'non trovato',
+            infoCardsHeight: infoCards ? infoCards.offsetHeight : 'non trovato',
+            detailsPanelVisible: detailsPanel && detailsPanel.style.display !== 'none'
+        });
+        
+        return chartHeight;
+    } catch (error) {
+        console.error('📊 [Chart Height Dashboard] Errore calcolo altezza:', error);
+        return 350; // Fallback sicuro
+    }
+}
+
+// ========================================
 // FUNZIONE CHART PRINCIPALE
 // ========================================
 
-function initChart(labels, values, chartType = 'bar') {
+function initChart(labels, values, chartType = 'bar', customHeight = null) {
     const ctx = document.getElementById('chartCanvas');
     if (!ctx) {
         console.error('Canvas element non trovato');
         return;
     }
     
-    // Gli stili sono gestiti dal template HTML - non sovrascrivere
-    
-    ctx.style.display = 'block';
-    ctx.style.width = '100%';
-    ctx.style.height = 'auto';
+    const ctx2d = ctx.getContext('2d');
     
     // Distruggi chart esistente se presente
     if (window.chart) {
         window.chart.destroy();
+        window.chart = null;
     }
+    
+    // Applica altezza personalizzata PRIMA di creare il chart
+    if (customHeight) {
+        // Imposta altezza sul canvas
+        ctx.style.height = customHeight + 'px';
+        ctx.height = customHeight; // Imposta anche l'attributo height
+        
+        // Imposta altezza anche sul contenitore padre per Chart.js
+        const chartContainer = ctx.closest('.chart-container');
+        if (chartContainer) {
+            const containerHeight = customHeight + 40; // +40px per padding del contenitore
+            chartContainer.style.height = containerHeight + 'px';
+            console.log('📊 [Chart Container Dashboard] Altezza contenitore impostata PRIMA della creazione chart:', {
+                canvasHeight: customHeight + 'px',
+                canvasActualHeight: ctx.height,
+                containerHeight: containerHeight + 'px',
+                containerElement: chartContainer
+            });
+        } else {
+            console.warn('📊 [Chart Container Dashboard] Contenitore .chart-container non trovato!');
+        }
+        
+        console.log('📊 [Chart Height Dashboard] Altezza personalizzata applicata PRIMA della creazione:', customHeight + 'px');
+    }
+    
+    // Stili di base
+    ctx.style.display = 'block';
+    ctx.style.width = '100%';
     
     // Configurazione colori
     const colors = [
@@ -315,7 +452,7 @@ function initChart(labels, values, chartType = 'bar') {
     ];
     
     // Crea nuovo chart
-    window.chart = new Chart(ctx, {
+    window.chart = new Chart(ctx2d, {
         type: chartType,
         data: {
             labels: labels ? labels.map(label => cleanName(label)) : [],
@@ -353,10 +490,32 @@ function initChart(labels, values, chartType = 'bar') {
                     ticks: {
                         precision: 0
                     }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 90,
+                        minRotation: 0,
+                        font: {
+                            size: 12
+                        }
+                    }
                 }
             }
         }
     });
+    
+    // Log finale per verificare stato del chart
+    if (customHeight) {
+        const finalCanvas = document.getElementById('chartCanvas');
+        const finalContainer = finalCanvas ? finalCanvas.closest('.chart-container') : null;
+        console.log('📊 [Chart Final State Dashboard] Stato finale dopo creazione chart:', {
+            chartCreated: !!window.chart,
+            canvasStyleHeight: finalCanvas ? finalCanvas.style.height : 'N/A',
+            canvasActualHeight: finalCanvas ? finalCanvas.height : 'N/A',
+            containerStyleHeight: finalContainer ? finalContainer.style.height : 'N/A',
+            containerActualHeight: finalContainer ? finalContainer.offsetHeight : 'N/A'
+        });
+    }
     
     // Aggiorna UI
     updateBreadcrumb();
@@ -367,7 +526,8 @@ function handleChartClick(event, elements) {
     if (elements.length > 0) {
         const index = elements[0].index;
         const chart = window.chart || this; // Usa this come fallback
-        const label = chart.data.labels[index]; // Il label è già pulito dal cleanName
+        // Usa le etichette originali per il drill-down, non quelle formattate per la visualizzazione
+        const label = chart.originalLabels ? chart.originalLabels[index] : chart.data.labels[index];
         
         // console.log removed for production silence
         
@@ -567,7 +727,7 @@ function displayEntityActivities(ente, activities) {
             }
             
             html += `
-                <tr>
+                <tr onclick="viewActivityDetails('${activity.id || ''}')" style="cursor: pointer;" title="Clicca per visualizzare i dettagli dell'attività">
                     <td data-sort="${dataInizioSort}">${activity.data_inizio || 'N/D'}</td>
                     <td data-sort="${dataFineSort}">${activity.data_fine || 'N/D'}</td>
                     <td>${activity.descrizione || 'N/D'}</td>
@@ -661,21 +821,54 @@ async function loadDataFromAPI(level, parentLabel = null) {
             params.append('end_date', state.customEndDate);
         }
         
+        // Usa gli endpoints configurati nel template tramite TALON_CONFIG, fallback su drill-down
+        const endpoints = window.TALON_CONFIG?.api?.endpoints || {};
+        
         switch(level) {
             case 0:
-                url = '/drill-down/api/categorie';
+                url = endpoints.categorie || '/drill-down/api/categorie';
                 break;
             case 1:
-                url = '/drill-down/api/sottocategorie';
+                url = endpoints.sottocategorie || '/drill-down/api/sottocategorie';
                 params.append('categoria', parentLabel);
                 break;
             case 2:
-                url = '/drill-down/api/enti';
+                url = endpoints.enti || '/drill-down/api/enti';
                 params.append('sottocategoria', parentLabel);
+                
+                // Per dashboard eventi: livello 1 (enti primo livello), livello 2 (tutti gli enti)
+                const dashboardType = document.querySelector('#eventi-config')?.getAttribute('data-type');
+                if (dashboardType === 'eventi') {
+                    params.append('level', '1'); // Mostra solo enti di primo livello
+                }
+                
+                // Aggiungi il filtro carattere dal toggle se presente
+                const carattereFiltro = getCarattereFiltro();
+                if (carattereFiltro) {
+                    params.append('carattere_filtro', carattereFiltro);
+                }
                 break;
             case 3:
-                url = '/drill-down/api/dettagli';
-                params.append('ente', parentLabel);
+                // Per dashboard eventi: se siamo a livello 3, potrebbe essere:
+                // - Dettagli di un ente di primo livello → mostrare sottoenti (level=2)
+                // - Dettagli di un sottoente → mostrare eventi specifici
+                const dashboardTypeL3 = document.querySelector('#eventi-config')?.getAttribute('data-type');
+                if (dashboardTypeL3 === 'eventi') {
+                    // Se il parent è un ente di primo livello, mostra i suoi sottoenti
+                    url = endpoints.enti || '/drill-down/api/enti';
+                    params.append('sottocategoria', state.breadcrumb[0]); // tipo_evento dal livello 0
+                    params.append('ente_primo_livello', parentLabel); // Nome dell'ente di primo livello
+                    params.append('level', '2'); // Mostra tutti i sottoenti specifici
+                    
+                    // Aggiungi il filtro carattere dal toggle se presente
+                    const carattereFiltroL3 = getCarattereFiltro();
+                    if (carattereFiltroL3) {
+                        params.append('carattere_filtro', carattereFiltroL3);
+                    }
+                } else {
+                    url = endpoints.dettagli || '/drill-down/api/dettagli';
+                    params.append('ente', parentLabel);
+                }
                 break;
         }
         
@@ -722,8 +915,10 @@ function drillDown(label, index) {
             
             // La gestione del livello 2 (enti) → dettagli è ora gestita in handleChartClick
             
-            // Prima prova a caricare da API (per livelli 0→1 e 1→2)
-            // Assicuriamoci che il label sia pulito prima di passarlo all'API
+            // Controlla se siamo nella dashboard eventi per modificare la logica
+            const dashboardType = document.querySelector('#eventi-config')?.getAttribute('data-type');
+            
+            // Dashboard normale: usa la logica standard
             const cleanLabel = cleanName(label);
             data = await loadDataFromAPI(newLevel, cleanLabel);
             
@@ -731,10 +926,24 @@ function drillDown(label, index) {
             if (!data) {
                 // console.log removed for production silence
                 
+                // Controlla se siamo nella dashboard eventi
+                const dashboardType = document.querySelector('#eventi-config')?.getAttribute('data-type');
+                
                 if (state.currentLevel === 0) {
-                    state.currentCategory = label;
-                    state.currentLevel = 1;
-                    loadSubcategories(label);
+                    if (dashboardType === 'eventi') {
+                        // Dashboard eventi: vai direttamente agli enti (livello 2)
+                        const tipoEventoDb = window.TALON_CONFIG?.unformatTipoEvento ? 
+                                           window.TALON_CONFIG.unformatTipoEvento(label) : 
+                                           label.toLowerCase().replace(' ', '_');
+                        state.currentSubcategory = tipoEventoDb;
+                        state.currentLevel = 2;
+                        loadEntities(tipoEventoDb);
+                    } else {
+                        // Dashboard normale
+                        state.currentCategory = label;
+                        state.currentLevel = 1;
+                        loadSubcategories(label);
+                    }
                 } else if (state.currentLevel === 1) {
                     state.currentSubcategory = label;
                     state.currentLevel = 2;
@@ -748,8 +957,18 @@ function drillDown(label, index) {
                 // Usa i dati dall'API
                 // console.log removed for production silence
                 
-                if (state.currentLevel === 0) {
-                    // Livello 0 → 1: Categorie → Sottocategorie
+                if (newLevel === 2 && dashboardType === 'eventi' && state.currentLevel === 0) {
+                    // Dashboard eventi: Livello 0 → 2 direttamente (Tipi → Enti)
+                    const tipoEventoDb = window.TALON_CONFIG?.unformatTipoEvento ? 
+                                       window.TALON_CONFIG.unformatTipoEvento(label) : 
+                                       label.toLowerCase().replace(' ', '_');
+                    
+                    state.currentSubcategory = tipoEventoDb;
+                    state.currentLevel = 2;
+                    state.breadcrumb = [label];
+                    updateChartWithAPIData(data, `Enti per ${label}`);
+                } else if (state.currentLevel === 0) {
+                    // Dashboard normale: Livello 0 → 1 (Categorie → Sottocategorie)
                     const cleanLabel = cleanName(label);
                     state.currentCategory = cleanLabel;
                     state.currentLevel = 1;
@@ -814,10 +1033,14 @@ function updateChartWithAPIData(data, label) {
     }
     
     
+    // Formatta le etichette per supportare multi-riga se necessario
+    const formattedLabels = data.labels.map(label => formatLabelForChart(label));
     const colors = generateColors(data.labels.length);
     
-    // Pulisce i nomi dei label rimuovendo "/" iniziali
-    window.chart.data.labels = data.labels.map(label => cleanName(label));
+    // Usa le etichette formattate per la visualizzazione ma mantieni mapping per i click
+    window.chart.data.labels = formattedLabels;
+    // Salva le etichette originali per il click handling
+    window.chart.originalLabels = data.labels.map(label => cleanName(label));
     window.chart.data.datasets[0].data = data.values;
     window.chart.data.datasets[0].backgroundColor = colors.background;
     window.chart.data.datasets[0].borderColor = colors.border;
@@ -1118,21 +1341,24 @@ async function initChartWithAPI() {
         if (data && data.labels && data.values) {
             // console.log removed for production silence
             
-            // Usa la funzione initChart che abbiamo definito
-            initChart(data.labels, data.values);
+            // Usa la funzione initChart con altezza dinamica
+            const chartHeight = calculateOptimalChartHeight();
+            initChart(data.labels, data.values, 'bar', chartHeight);
             
             // Aggiorna le info cards per il livello iniziale
             updateInfoCardsForCurrentLevel(data);
             
         } else {
-            // Fallback ai dati mock
-            initChart();
+            // Fallback ai dati mock con altezza dinamica
+            const chartHeight = calculateOptimalChartHeight();
+            initChart([], [], 'bar', chartHeight);
         }
         
     } catch (error) {
         console.error('Errore inizializzazione con API:', error);
-        // Fallback ai dati mock
-        initChart();
+        // Fallback ai dati mock con altezza dinamica
+        const chartHeight = calculateOptimalChartHeight();
+        initChart([], [], 'bar', chartHeight);
         
     } finally {
         hideLoading();
@@ -1154,8 +1380,43 @@ class TalonDrillDownChart {
         state.currentLevel = 0;
         state.breadcrumb = [];
         
+        // Aggiungi event listener per ridimensionamento finestra
+        this.setupResizeListener();
+        
         // Inizializza il grafico
         this.init();
+    }
+    
+    setupResizeListener() {
+        // Throttling del resize per evitare troppe chiamate
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                this.handleResize();
+            }, 150);
+        });
+        console.log('📏 Event listener resize configurato per dashboard principale');
+    }
+    
+    handleResize() {
+        if (window.chart) {
+            const newHeight = calculateOptimalChartHeight();
+            const canvas = document.getElementById('chartCanvas');
+            if (canvas && newHeight) {
+                canvas.style.height = newHeight + 'px';
+                
+                // Aggiorna anche il contenitore padre
+                const chartContainer = canvas.closest('.chart-container');
+                if (chartContainer) {
+                    const containerHeight = newHeight + 40; // +40px per padding
+                    chartContainer.style.height = containerHeight + 'px';
+                }
+                
+                window.chart.resize(); // Forza Chart.js a ricalcolare le dimensioni
+                console.log('📊 [Window Resize Dashboard] Altezza grafico aggiornata a:', newHeight + 'px');
+            }
+        }
     }
     
     init() {
@@ -1221,6 +1482,100 @@ class TalonDrillDownChart {
             window.chart = null;
         }
     }
+    
+    /**
+     * Simula un click su un elemento specifico del drilldown
+     * @param {number} level - Livello corrente (0=categorie, 1=sottocategorie, 2=enti)
+     * @param {string} label - Label dell'elemento da cliccare (può essere URL-encoded)
+     */
+    simulateClick(level, label) {
+        console.log(`[DrillDown] Simulazione click - Livello: ${level}, Label: ${label}`);
+        
+        if (!window.chart || !window.chart.data || !window.chart.data.labels) {
+            console.error('[DrillDown] Chart non disponibile per simulazione click');
+            return;
+        }
+        
+        // Decodifica URL del label se necessario
+        let decodedLabel = label;
+        try {
+            decodedLabel = decodeURIComponent(label);
+            console.log(`[DrillDown] Label decodificato: "${decodedLabel}"`);
+        } catch (e) {
+            console.log(`[DrillDown] Label non URL-encoded: "${label}"`);
+        }
+        
+        // Trova l'indice del label nel chart corrente
+        const labels = window.chart.data.labels;
+        console.log(`[DrillDown] Labels disponibili nel chart:`, labels);
+        
+        // Prova prima con il label decodificato, poi con quello originale
+        let index = labels.findIndex(l => cleanName(l) === cleanName(decodedLabel));
+        
+        if (index === -1 && decodedLabel !== label) {
+            console.log(`[DrillDown] Tentativo con label originale...`);
+            index = labels.findIndex(l => cleanName(l) === cleanName(label));
+        }
+        
+        if (index === -1) {
+            console.warn(`[DrillDown] Label "${decodedLabel}" (originale: "${label}") non trovato nel livello ${level}`);
+            console.warn(`[DrillDown] Labels disponibili:`, labels.map(l => cleanName(l)));
+            return;
+        }
+        
+        console.log(`[DrillDown] Trovato label "${decodedLabel}" all'indice ${index}`);
+        
+        // Simula il click chiamando handleChartClick
+        const mockEvent = {};
+        const mockElements = [{ index: index }];
+        
+        handleChartClick(mockEvent, mockElements);
+    }
+    
+    /**
+     * Simula un click sul primo elemento disponibile nel chart corrente
+     */
+    simulateClickFirstItem() {
+        console.log(`[DrillDown] Simulazione click primo elemento disponibile`);
+        
+        if (!window.chart || !window.chart.data || !window.chart.data.labels) {
+            console.error('[DrillDown] Chart non disponibile per simulazione click');
+            return;
+        }
+        
+        const labels = window.chart.data.labels;
+        if (labels.length > 0) {
+            console.log(`[DrillDown] Click su primo elemento: "${labels[0]}"`);
+            
+            // Simula il click chiamando handleChartClick
+            const mockEvent = {};
+            const mockElements = [{ index: 0 }];
+            
+            handleChartClick(mockEvent, mockElements);
+        } else {
+            console.warn('[DrillDown] Nessun elemento disponibile nel chart');
+        }
+    }
+    
+    /**
+     * Controlla se il chart è pronto e ha dati
+     */
+    isChartReady() {
+        return !!(window.chart && window.chart.data && window.chart.data.labels && window.chart.data.labels.length > 0);
+    }
+    
+    /**
+     * Restituisce lo stato corrente del drilldown
+     */
+    getCurrentState() {
+        return {
+            level: state.currentLevel,
+            category: state.currentCategory,
+            subcategory: state.currentSubcategory,
+            chartReady: this.isChartReady(),
+            labelsCount: window.chart?.data?.labels?.length || 0
+        };
+    }
 }
 
 // Dati mock di emergenza per fallback estremo
@@ -1245,6 +1600,66 @@ const mockData = {
 
 // Esponi la classe globalmente
 window.TalonDrillDownChart = TalonDrillDownChart;
+
+// ========================================
+// FUNZIONE GLOBALE PER NAVIGAZIONE ATTIVITÀ
+// ========================================
+
+/**
+ * Naviga alla pagina di dettaglio di un'attività specifica
+ * @param {string|number} activityId - ID dell'attività (può includere prefisso "ATT")
+ */
+window.viewActivityDetails = function(activityId) {
+    if (activityId && activityId !== 'null' && activityId !== null && activityId !== '') {
+        // Pulisce l'ID rimuovendo eventuali prefissi (es. ATT0382 -> 382)
+        let cleanId = activityId;
+        if (typeof activityId === 'string' && activityId.startsWith('ATT')) {
+            cleanId = activityId.replace(/^ATT0*/, ''); // Rimuove ATT e zeri iniziali
+        }
+        
+        // Verifica che l'ID pulito sia valido
+        if (cleanId && cleanId !== '' && !isNaN(cleanId)) {
+            // Log per debug
+            console.log(`[DrillDown] Navigazione: ${activityId} -> ID pulito: ${cleanId}`);
+            
+            // Costruisce parametri per mantenere lo stato del drilldown
+            const drilldownParams = new URLSearchParams({
+                'from': 'drilldown',
+                'level': state.currentLevel,
+                'period': state.currentPeriod
+            });
+            
+            // Aggiunge parametri specifici del livello (già saranno codificati da URLSearchParams)
+            if (state.currentCategory) {
+                drilldownParams.set('category', state.currentCategory);
+            }
+            if (state.currentSubcategory) {
+                drilldownParams.set('subcategory', state.currentSubcategory);
+            }
+            if (state.customStartDate) {
+                drilldownParams.set('start_date', state.customStartDate);
+            }
+            if (state.customEndDate) {
+                drilldownParams.set('end_date', state.customEndDate);
+            }
+            
+            // Log dello stato per debug
+            console.log(`[DrillDown] Stato corrente:`, {
+                level: state.currentLevel,
+                category: state.currentCategory,
+                subcategory: state.currentSubcategory,
+                period: state.currentPeriod
+            });
+            
+            // Navigazione verso la pagina di visualizzazione attività con stato completo
+            window.location.href = `/attivita/${cleanId}?${drilldownParams.toString()}`;
+        } else {
+            console.warn('[DrillDown] Impossibile estrarre ID numerico valido da:', activityId);
+        }
+    } else {
+        console.warn('[DrillDown] ID attività non valido per la navigazione:', activityId);
+    }
+};
 
 // Modifica il DOMContentLoaded per usare la versione API
 document.addEventListener('DOMContentLoaded', function() {

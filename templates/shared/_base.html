@@ -34,8 +34,8 @@
     {% block extra_css %}{% endblock %}
     
     <!-- Preload fonts per performance -->
-    <link rel="preload" href="/external/fontawesome/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/external/fontawesome/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/external/fontawesome/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin="anonymous">
+    <link rel="preload" href="/external/fontawesome/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin="anonymous">
 </head>
 <body class="h-100 {% if session.get('ruolo_nome') %}role-{{ session.get('ruolo_nome').lower() }}{% endif %} {% block body_class %}{% endblock %}"
       data-user-role="{{ session.get('ruolo_nome', 'GUEST') }}"
@@ -197,6 +197,10 @@
     
     <!-- Chart.js (locale) - per grafici -->
     <script src="/external/chartjs/chart.umd.min.js"></script>
+    
+    <!-- Slim Select CSS (deve essere caricato prima) -->
+    <link rel="stylesheet" href="https://unpkg.com/slim-select@latest/dist/slimselect.css" 
+          onerror="this.onerror=null; this.href='/external/slim-select/slimselect.css'">
 
     <!-- ============================== -->
     <!-- ERROR HANDLING FOR SUPERSET -->
@@ -209,20 +213,23 @@
         const originalWarn = console.warn;
         const originalLog = console.log;
         
-        // Lista dei pattern di errori di Superset da filtrare
-        const supersetErrorPatterns = [
+        // Lista dei pattern di errori da filtrare
+        const errorPatternsToFilter = [
             'You should call configure',
             'configure(...) before calling',
             '.entry.js:',
             'spa.07bd1ab9f42922656077',
             '9601.50a1fa9bff1b3b70dcbe',
             'chunk loading failed',
-            'superset configuration'
+            'superset configuration',
+            'message channel closed before a response was received',
+            'listener indicated an asynchronous response',
+            'extension context invalidated'
         ];
         
         function shouldFilterMessage(message) {
             const msgStr = String(message).toLowerCase();
-            return supersetErrorPatterns.some(pattern => 
+            return errorPatternsToFilter.some(pattern => 
                 msgStr.includes(pattern.toLowerCase())
             );
         }
@@ -309,7 +316,13 @@
     <!-- Sistema Components -->
     <script src="{{ url_for('static', filename='js/sidebar.js') }}?v={{ cache_buster }}"></script>
     <script src="{{ url_for('static', filename='js/sidebar-role-manager.js') }}?v={{ cache_buster }}"></script>
-    <script src="{{ url_for('static', filename='js/searchable_select.js') }}?v={{ cache_buster }}"></script>
+    <script src="{{ url_for('static', filename='js/sidebar-tooltips.js') }}?v={{ cache_buster }}"></script>
+    <!-- Slim Select JS -->
+    <script src="https://unpkg.com/slim-select@latest/dist/slimselect.min.js" 
+            onerror="this.onerror=null; this.src='/external/slim-select/slimselect.min.js'"></script>
+    
+    <!-- Solo CSS personalizzato per Slim Select -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/slim-searchable-select.css') }}?v={{ cache_buster }}">
     
     <!-- Moduli Dashboard -->
     <script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ cache_buster }}"></script>

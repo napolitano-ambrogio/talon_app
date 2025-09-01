@@ -1,0 +1,770 @@
+/**
+ * ========================================
+ * TALON SLIM SELECT STYLES
+ * File: static/css/components/slim-searchable-select.css
+ * 
+ * Versione: 3.0.0 - Modern Slim Select Styling
+ * Descrizione: Stili personalizzati per Slim Select in TALON
+ * Dependencies: Slim Select CSS
+ * ========================================
+ */
+
+/* ===== IMPORTAZIONE SLIM SELECT BASE ===== */
+/* Nota: Slim Select CSS deve essere incluso prima di questo file */
+
+/* ===== VARIABILI CSS TALON ===== */
+:root {
+  --talon-primary: #667eea;
+  --talon-secondary: #4a90e2;
+  --talon-success: #28a745;
+  --talon-danger: #dc3545;
+  --talon-warning: #ffc107;
+  --talon-info: #17a2b8;
+  --talon-light: #f8f9fa;
+  --talon-dark: #343a40;
+  --talon-gray-100: #f1f3f4;
+  --talon-gray-200: #e9ecef;
+  --talon-gray-300: #dee2e6;
+  --talon-gray-400: #ced4da;
+  --talon-gray-500: #adb5bd;
+  --talon-gray-600: #6c757d;
+  --talon-gray-700: #495057;
+  --talon-gray-800: #343a40;
+  --talon-gray-900: #212529;
+}
+
+/* ===== CONTAINER PRINCIPALE TALON ===== */
+.talon-slim-select {
+  width: 100%;
+  position: relative;
+}
+
+/* ===== OVERRIDE SLIM SELECT MAIN CONTAINER ===== */
+.talon-slim-select .ss-main {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid var(--talon-gray-300);
+  border-radius: 6px;
+  background: white;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.talon-slim-select .ss-main:hover {
+  border-color: var(--talon-primary);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.talon-slim-select .ss-main.ss-open-above,
+.talon-slim-select .ss-main.ss-open-below {
+  border-color: var(--talon-primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* ===== SINGLE SELECT STYLING ===== */
+.talon-slim-select .ss-single {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 12px 40px 12px 16px;
+  cursor: pointer;
+  position: relative;
+  color: var(--talon-gray-800);
+  background: transparent;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.talon-slim-select .ss-single .placeholder {
+  color: var(--talon-gray-500);
+  font-style: italic;
+  font-weight: 400;
+  text-transform: none;
+}
+
+/* ===== MULTI SELECT STYLING ===== */
+.talon-slim-select .ss-multi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 40px 8px 12px;
+  cursor: pointer;
+  gap: 6px;
+}
+
+.talon-slim-select .ss-multi .ss-value {
+  display: flex;
+  align-items: center;
+  background: var(--talon-primary);
+  color: white;
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.talon-slim-select .ss-multi .ss-value .ss-value-delete {
+  margin-left: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.talon-slim-select .ss-multi .ss-value .ss-value-delete:hover {
+  opacity: 1;
+}
+
+/* ===== ARROW ICON STYLING ===== */
+.talon-slim-select .ss-main .ss-arrow {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--talon-gray-600);
+  transition: all 0.2s ease;
+}
+
+.talon-slim-select .ss-main.ss-open-above .ss-arrow,
+.talon-slim-select .ss-main.ss-open-below .ss-arrow {
+  transform: translateY(-50%) rotate(180deg);
+  border-top-color: var(--talon-primary);
+}
+
+/* ===== DROPDOWN CONTENT ===== */
+.talon-slim-select .ss-content {
+  position: absolute;
+  width: 100%;
+  background: white;
+  border: 2px solid var(--talon-primary);
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1050;
+  max-height: 400px;
+  overflow: hidden;
+  animation: slideDown 0.2s ease-out;
+}
+
+.talon-slim-select .ss-content.ss-open-above {
+  animation: slideUp 0.2s ease-out;
+}
+
+/* ===== SEARCH INPUT ===== */
+.talon-slim-select .ss-search {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--talon-gray-200);
+  background: var(--talon-gray-50);
+}
+
+.talon-slim-select .ss-search input {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  background: white;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.talon-slim-select .ss-search input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.talon-slim-select .ss-search input::placeholder {
+  color: var(--talon-gray-500);
+  text-transform: none;
+  font-style: italic;
+}
+
+/* ===== OPTIONS LIST ===== */
+.talon-slim-select .ss-list {
+  max-height: 320px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+/* Force scrollbar visibility for all Slim Select lists */
+.talon-slim-select .ss-content .ss-list,
+div.talon-slim-select div.ss-content div.ss-list {
+  max-height: 320px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--talon-gray-400) var(--talon-gray-100) !important;
+}
+
+/* Custom scrollbar - Enhanced specificity */
+.talon-slim-select .ss-list::-webkit-scrollbar,
+.talon-slim-select .ss-content .ss-list::-webkit-scrollbar,
+div.talon-slim-select div.ss-content div.ss-list::-webkit-scrollbar {
+  width: 8px !important;
+  display: block !important;
+}
+
+.talon-slim-select .ss-list::-webkit-scrollbar-track,
+.talon-slim-select .ss-content .ss-list::-webkit-scrollbar-track,
+div.talon-slim-select div.ss-content div.ss-list::-webkit-scrollbar-track {
+  background: var(--talon-gray-100) !important;
+  border-radius: 4px !important;
+  margin: 4px 0 !important;
+}
+
+.talon-slim-select .ss-list::-webkit-scrollbar-thumb,
+.talon-slim-select .ss-content .ss-list::-webkit-scrollbar-thumb,
+div.talon-slim-select div.ss-content div.ss-list::-webkit-scrollbar-thumb {
+  background: var(--talon-gray-400) !important;
+  border-radius: 4px !important;
+  min-height: 40px !important;
+}
+
+.talon-slim-select .ss-list::-webkit-scrollbar-thumb:hover,
+.talon-slim-select .ss-content .ss-list::-webkit-scrollbar-thumb:hover,
+div.talon-slim-select div.ss-content div.ss-list::-webkit-scrollbar-thumb:hover {
+  background: var(--talon-gray-500) !important;
+}
+
+/* Firefox scrollbar - Enhanced */
+.talon-slim-select .ss-list,
+.talon-slim-select .ss-content .ss-list,
+div.talon-slim-select div.ss-content div.ss-list {
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--talon-gray-400) var(--talon-gray-100) !important;
+}
+
+/* Force scrollbar to always show when content overflows */
+.talon-slim-select .ss-content {
+  max-height: 400px !important;
+}
+
+/* Ensure content container allows scrolling */
+.talon-slim-select .ss-content.ss-open-below,
+.talon-slim-select .ss-content.ss-open-above {
+  max-height: 400px !important;
+  overflow: hidden !important;
+}
+
+/* Force scrollbar to always be visible when needed */
+.talon-slim-select .ss-list {
+  scrollbar-gutter: stable both-edges !important;
+}
+
+/* Alternative scrollbar forcing for webkit browsers */
+.talon-slim-select .ss-list::-webkit-scrollbar {
+  -webkit-appearance: none !important;
+  width: 8px !important;
+  background: var(--talon-gray-100) !important;
+}
+
+.talon-slim-select .ss-list::-webkit-scrollbar:vertical {
+  width: 8px !important;
+}
+
+.talon-slim-select .ss-list::-webkit-scrollbar-thumb {
+  border-radius: 4px !important;
+  background-color: var(--talon-gray-400) !important;
+  border: 1px solid var(--talon-gray-100) !important;
+}
+
+/* Ensure scrollbar appears when content overflows */
+@supports selector(::-webkit-scrollbar) {
+  .talon-slim-select .ss-list {
+    scrollbar-width: thin !important;
+    scrollbar-color: var(--talon-gray-400) var(--talon-gray-100) !important;
+    overflow-y: scroll !important; /* Force scrollbar always visible */
+  }
+}
+
+/* For non-webkit browsers */
+@supports not selector(::-webkit-scrollbar) {
+  .talon-slim-select .ss-list {
+    scrollbar-width: thin !important;
+    scrollbar-color: var(--talon-gray-400) var(--talon-gray-100) !important;
+    overflow-y: scroll !important; /* Force scrollbar always visible */
+  }
+}
+
+/* ===== OPTION STYLING ===== */
+.talon-slim-select .ss-option {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid var(--talon-gray-100);
+  position: relative;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--talon-gray-800);
+}
+
+.talon-slim-select .ss-option:last-child {
+  border-bottom: none;
+  margin-bottom: 8px;
+  padding-bottom: 16px;
+}
+
+.talon-slim-select .ss-option:hover {
+  background: var(--talon-gray-50);
+  border-left: 3px solid var(--talon-primary);
+  padding-left: 13px;
+}
+
+.talon-slim-select .ss-option.ss-highlighted {
+  background: #e3f2fd;
+  border-left: 3px solid var(--talon-primary);
+  padding-left: 13px;
+}
+
+.talon-slim-select .ss-option.ss-selected {
+  background: #e8f5e8;
+  border-left: 3px solid var(--talon-success);
+  padding-left: 13px;
+  color: var(--talon-success);
+}
+
+.talon-slim-select .ss-option.ss-selected::after {
+  content: '✓';
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--talon-success);
+  font-weight: bold;
+}
+
+.talon-slim-select .ss-option.ss-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--talon-gray-100);
+}
+
+/* ===== OPTION TEXT STYLING ===== */
+.talon-slim-select .ss-option .ss-option-text {
+  font-size: 0.95rem;
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+/* Option details/description */
+.talon-slim-select .ss-option .ss-option-desc {
+  font-size: 0.8rem;
+  color: var(--talon-gray-600);
+  text-transform: none;
+  font-style: italic;
+  font-weight: 400;
+  opacity: 0.8;
+  line-height: 1.2;
+}
+
+.talon-slim-select .ss-option.ss-selected .ss-option-desc {
+  color: var(--talon-success);
+  opacity: 0.9;
+}
+
+/* ===== ENHANCED OPTION DETAILS DISPLAY ===== */
+.talon-slim-select .ss-option[data-details]::after {
+  content: attr(data-details);
+  display: block;
+  font-size: 0.75rem;
+  color: var(--talon-gray-500);
+  text-transform: none;
+  font-style: italic;
+  font-weight: 400;
+  margin-top: 3px;
+  line-height: 1.2;
+  opacity: 0.7;
+}
+
+.talon-slim-select .ss-option.ss-highlighted[data-details]::after {
+  color: var(--talon-primary);
+  opacity: 0.8;
+}
+
+.talon-slim-select .ss-option.ss-selected[data-details]::after {
+  color: var(--talon-success);
+  opacity: 0.8;
+}
+
+/* Support for JavaScript-added details */
+.talon-slim-select .ss-option .option-details {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--talon-gray-500);
+  text-transform: none;
+  font-style: italic;
+  font-weight: 400;
+  margin-top: 3px;
+  line-height: 1.2;
+  opacity: 0.7;
+}
+
+.talon-slim-select .ss-option.ss-highlighted .option-details {
+  color: var(--talon-primary);
+  opacity: 0.8;
+}
+
+.talon-slim-select .ss-option.ss-selected .option-details {
+  color: var(--talon-success);
+  opacity: 0.8;
+}
+
+/* ===== STRUCTURED OPTION DISPLAY (Nome + Indirizzo) ===== */
+.talon-slim-select .ss-option .option-main-text {
+  display: block !important;
+  font-size: 0.95rem !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  color: var(--talon-gray-800) !important;
+  line-height: 1.3 !important;
+  margin-bottom: 4px !important;
+}
+
+.talon-slim-select .ss-option .option-address {
+  display: block !important;
+  font-size: 0.72rem !important;
+  font-weight: 400 !important;
+  text-transform: none !important;
+  color: var(--talon-gray-600) !important;
+  font-style: italic !important;
+  line-height: 1.2 !important;
+  opacity: 0.85 !important;
+  margin-top: 2px !important;
+}
+
+/* Hover states per structured options */
+.talon-slim-select .ss-option:hover .option-main-text {
+  color: var(--talon-gray-900) !important;
+  font-size: 0.95rem !important;
+}
+
+.talon-slim-select .ss-option:hover .option-address {
+  color: var(--talon-gray-700) !important;
+  opacity: 0.9 !important;
+  font-size: 0.72rem !important;
+}
+
+/* Highlighted states */
+.talon-slim-select .ss-option.ss-highlighted .option-main-text {
+  color: var(--talon-primary) !important;
+  font-size: 0.95rem !important;
+}
+
+.talon-slim-select .ss-option.ss-highlighted .option-address {
+  color: var(--talon-primary) !important;
+  opacity: 0.8 !important;
+  font-size: 0.72rem !important;
+}
+
+/* Selected states */
+.talon-slim-select .ss-option.ss-selected .option-main-text {
+  color: var(--talon-success) !important;
+  font-weight: 600 !important;
+  font-size: 0.95rem !important;
+}
+
+.talon-slim-select .ss-option.ss-selected .option-address {
+  color: var(--talon-success) !important;
+  opacity: 0.9 !important;
+  font-size: 0.72rem !important;
+}
+
+/* Extra specificity override for Slim Select defaults */
+.talon-slim-select .ss-content .ss-list .ss-option .option-main-text {
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+}
+
+.talon-slim-select .ss-content .ss-list .ss-option .option-address {
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  text-transform: none !important;
+  font-style: italic !important;
+  color: var(--talon-gray-600) !important;
+  opacity: 0.85 !important;
+}
+
+/* Maximum specificity override - nuclear option */
+div.talon-slim-select div.ss-content div.ss-list div.ss-option div.option-address {
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  line-height: 1.2 !important;
+}
+
+div.talon-slim-select div.ss-content div.ss-list div.ss-option div.option-main-text {
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  line-height: 1.3 !important;
+}
+
+/* Force small font size across all states */
+.talon-slim-select .ss-content .ss-list .ss-option:hover .option-address,
+.talon-slim-select .ss-content .ss-list .ss-option.ss-highlighted .option-address,
+.talon-slim-select .ss-content .ss-list .ss-option.ss-selected .option-address,
+.talon-slim-select .ss-content .ss-list .ss-option:focus .option-address,
+.talon-slim-select .ss-content .ss-list .ss-option:active .option-address {
+  font-size: 11px !important;
+}
+
+/* Alternative approach using transform scale if font-size still doesn't work */
+.talon-slim-select .ss-option .option-address[style*="font-size"] {
+  font-size: 11px !important;
+  transform-origin: left center;
+}
+
+/* CSS custom properties approach */
+.talon-slim-select {
+  --main-text-size: 15px;
+  --address-text-size: 11px;
+}
+
+.talon-slim-select .ss-option .option-main-text {
+  font-size: var(--main-text-size) !important;
+}
+
+.talon-slim-select .ss-option .option-address {
+  font-size: var(--address-text-size) !important;
+}
+
+/* ===== OPTGROUP STYLING ===== */
+.talon-slim-select .ss-optgroup {
+  background: linear-gradient(to right, var(--talon-gray-100), white);
+  border-bottom: 1px solid var(--talon-gray-200);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.talon-slim-select .ss-optgroup .ss-optgroup-label {
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--talon-gray-700);
+  background: transparent;
+}
+
+.talon-slim-select .ss-optgroup .ss-option {
+  padding-left: 24px;
+}
+
+/* ===== NO RESULTS MESSAGE ===== */
+.talon-slim-select .ss-list .ss-option.ss-disabled.ss-option-no-results {
+  text-align: center;
+  color: var(--talon-gray-600);
+  font-style: italic;
+  text-transform: none;
+  font-weight: 400;
+  padding: 20px 16px;
+  background: transparent;
+  cursor: default;
+}
+
+/* ===== SEARCH HIGHLIGHTING ===== */
+.talon-slim-select .ss-option mark {
+  background: #fff3cd;
+  color: #856404;
+  border-radius: 2px;
+  padding: 1px 2px;
+  font-weight: 600;
+}
+
+/* ===== VALIDATION STATES ===== */
+.talon-slim-select.is-valid .ss-main {
+  border-color: var(--talon-success);
+}
+
+.talon-slim-select.is-valid .ss-main:hover,
+.talon-slim-select.is-valid .ss-main.ss-open-above,
+.talon-slim-select.is-valid .ss-main.ss-open-below {
+  border-color: var(--talon-success);
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+}
+
+.talon-slim-select.is-invalid .ss-main {
+  border-color: var(--talon-danger);
+}
+
+.talon-slim-select.is-invalid .ss-main:hover,
+.talon-slim-select.is-invalid .ss-main.ss-open-above,
+.talon-slim-select.is-invalid .ss-main.ss-open-below {
+  border-color: var(--talon-danger);
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+/* ===== DISABLED STATE ===== */
+.talon-slim-select .ss-main.ss-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--talon-gray-100);
+}
+
+.talon-slim-select .ss-main.ss-disabled:hover {
+  border-color: var(--talon-gray-300);
+  box-shadow: none;
+}
+
+/* ===== LOADING STATE ===== */
+.talon-slim-select .ss-main.ss-loading {
+  position: relative;
+}
+
+.talon-slim-select .ss-main.ss-loading::after {
+  content: '';
+  position: absolute;
+  right: 45px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--talon-gray-300);
+  border-top-color: var(--talon-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .talon-slim-select .ss-content {
+    max-height: 60vh;
+  }
+  
+  .talon-slim-select .ss-list {
+    max-height: calc(60vh - 60px);
+  }
+  
+  .talon-slim-select .ss-option {
+    padding: 14px 16px;
+  }
+  
+  .talon-slim-select .ss-single,
+  .talon-slim-select .ss-multi {
+    min-height: 52px;
+  }
+}
+
+@media (max-width: 480px) {
+  .talon-slim-select .ss-content {
+    max-height: 50vh;
+  }
+  
+  .talon-slim-select .ss-list {
+    max-height: calc(50vh - 60px);
+  }
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: translateY(-50%) rotate(0deg);
+  }
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
+
+/* ===== ACCESSIBILITY IMPROVEMENTS ===== */
+.talon-slim-select .ss-main:focus-within {
+  outline: none;
+  border-color: var(--talon-primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.talon-slim-select .ss-option[aria-selected="true"] {
+  background: #e8f5e8;
+  border-left: 3px solid var(--talon-success);
+  padding-left: 13px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .talon-slim-select .ss-main {
+    border-width: 2px;
+  }
+  
+  .talon-slim-select .ss-option:hover,
+  .talon-slim-select .ss-option.ss-highlighted {
+    border-left-width: 4px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .talon-slim-select *,
+  .talon-slim-select *::before,
+  .talon-slim-select *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== FORM INTEGRATION ===== */
+.form-group .talon-slim-select {
+  margin-top: 5px;
+}
+
+.form-group label + .talon-slim-select {
+  margin-top: 5px;
+}
+
+/* Required field indicator */
+.form-group .required + .talon-slim-select .ss-main::before {
+  content: '';
+  position: absolute;
+  right: 35px;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--talon-danger);
+  z-index: 1;
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  .talon-slim-select .ss-content {
+    display: none !important;
+  }
+  
+  .talon-slim-select .ss-main {
+    border: 1px solid #000;
+    background: white;
+  }
+}

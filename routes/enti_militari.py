@@ -517,11 +517,41 @@ def visualizza_ente(id):
                 flash('Ente militare non trovato.', 'error')
                 return redirect('/enti_militari/organigramma')
 
+            # Costruisce la catena gerarchica completa verso l'alto (parents)
             parent_name = None
+            hierarchy_chain = []
+            
             if ente['parent_id']:
+                # Prima costruisce parent_name per retrocompatibilità 
                 r = query_one('SELECT nome FROM enti_militari WHERE id = %s', (ente['parent_id'],))
                 if r:
                     parent_name = r['nome']
+                
+                # Poi costruisce la catena gerarchica completa con CTE ricorsiva
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        WITH RECURSIVE hierarchy_up AS (
+                            -- Caso base: parent diretto dell'ente corrente
+                            SELECT id, nome, codice, parent_id, 1 AS level
+                            FROM enti_militari 
+                            WHERE id = %s
+                            
+                            UNION ALL
+                            
+                            -- Caso ricorsivo: risali la gerarchia
+                            SELECT e.id, e.nome, e.codice, e.parent_id, h.level + 1
+                            FROM enti_militari e
+                            JOIN hierarchy_up h ON e.id = h.parent_id
+                        )
+                        SELECT id, nome, codice, level
+                        FROM hierarchy_up
+                        WHERE level > 1  -- Escludi l'ente corrente (level 1)
+                        ORDER BY level ASC  -- Dal parent diretto verso il vertice
+                        """,
+                        (id,)
+                    )
+                    hierarchy_chain = cur.fetchall()
 
             with conn.cursor() as cur:
                 cur.execute(
@@ -573,6 +603,7 @@ def visualizza_ente(id):
         return render_template('enti/militari/descrizione_ente.html',
                                ente=ente,
                                parent_name=parent_name,
+                               hierarchy_chain=hierarchy_chain,
                                children=children,
                                related_stats=related_stats,
                                user_role=user_role,

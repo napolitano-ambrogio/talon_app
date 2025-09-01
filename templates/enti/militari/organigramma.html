@@ -30,6 +30,21 @@
 
 {% block title %}Enti Militari - TALON{% endblock %}
 
+{% block additional_css %}
+<!-- CSS Advanced Table Component -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/advanced-table.css') }}?v=1.0">
+{% endblock %}
+
+{% block page_title %}Struttura Ordinativa{% endblock %}
+
+{% block page_controls %}
+{% if user_role in ['ADMIN', 'OPERATORE'] %}
+<a href="{{ url_for('enti_militari.inserisci_militare_form') }}" class="btn btn-success">
+    <i class="fas fa-plus"></i> Nuovo Ente Militare
+</a>
+{% endif %}
+{% endblock %}
+
 {% block extra_css %}
 <style>
     /* Stili per l'organigramma */
@@ -220,21 +235,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="main-content">
-    <!-- Header fisso con titolo e pulsante -->
-    <div class="fixed-page-header">
-        <div class="detail-header">
-            <h3>Struttura Ordinativa</h3>
-            {% if user_role in ['ADMIN', 'OPERATORE'] %}
-            <a href="{{ url_for('enti_militari.inserisci_militare_form') }}" class="btn btn-success">
-                <i class="fas fa-plus"></i> Nuovo Ente Militare
-            </a>
-            {% endif %}
-        </div>
-    </div>
-    
-    <!-- Contenuto scrollabile -->
-    <div class="scrollable-content">
+<main class="dashboard__content-wrapper" role="main">
+    <section class="dashboard__scroll-content" aria-label="Contenuto principale struttura ordinativa">
     
     <div class="list-container">
         <table style="width: 100%; margin-bottom: 20px; border-collapse: collapse;">
@@ -262,7 +264,9 @@
         <div class="search-bar">
             <input type="search" 
                    id="organigrammaSearchInput" 
+                   class="form-control search-input"
                    placeholder="CERCA PER NOME, CODICE, INDIRIZZO, TELEFONO, EMAIL..."
+                   aria-label="Cerca enti militari"
                    onkeyup="searchTree(this.value)">
         </div>
 
@@ -279,101 +283,15 @@
             <p style="text-align: center;">Nessuna struttura disponibile.</p>
         {% endif %}
     </div>
-    </div>
-</div>
+    </section>
+</main>
 
-<style>
-/* Override main-content layout da shared/_base.html per questa pagina */
-.main-content {
-    overflow-y: auto !important;
-    height: 100vh !important;
-    margin-bottom: 0 !important;
-}
-
-/* Header fisso della pagina - SOTTO HEADER PRINCIPALE */
-.fixed-page-header {
-    position: fixed !important;
-    top: 96px !important;
-    left: 60px !important;
-    right: 0 !important;
-    z-index: 1010 !important;
-    background: var(--bg-body) !important;
-    border-bottom: 2px solid var(--gray-200) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-    height: 80px !important;
-    transition: left 0.5s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
-}
-
-/* Sincronizzazione con sidebar */
-.sidebar.expanded ~ .page-wrapper .fixed-page-header,
-.sidebar.pinned ~ .page-wrapper .fixed-page-header {
-    left: 260px !important;
-}
-
-/* Contenuto scrollabile - SPAZIO PER HEADER PAGINA - OTTIMIZZATO */
-.scrollable-content {
-    margin-top: 176px !important;
-    padding: var(--spacing-sm) !important;
-    min-height: calc(100vh + 100px) !important;
-    overflow-y: visible !important;
-    overflow-x: hidden !important;
-}
-
-/* Mobile */
-@media (max-width: 768px) {
-    .fixed-page-header {
-        left: 0 !important;
-        top: 60px !important;
-        height: 70px !important;
-    }
-    
-    .sidebar.expanded ~ .page-wrapper .fixed-page-header,
-    .sidebar.pinned ~ .page-wrapper .fixed-page-header {
-        left: 0 !important;
-    }
-    
-    .scrollable-content {
-        margin-top: 130px !important;
-        padding: var(--spacing) !important;
-        height: calc(100vh - 160px) !important;
-    }
-}
-
-/* Miglioramenti detail-header quando fisso */
-.fixed-page-header .detail-header {
-    margin-bottom: 0 !important;
-    padding: var(--spacing-lg) !important;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.98) 100%) !important;
-    backdrop-filter: blur(10px) !important;
-    box-shadow: none !important;
-    border: none !important;
-    border-radius: 0 !important;
-    height: 80px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-}
-
-.fixed-page-header .detail-header h3 {
-    color: var(--text-primary) !important;
-    font-weight: 700 !important;
-    margin: 0 !important;
-}
-
-/* Migliora il pulsante quando fisso */
-.fixed-page-header .btn-success {
-    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3) !important;
-    transition: all var(--transition) !important;
-}
-
-.fixed-page-header .btn-success:hover {
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
-}
-</style>
 {% endblock %}
 
 {% block extra_js %}
+<!-- Advanced Table Component JS (per stili e funzionalità di ricerca avanzate) -->
+<script src="{{ url_for('static', filename='js/components/advanced-table.js') }}?v={{ cache_buster }}"></script>
+
 <script>
 // ========================================
 // FUNZIONI ORGANIGRAMMA
@@ -509,58 +427,19 @@ function collapseAll() {
 // INIZIALIZZAZIONE AL CARICAMENTO
 // ========================================
 
-// ========================================
-// SINCRONIZZAZIONE FIXED HEADER CON SIDEBAR
-// ========================================
-
-function syncFixedHeaderWithSidebar() {
-    const sidebar = document.querySelector('.sidebar');
-    const fixedHeader = document.querySelector('.fixed-page-header');
-    
-    if (!sidebar || !fixedHeader) {
-        console.log('[Organigramma] Sidebar o fixed header non trovati');
-        return;
-    }
-    
-    function updateHeaderPosition() {
-        const isExpanded = sidebar.classList.contains('expanded') || 
-                          sidebar.classList.contains('pinned');
-        
-        if (window.innerWidth <= 768) {
-            fixedHeader.style.left = '0px';
-        } else {
-            fixedHeader.style.left = isExpanded ? '260px' : '60px';
-        }
-    }
-    
-    // Observer per i cambiamenti della sidebar
-    const observer = new MutationObserver(() => {
-        setTimeout(updateHeaderPosition, 50);
-    });
-    
-    observer.observe(sidebar, {
-        attributes: true,
-        attributeFilter: ['class']
-    });
-    
-    // Aggiorna posizione iniziale
-    updateHeaderPosition();
-    
-    // Listener per il resize della finestra
-    window.addEventListener('resize', updateHeaderPosition);
-    
-    console.log('[Organigramma] Sincronizzazione header attivata');
-}
-
-// ========================================
-// INIZIALIZZAZIONE AL CARICAMENTO
-// ========================================
-
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('[Organigramma] Script inizializzato');
+    console.log('[Organigramma] Script inizializzato con integrazione Advanced Table');
     
-    // Attiva sincronizzazione header
-    syncFixedHeaderWithSidebar();
+    // Inizializza Advanced Table CSS/JS per gli stili e funzionalità comuni
+    // (La ricerca dell'albero rimane custom per mantenere la gerarchia)
+    setTimeout(function() {
+        if (typeof AdvancedTable !== 'undefined') {
+            console.log('[Organigramma] AdvancedTable disponibile per stili avanzati');
+            // Non inizializziamo una tabella reale, ma sfruttiamo solo CSS/utilities
+        } else {
+            console.log('[Organigramma] AdvancedTable non disponibile, solo stili CSS');
+        }
+    }, 100);
     
     // Test che le funzioni siano disponibili
     if (typeof toggleNode === 'function') {
@@ -598,6 +477,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    
+    // Aggiunge gli stili Advanced Table alla ricerca esistente
+    const searchInput = document.getElementById('organigrammaSearchInput');
+    if (searchInput) {
+        console.log('[Organigramma] Search input configurato con stili Advanced Table');
+        
+        // Migliora il focus della barra di ricerca
+        searchInput.addEventListener('focus', function() {
+            this.style.borderColor = '#667eea';
+            this.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+            this.style.backgroundColor = 'white';
+        });
+        
+        searchInput.addEventListener('blur', function() {
+            this.style.borderColor = '#e0e0e0';
+            this.style.boxShadow = 'none';
+            this.style.backgroundColor = '#f8f9fa';
+        });
+    }
 });
 </script>
 {% endblock %}

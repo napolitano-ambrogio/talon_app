@@ -2,6 +2,8 @@
 
 {% block title %}Dashboard - TALON{% endblock %}
 
+{% block body_class %}dashboard-principale{% endblock %}
+
 {% block page_title %}Panoramica delle Attività Logistiche{% endblock %}
 
 {% block page_controls %}
@@ -11,6 +13,20 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/drill-down_chart.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/components/advanced-table.css') }}?v=1.0">
 <style>
+/* CSS SPECIFICI PER DASHBOARD PRINCIPALE */
+body.dashboard-principale .chart-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    /* L'altezza è gestita dinamicamente dal JavaScript */
+}
+
+body.dashboard-principale #chartCanvas {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    /* L'altezza è gestita dinamicamente dal JavaScript */
+}
 /* Info Cards Layout Orizzontale */
 .info-cards {
     display: flex;
@@ -122,7 +138,7 @@
 
         <!-- Main Chart -->
         <div class="chart-container" style="margin-top: 10px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-            <canvas id="chartCanvas" style="display: block; width: 100%; height: 350px; max-height: 350px;"></canvas>
+            <canvas id="chartCanvas" style="display: block; width: 100%;"></canvas>
         </div>
 
         <!-- Info Cards -->
@@ -200,6 +216,19 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('API endpoints configurati:', window.TALON_CONFIG.api);
         
         
+        // Controlla se c'è stato da ricostruire
+        const savedState = sessionStorage.getItem('drilldown_restore_state');
+        let initialPeriod = 'year';
+        
+        if (savedState) {
+            console.log('🔄 Ricostruzione stato drilldown dal sessionStorage...');
+            const state = JSON.parse(savedState);
+            initialPeriod = state.period || 'year';
+            
+            // Rimuovi stato salvato per evitare loops
+            sessionStorage.removeItem('drilldown_restore_state');
+        }
+        
         // Usa SOLO le API reali - nessun fallback ai dati mock
         if (typeof TalonDrillDownChart !== 'undefined') {
             console.log('🎯 Drill-down chart: Caricamento dati reali da API PostgreSQL...');
@@ -207,9 +236,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.drillDownChart = new TalonDrillDownChart({
                     container: '.dashboard__scroll-content',
                     canvas: 'chartCanvas',
-                    period: 'year'
+                    period: initialPeriod
                 });
                 console.log('✅ Drill-down chart inizializzato con successo');
+                
+                // Ricostruisce stato se presente
+                if (savedState) {
+                    setTimeout(() => {
+                        restoreDrilldownState(JSON.parse(savedState));
+                    }, 500); // Aspetta che il chart sia completamente inizializzato
+                }
             } catch (error) {
                 console.error('❌ Errore inizializzazione drill-down:', error);
                 document.querySelector('.chart-container').innerHTML = '<div style="text-align:center;padding:50px;color:#dc3545;"><h3>Errore</h3><p>Errore inizializzazione: ' + error.message + '</p></div>';
@@ -255,6 +291,182 @@ document.addEventListener('DOMContentLoaded', function() {
         
     }, 100); // Aspetta 100ms per il caricamento completo
 });
+
+// Funzione per ricostruire lo stato del drilldown
+function restoreDrilldownState(state) {
+    console.log('[Dashboard] Ricostruzione stato drilldown:', state);
+    
+    if (!window.drillDownChart) {
+        console.error('[Dashboard] DrillDownChart non disponibile per ricostruzione');
+        return;
+    }
+    
+    try {
+        // Imposta il periodo se diverso da quello corrente
+        if (state.period && state.period !== 'year') {
+            if (state.start_date && state.end_date) {
+                window.drillDownChart.setCustomPeriod(state.start_date, state.end_date);
+            } else {
+                window.drillDownChart.setPeriod(state.period);
+            }
+        }
+        
+        // Ricostruzione rapida sequenziale
+        const level = parseInt(state.level) || 0;
+        
+        if (level >= 1 && state.category) {
+            console.log('[Dashboard] 🚀 Ricostruzione RAPIDA - Inizio navigazione automatica');
+            restoreDrilldownStateFast(state, level);
+        }
+        
+    } catch (error) {
+        console.error('[Dashboard] Errore ricostruzione stato:', error);
+    }
+}
+
+// Funzione helper per simulare click su elementi drilldown
+function simulateDrilldownClick(level, label) {
+    // Questa funzione dovrebbe essere implementata nel drill-down_chart.js
+    if (window.drillDownChart && window.drillDownChart.simulateClick) {
+        window.drillDownChart.simulateClick(level, label);
+    } else {
+        console.warn('[Dashboard] Funzione simulateClick non disponibile');
+    }
+}
+
+// Funzione VELOCE per ricostruzione stato drilldown
+async function restoreDrilldownStateFast(state, targetLevel) {
+    const startTime = performance.now();
+    console.log(`[Dashboard] 🚀 FAST RESTORE - Target level: ${targetLevel}`);
+    console.log(`[Dashboard] 🎯 Stato target:`, state);
+    
+    try {
+        // Step 1: Click categoria (se necessario)
+        if (targetLevel >= 1 && state.category) {
+            console.log('[Dashboard] ⚡ Step 1/3 - Click categoria:', state.category);
+            try {
+                await waitForChartUpdate(() => {
+                    simulateDrilldownClick(0, state.category);
+                });
+            } catch (error) {
+                console.warn('[Dashboard] ⚠️ Step 1 timeout, ma continuando...', error.message);
+            }
+        }
+        
+        // Step 2: Click sottocategoria (se necessario) 
+        if (targetLevel >= 2 && state.subcategory) {
+            console.log('[Dashboard] ⚡ Step 2/3 - Click sottocategoria:', state.subcategory);
+            try {
+                await waitForChartUpdate(() => {
+                    simulateDrilldownClick(1, state.subcategory);
+                });
+            } catch (error) {
+                console.warn('[Dashboard] ⚠️ Step 2 timeout, ma continuando...', error.message);
+            }
+        }
+        
+        // Step 3: Click ente per aprire tabella (se necessario)
+        if (targetLevel === 2) {
+            console.log('[Dashboard] ⚡ Step 3/3 - Click primo ente per tabella');
+            try {
+                await waitForChartUpdate(() => {
+                    simulateEntityClick();
+                });
+            } catch (error) {
+                console.warn('[Dashboard] ⚠️ Step 3 timeout, ma completando...', error.message);
+            }
+        }
+        
+        const endTime = performance.now();
+        console.log(`[Dashboard] ✅ FAST RESTORE completato in ${Math.round(endTime - startTime)}ms`);
+        
+    } catch (error) {
+        console.error('[Dashboard] ❌ Errore durante fast restore:', error);
+        // Anche se c'è un errore, il restore potrebbe essere andato a buon fine parzialmente
+        const endTime = performance.now();
+        console.log(`[Dashboard] 🔄 FAST RESTORE terminato (con warning) in ${Math.round(endTime - startTime)}ms`);
+    }
+}
+
+// Funzione helper OTTIMIZZATA per attendere aggiornamento chart
+function waitForChartUpdate(action) {
+    return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            const currentState = window.drillDownChart?.getCurrentState() || {};
+            console.warn('[Dashboard] ⚠️ Timeout raggiunto. Stato attuale:', currentState);
+            reject(new Error('Timeout waiting for chart update'));
+        }, 2000);
+        
+        // Stato iniziale
+        const initialState = window.drillDownChart?.getCurrentState() || {};
+        console.log('[Dashboard] 🔄 Stato iniziale chart:', initialState);
+        
+        // Esegue l'azione
+        action();
+        
+        // Primo check immediato dopo l'azione (potrebbe essere già pronto)
+        setTimeout(() => {
+            if (window.drillDownChart?.isChartReady()) {
+                const currentState = window.drillDownChart.getCurrentState();
+                console.log('[Dashboard] 🔄 Check immediato - Stato corrente:', currentState);
+                
+                // Se il chart è pronto e ha cambiato contenuto, procedi
+                if (currentState.chartReady && 
+                    (currentState.level !== initialState.level || 
+                     currentState.labelsCount !== initialState.labelsCount ||
+                     JSON.stringify(currentState.category) !== JSON.stringify(initialState.category))) {
+                    
+                    console.log('[Dashboard] ✅ Chart aggiornato immediatamente:', currentState);
+                    clearTimeout(timeout);
+                    resolve();
+                    return;
+                }
+            }
+            
+            // Se non è pronto immediatamente, usa il polling
+            let checksCount = 0;
+            const checkInterval = setInterval(() => {
+                checksCount++;
+                
+                if (window.drillDownChart?.isChartReady()) {
+                    const currentState = window.drillDownChart.getCurrentState();
+                    
+                    // Verifica cambiamenti più flessibile
+                    const hasChanged = currentState.level !== initialState.level || 
+                                     currentState.labelsCount !== initialState.labelsCount ||
+                                     JSON.stringify(currentState.category) !== JSON.stringify(initialState.category) ||
+                                     JSON.stringify(currentState.subcategory) !== JSON.stringify(initialState.subcategory);
+                    
+                    if (hasChanged) {
+                        console.log(`[Dashboard] ✅ Chart aggiornato dopo ${checksCount} checks:`, currentState);
+                        clearTimeout(timeout);
+                        clearInterval(checkInterval);
+                        setTimeout(resolve, 25);
+                    }
+                }
+                
+                // Fallback: se siamo arrivati a molti check senza cambiamenti, assumiamo che sia completato
+                if (checksCount > 40) { // 40 * 25ms = 1 secondo
+                    console.log('[Dashboard] ⚡ Fallback: assumo completamento dopo 1 secondo');
+                    clearTimeout(timeout);
+                    clearInterval(checkInterval);
+                    resolve();
+                }
+            }, 25);
+        }, 100); // Piccolo delay iniziale per permettere al DOM di aggiornarsi
+    });
+}
+
+// Funzione per simulare click sul primo ente disponibile
+function simulateEntityClick() {
+    console.log('[Dashboard] Tentativo click su primo ente disponibile...');
+    
+    if (window.drillDownChart && window.drillDownChart.simulateClickFirstItem) {
+        window.drillDownChart.simulateClickFirstItem();
+    } else {
+        console.warn('[Dashboard] Funzione simulateClickFirstItem non disponibile');
+    }
+}
 
 // Funzioni per periodo personalizzato
 function toggleCustomPeriod() {

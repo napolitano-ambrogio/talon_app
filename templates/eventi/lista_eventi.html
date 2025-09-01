@@ -1,0 +1,530 @@
+{% extends "shared/_base.html" %}
+
+{% block title %}Elenco Eventi - TALON{% endblock %}
+
+{% block additional_css %}
+<!-- CSS Advanced Table Component -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/advanced-table.css') }}?v=1.0">
+{% endblock %}
+
+{% block page_title %}Elenco Eventi{% endblock %}
+
+{% block page_controls %}
+<a href="{{ url_for('eventi.dashboard_eventi') }}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Torna a Dashboard Eventi
+</a>
+{% if user_role in ['ADMIN', 'OPERATORE'] %}
+<a href="{{ url_for('eventi.inserisci_evento_form') }}" class="btn btn-success">
+    <i class="fas fa-plus"></i> Nuovo Evento
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<main class="dashboard__content-wrapper" role="main">
+    <section class="dashboard__scroll-content" aria-label="Contenuto principale lista eventi">
+        <!-- Barra di ricerca -->
+        <div class="search-bar" style="margin-bottom: 15px;">
+            <input type="search" 
+                   id="searchInput" 
+                   class="form-control search-input" 
+                   placeholder="CERCA PER TIPO, ENTE, CARATTERE, TIPOLOGIA O PROTOCOLLO..."
+                   aria-label="Cerca eventi">
+        </div>
+        
+        <!-- Filtri Eventi -->
+        <div class="eventi-filters" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap;">
+            <!-- Toggle Tipologie Eventi (Sinistra) -->
+            <div class="filter-group" style="flex: 1; min-width: 300px;">
+                <label class="filter-label" style="display: block; font-weight: 600; color: #495057; margin-bottom: 5px; font-size: 0.9rem;">Filtra per Tipologia:</label>
+                <div class="tipologia-toggle" style="display: flex; gap: 5px; flex-wrap: wrap;">
+                    <input type="radio" name="lista_tipologia" id="lista_tipologia_tutti" value="" checked style="display: none;">
+                    <label for="lista_tipologia_tutti" class="tipologia-btn active" style="padding: 6px 12px; background: #28a745; color: white; border-radius: 4px; font-size: 0.8rem; cursor: pointer; transition: all 0.3s; white-space: nowrap;">Tutti</label>
+                    
+                    <input type="radio" name="lista_tipologia" id="lista_tipologia_a" value="tipo_a" style="display: none;">
+                    <label for="lista_tipologia_a" class="tipologia-btn" style="padding: 6px 12px; background: #e9ecef; color: #495057; border-radius: 4px; font-size: 0.8rem; cursor: pointer; transition: all 0.3s; white-space: nowrap;">Tipo A</label>
+                    
+                    <input type="radio" name="lista_tipologia" id="lista_tipologia_b" value="tipo_b" style="display: none;">
+                    <label for="lista_tipologia_b" class="tipologia-btn" style="padding: 6px 12px; background: #e9ecef; color: #495057; border-radius: 4px; font-size: 0.8rem; cursor: pointer; transition: all 0.3s; white-space: nowrap;">Tipo B</label>
+                    
+                    <input type="radio" name="lista_tipologia" id="lista_tipologia_c" value="tipo_c" style="display: none;">
+                    <label for="lista_tipologia_c" class="tipologia-btn" style="padding: 6px 12px; background: #e9ecef; color: #495057; border-radius: 4px; font-size: 0.8rem; cursor: pointer; transition: all 0.3s; white-space: nowrap;">Tipo C</label>
+                    
+                    <input type="radio" name="lista_tipologia" id="lista_tipologia_d" value="tipo_d" style="display: none;">
+                    <label for="lista_tipologia_d" class="tipologia-btn" style="padding: 6px 12px; background: #e9ecef; color: #495057; border-radius: 4px; font-size: 0.8rem; cursor: pointer; transition: all 0.3s; white-space: nowrap;">Tipo D</label>
+                    
+                    <input type="radio" name="lista_tipologia" id="lista_tipologia_e" value="tipo_e" style="display: none;">
+                    <label for="lista_tipologia_e" class="tipologia-btn" style="padding: 6px 12px; background: #e9ecef; color: #495057; border-radius: 4px; font-size: 0.8rem; cursor: pointer; transition: all 0.3s; white-space: nowrap;">Tipo E</label>
+                </div>
+            </div>
+            
+            <!-- Toggle Carattere Eventi (Destra) -->
+            <div class="filter-group" style="flex: 0 0 auto; min-width: 250px;">
+                <label class="filter-label" style="display: block; font-weight: 600; color: #495057; margin-bottom: 5px; font-size: 0.9rem; text-align: right;">Filtra per Carattere:</label>
+                <div class="carattere-toggle" style="display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; align-items: flex-start;">
+                    <input type="radio" name="lista_carattere" id="lista_carattere_tutti" value="" checked style="display: none;">
+                    <label for="lista_carattere_tutti" class="carattere-btn active" style="padding: 6px 12px; background: #667eea; color: white; border-radius: 4px; font-size: 0.8rem; cursor: pointer; transition: all 0.3s; white-space: nowrap;">Tutti</label>
+                    
+                    <input type="radio" name="lista_carattere" id="lista_carattere_positivo" value="positivo" style="display: none;">
+                    <label for="lista_carattere_positivo" class="carattere-btn" style="padding: 6px 12px; background: #e9ecef; color: #495057; border-radius: 4px; font-size: 0.8rem; cursor: pointer; transition: all 0.3s; white-space: nowrap;">Positivi</label>
+                    
+                    <input type="radio" name="lista_carattere" id="lista_carattere_negativo" value="negativo" style="display: none;">
+                    <label for="lista_carattere_negativo" class="carattere-btn" style="padding: 6px 12px; background: #e9ecef; color: #495057; border-radius: 4px; font-size: 0.8rem; cursor: pointer; transition: all 0.3s; white-space: nowrap;">Negativi</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Paginazione superiore -->
+        <div class="pagination-wrapper top-pagination" id="topPagination">
+            <div class="pagination-info">
+                <span id="topPageInfo">Pagina 1 di 1 (0 eventi totali)</span>
+            </div>
+            <div class="pagination-controls" id="topPaginationControls">
+                <!-- Controlli generati dinamicamente -->
+            </div>
+        </div>
+
+        <!-- Tabella eventi -->
+        <div class="table-responsive">
+            <table class="advanced-table" id="eventiTable">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-column="0" data-sort-type="date">
+                            <span class="th-label">Data</span>
+                        </th>
+                        <th class="sortable" data-column="1" data-sort-type="text">
+                            <span class="th-label">Carattere</span>
+                        </th>
+                        <th class="sortable" data-column="2" data-sort-type="text" style="text-align: center;">
+                            <span class="th-label">Evento</span>
+                        </th>
+                        <th class="sortable" data-column="3" data-sort-type="text">
+                            <span class="th-label">Ente Militare</span>
+                        </th>
+                        <th class="sortable" data-column="4" data-sort-type="text">
+                            <span class="th-label">Tipologia Evento</span>
+                        </th>
+                        <th class="sortable" data-column="5" data-sort-type="text">
+                            <span class="th-label">Protocollo</span>
+                        </th>
+                        <th class="sortable" data-column="6" data-sort-type="text">
+                            <span class="th-label">Note</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="eventiTableBody" class="eventi-tbody">
+                    {% for evento in eventi_list %}
+                    <tr class="clickable-row" 
+                        data-href="{{ url_for('eventi.visualizza_evento', id=evento.id) }}"
+                        data-evento-id="{{ evento.id }}"
+                        >
+                        <td data-sort="{{ evento.data_msg_evento.isoformat() if evento.data_msg_evento else '' }}">
+                            {{ evento.data_msg_evento.strftime('%d/%m/%Y') if evento.data_msg_evento else 'N/D' }}
+                        </td>
+                        <td>
+                            {% if evento.carattere == 'positivo' %}
+                            <span class="badge bg-success">POSITIVO</span>
+                            {% elif evento.carattere == 'negativo' %}
+                            <span class="badge bg-danger">NEGATIVO</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ evento.carattere or 'N/D' }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            {% if evento.tipo_evento %}
+                            <span class="badge bg-primary">{{ evento.tipo_evento.upper().replace('_', ' ') }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">N/D</span>
+                            {% endif %}
+                        </td>
+                        <td title="{{ evento.ente_nome or 'Ente non specificato' }}">
+                            {{ (evento.ente_nome or 'N/D')[:50] }}{% if (evento.ente_nome or '')|length > 50 %}...{% endif %}
+                        </td>
+                        <td title="{{ evento.tipologia_descrizione or evento.tipologia_nome or 'Nessuna tipologia' }}">
+                            {{ (evento.tipologia_descrizione or evento.tipologia_nome or 'N/D')[:60] }}{% if (evento.tipologia_descrizione or evento.tipologia_nome or '')|length > 60 %}...{% endif %}
+                        </td>
+                        <td>
+                            {{ evento.prot_msg_evento or 'N/D' }}
+                        </td>
+                        <td title="{{ evento.note or 'Nessuna nota' }}">
+                            {{ (evento.note or 'N/D')[:40] }}{% if (evento.note or '')|length > 40 %}...{% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr class="no-data-row">
+                        <td colspan="7" style="text-align: center;">Nessun evento inserito.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginazione inferiore -->
+        <div class="pagination-wrapper bottom-pagination" id="bottomPagination">
+            <div class="pagination-info">
+                <span id="bottomPageInfo">Pagina 1 di 1 (0 eventi totali)</span>
+            </div>
+            <div class="pagination-controls" id="bottomPaginationControls">
+                <!-- Controlli generati dinamicamente -->
+            </div>
+        </div>
+
+        <!-- Riga no results (gestita da JavaScript) -->
+        <!-- Viene creata dinamicamente se necessario -->
+        
+    </section>
+</main>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Advanced Table Component JS -->
+<script src="{{ url_for('static', filename='js/components/advanced-table.js') }}?v={{ cache_buster }}"></script>
+
+<script>
+// Inizializzazione specifica per vista lista eventi
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[Lista Eventi] DOM caricato, inizializzazione tabella...');
+    
+    // Aspetta che AdvancedTable sia disponibile
+    setTimeout(function() {
+        if (typeof AdvancedTable !== 'undefined') {
+            console.log('[Lista Eventi] AdvancedTable disponibile, inizializzazione...');
+            
+            // Verifica che la tabella esista
+            const tableElement = document.querySelector('#eventiTable');
+            if (tableElement) {
+                console.log('[Lista Eventi] Tabella trovata:', tableElement);
+                console.log('[Lista Eventi] Headers nella tabella:', tableElement.querySelectorAll('th').length);
+                
+                // Inizializza la Advanced Table con tutte le funzionalità
+                try {
+                    window.eventiTable = new AdvancedTable({
+                        tableSelector: '#eventiTable',
+                        searchInputSelector: '#searchInput',
+                        itemsPerPage: 50,
+                        enableSorting: true,
+                        enableDragDrop: true,
+                        enablePagination: true,
+                        enableColumnResize: true,
+                        topControlsSelector: '#topPaginationControls',
+                        bottomControlsSelector: '#bottomPaginationControls',
+                        topInfoSelector: '#topPageInfo',
+                        bottomInfoSelector: '#bottomPageInfo'
+                    });
+                    
+                    console.log('[Lista Eventi] Tabella avanzata inizializzata:', window.eventiTable);
+                    
+                    // Aggiungi gestione click sulle righe per navigazione dettaglio
+                    const clickableRows = document.querySelectorAll('.clickable-row');
+                    clickableRows.forEach(row => {
+                        row.addEventListener('click', function(e) {
+                            // Non navigare se si sta cliccando su elementi interattivi
+                            if (e.target.closest('button, a, input, select')) return;
+                            
+                            const href = this.dataset.href;
+                            const eventoId = this.dataset.eventoId;
+                            
+                            if (href) {
+                                console.log(`[Lista Eventi] Navigazione a evento ${eventoId}:`, href);
+                                window.location.href = href;
+                            }
+                        });
+                        
+                        // Aggiungi stile hover
+                        row.style.cursor = 'pointer';
+                    });
+                    
+                    // Implementa filtri eventi
+                    setupEventiFilters();
+                    
+                    // Test drag&drop - aggiungi event listeners di test
+                    const headers = tableElement.querySelectorAll('th.sortable');
+                    console.log('[Lista Eventi] Headers sortabili trovati:', headers.length);
+                    
+                    headers.forEach((header, index) => {
+                        console.log(`[Lista Eventi] Header ${index}: draggable=${header.draggable}`);
+                    });
+                    
+                } catch (error) {
+                    console.error('[Lista Eventi] Errore durante inizializzazione:', error);
+                }
+            } else {
+                console.error('[Lista Eventi] Tabella #eventiTable non trovata nel DOM!');
+            }
+        } else {
+            console.error('[Lista Eventi] AdvancedTable non disponibile!');
+        }
+    }, 100); // Aspetta 100ms per dare tempo al DOM di essere completamente pronto
+});
+
+// Handler per gestione errori tabella
+document.addEventListener('table:error', function(event) {
+    console.error('[Lista Eventi] Errore tabella:', event.detail);
+});
+
+// Handler per eventi tabella
+document.addEventListener('table:sorted', function(event) {
+    console.log('[Lista Eventi] Tabella ordinata per colonna:', event.detail.column);
+});
+
+document.addEventListener('table:filtered', function(event) {
+    console.log('[Lista Eventi] Tabella filtrata, risultati:', event.detail.visibleRows);
+});
+
+// Funzione per gestire tutti i filtri eventi
+function setupEventiFilters() {
+    console.log('[Lista Eventi] Configurazione filtri eventi...');
+    
+    // Aggiungi listener per toggle carattere
+    document.querySelectorAll('input[name="lista_carattere"]').forEach(input => {
+        input.addEventListener('change', function() {
+            console.log('[Lista Eventi] Filtro carattere cambiato:', this.value);
+            
+            // Aggiorna stili visivi carattere
+            document.querySelectorAll('.carattere-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.background = '#e9ecef';
+                btn.style.color = '#495057';
+            });
+            
+            const selectedLabel = document.querySelector(`label[for="${this.id}"]`);
+            if (selectedLabel) {
+                selectedLabel.classList.add('active');
+                selectedLabel.style.background = '#667eea';
+                selectedLabel.style.color = 'white';
+            }
+            
+            // Applica filtri combinati
+            applyCombinedFilters();
+        });
+    });
+    
+    // Aggiungi listener per toggle tipologie
+    document.querySelectorAll('input[name="lista_tipologia"]').forEach(input => {
+        input.addEventListener('change', function() {
+            console.log('[Lista Eventi] Filtro tipologia cambiato:', this.value);
+            
+            // Aggiorna stili visivi tipologie
+            document.querySelectorAll('.tipologia-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.background = '#e9ecef';
+                btn.style.color = '#495057';
+            });
+            
+            const selectedLabel = document.querySelector(`label[for="${this.id}"]`);
+            if (selectedLabel) {
+                selectedLabel.classList.add('active');
+                selectedLabel.style.background = '#28a745';
+                selectedLabel.style.color = 'white';
+            }
+            
+            // Applica filtri combinati
+            applyCombinedFilters();
+        });
+    });
+}
+
+// Funzione per applicare filtri combinati
+function applyCombinedFilters() {
+    // Ottieni valori dei filtri correnti
+    const carattereValue = document.querySelector('input[name="lista_carattere"]:checked').value;
+    const tipologiaValue = document.querySelector('input[name="lista_tipologia"]:checked').value;
+    
+    console.log('[Lista Eventi] Applicazione filtri combinati:', {
+        carattere: carattereValue,
+        tipologia: tipologiaValue
+    });
+    
+    const tableBody = document.getElementById('eventiTableBody');
+    if (!tableBody) return;
+    
+    const rows = tableBody.querySelectorAll('tr:not(.no-data-row)');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        const carattereCell = row.cells[1]; // Colonna carattere (indice 1)
+        const tipologiaCell = row.cells[2];  // Colonna tipo evento (indice 2)
+        
+        if (!carattereCell || !tipologiaCell) return;
+        
+        const rowCarattere = getCarattereFromCell(carattereCell);
+        const rowTipologia = getTipologiaFromCell(tipologiaCell);
+        
+        // Applica filtro carattere
+        const matchesCarattere = (carattereValue === '' || rowCarattere === carattereValue);
+        
+        // Applica filtro tipologia
+        const matchesTipologia = (tipologiaValue === '' || rowTipologia === tipologiaValue);
+        
+        // Mostra riga solo se corrisponde a entrambi i filtri
+        if (matchesCarattere && matchesTipologia) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Aggiorna info paginazione
+    updatePaginationInfo(visibleCount);
+    
+    console.log(`[Lista Eventi] Filtri applicati: ${visibleCount} eventi visibili`);
+}
+
+// Funzione helper per estrarre il carattere dalla cella
+function getCarattereFromCell(cell) {
+    const badge = cell.querySelector('.badge');
+    if (!badge) return '';
+    
+    const text = badge.textContent.trim().toLowerCase();
+    if (text === 'positivo') return 'positivo';
+    if (text === 'negativo') return 'negativo';
+    return '';
+}
+
+// Funzione helper per estrarre la tipologia dalla cella
+function getTipologiaFromCell(cell) {
+    const badge = cell.querySelector('.badge');
+    if (!badge) return '';
+    
+    const text = badge.textContent.trim().toLowerCase();
+    if (text === 'tipo a') return 'tipo_a';
+    if (text === 'tipo b') return 'tipo_b';
+    if (text === 'tipo c') return 'tipo_c';
+    if (text === 'tipo d') return 'tipo_d';
+    if (text === 'tipo e') return 'tipo_e';
+    return '';
+}
+
+// Funzione per aggiornare le info di paginazione
+function updatePaginationInfo(visibleCount) {
+    const topPageInfo = document.getElementById('topPageInfo');
+    const bottomPageInfo = document.getElementById('bottomPageInfo');
+    
+    if (topPageInfo) {
+        topPageInfo.textContent = `Pagina 1 di 1 (${visibleCount} eventi mostrati)`;
+    }
+    if (bottomPageInfo) {
+        bottomPageInfo.textContent = `Pagina 1 di 1 (${visibleCount} eventi mostrati)`;
+    }
+}
+</script>
+
+<!-- Stili personalizzati per badge eventi -->
+<style>
+.badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25em 0.5em;
+    border-radius: 0.375rem;
+}
+
+.bg-success {
+    background-color: #198754 !important;
+    color: white;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+    color: white;
+}
+
+.bg-primary {
+    background-color: #0d6efd !important;
+    color: white;
+}
+
+.bg-secondary {
+    background-color: #6c757d !important;
+    color: white;
+}
+
+.clickable-row {
+    transition: background-color 0.15s ease-in-out;
+}
+
+.clickable-row:hover {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+/* Ottimizzazione colonne per eventi */
+#eventiTable th:nth-child(1) { width: 6%; }  /* Data */
+#eventiTable th:nth-child(2) { width: 7%; }  /* Carattere */
+#eventiTable th:nth-child(3) { width: 6%; }  /* Evento */
+#eventiTable th:nth-child(4) { width: 22%; } /* Ente Militare */
+#eventiTable th:nth-child(5) { width: 30%; } /* Tipologia Evento */
+#eventiTable th:nth-child(6) { width: 7%; }  /* Protocollo */
+#eventiTable th:nth-child(7) { width: 22%; } /* Note */
+
+/* Stili per toggle carattere */
+.carattere-btn:hover {
+    background: #5a6fd8 !important;
+    color: white !important;
+}
+
+.carattere-btn.active {
+    background: #667eea !important;
+    color: white !important;
+}
+
+.carattere-toggle input[type="radio"]:checked + .carattere-btn {
+    background: #667eea !important;
+    color: white !important;
+}
+
+/* Stili per toggle tipologie */
+.tipologia-btn:hover {
+    background: #218838 !important;
+    color: white !important;
+}
+
+.tipologia-btn.active {
+    background: #28a745 !important;
+    color: white !important;
+}
+
+.tipologia-toggle input[type="radio"]:checked + .tipologia-btn {
+    background: #28a745 !important;
+    color: white !important;
+}
+
+/* Stili responsive per filtri eventi */
+@media (max-width: 768px) {
+    .eventi-filters {
+        flex-direction: column !important;
+        gap: 15px !important;
+    }
+    
+    .filter-group {
+        min-width: auto !important;
+        flex: none !important;
+    }
+    
+    .carattere-toggle {
+        justify-content: flex-start !important;
+    }
+    
+    .filter-group {
+        text-align: left !important;
+    }
+    
+    .filter-label {
+        text-align: left !important;
+    }
+}
+
+/* Miglioramenti layout filtri */
+.filter-label {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.eventi-filters {
+    background: rgba(248, 249, 250, 0.8);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+</style>
+{% endblock %}

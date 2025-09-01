@@ -222,6 +222,11 @@ body {
     overflow: hidden !important;
 }
 
+/* ECCEZIONE PER DASHBOARD EVENTI - PERMETTERE SCROLL NATURALE */
+body.eventi-dashboard {
+    overflow: visible !important;
+}
+
 .d-flex.h-100 {
     position: relative !important;
     /* Rimuovi altezza fissa per permettere contenuto più alto del viewport */

@@ -6,23 +6,42 @@
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
-        <span class="tooltip" id="tooltip" role="tooltip">Espandi il menu</span>
     </button>
     
     <div class="sidebar-menu">
         <ul id="menu-list" role="list">
-            <!-- Dashboard - Accessibile a tutti -->
-            <li draggable="true" data-menu-id="dashboard" role="listitem">
-                <a href="{{ url_for('main.dashboard') }}" aria-label="Dashboard">
+            <!-- Panoramica Attività - Accessibile a tutti -->
+            <li draggable="true" data-menu-id="panoramica_attivita" role="listitem">
+                <a href="{{ url_for('main.dashboard') }}" aria-label="Panoramica Attività">
                     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="3" y="3" width="7" height="7"></rect>
                         <rect x="14" y="3" width="7" height="7"></rect>
                         <rect x="14" y="14" width="7" height="7"></rect>
                         <rect x="3" y="14" width="7" height="7"></rect>
                     </svg>
-                    <span class="menu-text">Dashboard</span>
+                    <span class="menu-text" style="display: flex; flex-direction: column; justify-content: center; line-height: 1.2;">
+                        <span>Panoramica</span>
+                        <span>Attività</span>
+                    </span>
                 </a>
             </li>
+            
+            <!-- Comunicazione Eventi - Solo OPERATORE e ADMIN -->
+            {% if session.get('ruolo_nome') in ['ADMIN', 'OPERATORE'] %}
+            <li draggable="true" data-menu-id="comunicazione_eventi" role="listitem" data-min-role="OPERATORE">
+                <a href="{{ url_for('eventi.dashboard_eventi') }}" aria-label="Comunicazione Eventi">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <span class="menu-text" style="display: flex; flex-direction: column; justify-content: center; line-height: 1.2;">
+                        <span>Comunicazione</span>
+                        <span>Eventi</span>
+                    </span>
+                </a>
+            </li>
+            {% endif %}
             
             <!-- Analisi - Link a Superset con SSO embedded -->
             <li draggable="true" data-menu-id="analisi" role="listitem">

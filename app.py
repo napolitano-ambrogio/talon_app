@@ -12,7 +12,7 @@ os.environ['FLASK_DEBUG'] = '1'
 # Aggiungi il percorso root al sys.path per import corretti
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Flask, request, jsonify, render_template, redirect, session, flash, url_for, Response, get_flashed_messages, send_from_directory
+from flask import Flask, request, jsonify, render_template, redirect, session, flash, url_for, Response, get_flashed_messages, send_from_directory, send_file
 import hashlib
 import datetime
 from waitress import serve
@@ -78,6 +78,7 @@ from routes.enti_civili import enti_civili_bp
 from routes.operazioni import operazioni_bp
 from routes.attivita import attivita_bp
 from routes.esercitazioni import esercitazioni_bp
+from routes.eventi import eventi
 from routes.drill_down_chart import drill_down_bp
 from routes.geografia import geografia_bp
 from routes.api_temp import api_temp_bp
@@ -100,6 +101,10 @@ def create_app():
     app.config['DEBUG'] = True
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.debug = True
+    
+    # CONFIGURAZIONE UTF-8 per JSON responses
+    app.config['JSON_AS_ASCII'] = False
+    app.config['JSONIFY_MIMETYPE'] = 'application/json; charset=utf-8'
     
     # Setup logging
     logging.basicConfig(
@@ -405,23 +410,71 @@ def create_app():
     @app.route('/external/<path:filename>')
     def external_files(filename):
         """Serve file dalla directory esterna F:\\tools\\Script"""
-        external_path = 'F:\\tools\\Script'
+        external_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tools', 'Script')
+        
+        # Normalizza il filename per gestire sia / che \
+        filename = filename.replace('/', os.path.sep)
         file_path = os.path.join(external_path, filename)
         
         # Verifica sicurezza: il file deve essere nella directory external
         if not os.path.abspath(file_path).startswith(os.path.abspath(external_path)):
+            app.logger.warning(f"Security check failed for file: {filename}")
             return Response(status=404)
         
         # Verifica che il file esista
         if not os.path.exists(file_path):
+            app.logger.error(f"File not found: {file_path}")
             return Response(status=404)
         
         try:
-            from flask import send_file
             return send_file(file_path)
         except Exception as e:
             app.logger.error(f"Errore serving external file {filename}: {e}")
             return Response(status=500)
+    
+    # ROUTE ALTERNATIVE PER EDGE AZIENDALE - Proxy per librerie specifiche
+    @app.route('/libs/bootstrap.min.css')
+    def serve_bootstrap_css():
+        """Proxy per Bootstrap CSS - compatibile con Edge aziendale"""
+        return send_file(r'F:\tools\Script\bootstrap\css\bootstrap.min.css', mimetype='text/css')
+    
+    @app.route('/libs/bootstrap.bundle.min.js')
+    def serve_bootstrap_js():
+        """Proxy per Bootstrap JS - compatibile con Edge aziendale"""
+        return send_file(r'F:\tools\Script\bootstrap\js\bootstrap.bundle.min.js', mimetype='application/javascript')
+    
+    @app.route('/libs/jquery-3.7.1.min.js')
+    def serve_jquery():
+        """Proxy per jQuery - compatibile con Edge aziendale"""
+        return send_file(r'F:\tools\Script\jquery\jquery-3.7.1.min.js', mimetype='application/javascript')
+    
+    @app.route('/libs/fontawesome.min.css')
+    def serve_fontawesome_css():
+        """Proxy per FontAwesome CSS - compatibile con Edge aziendale"""
+        return send_file(r'F:\tools\Script\fontawesome\css\all.min.css', mimetype='text/css')
+    
+    @app.route('/libs/fontawesome.min.js')
+    def serve_fontawesome_js():
+        """Proxy per FontAwesome JS - compatibile con Edge aziendale"""
+        return send_file(r'F:\tools\Script\fontawesome\js\all.min.js', mimetype='application/javascript')
+    
+    @app.route('/libs/chart.umd.min.js')
+    def serve_chartjs():
+        """Proxy per Chart.js - compatibile con Edge aziendale"""
+        return send_file(r'F:\tools\Script\chartjs\chart.umd.min.js', mimetype='application/javascript')
+    
+    @app.route('/libs/fonts/<filename>')
+    def serve_fonts(filename):
+        """Proxy per FontAwesome fonts - compatibile con Edge aziendale"""
+        font_path = os.path.join(r'F:\tools\Script\fontawesome\webfonts', filename)
+        if os.path.exists(font_path):
+            return send_file(font_path)
+        return Response(status=404)
+    
+    @app.route('/test-edge')
+    def test_edge():
+        """Pagina di test compatibilità Edge aziendale"""
+        return render_template('test_edge.html')
     
     # Proxy rimosso - ora usiamo endpoint dedicato per il login automatico
     
@@ -1687,6 +1740,7 @@ def create_app():
     app.register_blueprint(operazioni_bp)
     app.register_blueprint(attivita_bp)
     app.register_blueprint(esercitazioni_bp)
+    app.register_blueprint(eventi)
     app.register_blueprint(drill_down_bp)
     app.register_blueprint(geografia_bp)
     app.register_blueprint(api_temp_bp)
