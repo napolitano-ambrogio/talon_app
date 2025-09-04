@@ -127,7 +127,7 @@
                             {% elif evento.carattere == 'negativo' %}
                             <span class="badge bg-danger">NEGATIVO</span>
                             {% else %}
-                            <span class="badge bg-secondary">{{ evento.carattere or 'N/D' }}</span>
+                            <span class="badge bg-secondary">{{ (evento.carattere or 'N/D') | upper }}</span>
                             {% endif %}
                         </td>
                         <td style="text-align: center;">
@@ -137,17 +137,17 @@
                             <span class="badge bg-secondary">N/D</span>
                             {% endif %}
                         </td>
-                        <td title="{{ evento.ente_nome or 'Ente non specificato' }}">
-                            {{ (evento.ente_nome or 'N/D')[:50] }}{% if (evento.ente_nome or '')|length > 50 %}...{% endif %}
+                        <td title="{{ (evento.ente_nome or 'ENTE NON SPECIFICATO') | upper }}">
+                            {{ ((evento.ente_nome or 'N/D') | upper)[:50] }}{% if (evento.ente_nome or '')|length > 50 %}...{% endif %}
                         </td>
-                        <td title="{{ evento.tipologia_descrizione or evento.tipologia_nome or 'Nessuna tipologia' }}">
-                            {{ (evento.tipologia_descrizione or evento.tipologia_nome or 'N/D')[:60] }}{% if (evento.tipologia_descrizione or evento.tipologia_nome or '')|length > 60 %}...{% endif %}
+                        <td title="{{ (evento.tipologia_nome or evento.tipologia_descrizione or 'NESSUNA TIPOLOGIA') | upper }}">
+                            {{ ((evento.tipologia_nome or evento.tipologia_descrizione or 'N/D') | upper)[:60] }}{% if (evento.tipologia_nome or evento.tipologia_descrizione or '')|length > 60 %}...{% endif %}
                         </td>
                         <td>
-                            {{ evento.prot_msg_evento or 'N/D' }}
+                            {{ (evento.prot_msg_evento or 'N/D') | upper }}
                         </td>
-                        <td title="{{ evento.note or 'Nessuna nota' }}">
-                            {{ (evento.note or 'N/D')[:40] }}{% if (evento.note or '')|length > 40 %}...{% endif %}
+                        <td title="{{ (evento.note or 'NESSUNA NOTA') | upper }}">
+                            {{ ((evento.note or 'N/D') | upper)[:40] }}{% if (evento.note or '')|length > 40 %}...{% endif %}
                         </td>
                     </tr>
                     {% else %}

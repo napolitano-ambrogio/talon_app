@@ -154,19 +154,20 @@ class EventiSlimSelectInitializer {
                 const indirizzo = option.getAttribute('data-indirizzo') || '';
                 const codice = option.getAttribute('data-codice') || '';
                 
-                // Costruisci HTML con nome e indirizzo sotto
+                // Costruisci HTML con nome e indirizzo sulla stessa linea per il dropdown
                 let html = nome;
                 if (indirizzo) {
-                    html += `<br><small style="font-size: 0.85em; font-style: italic; color: #666; line-height: 1.2;">${indirizzo}</small>`;
+                    html += `<span style="margin: 0 0.3em;"> - </span><span style="font-size: 0.85em; font-style: italic; color: #666; vertical-align: top; display: inline-block; transform: translateY(0.25em);">${indirizzo}</span>`;
                 }
                 
                 data.push({
-                    text: nome, // Testo per ricerca
-                    html: html, // HTML per visualizzazione
+                    text: nome, // Solo nome per ricerca e campo chiuso
+                    html: html, // HTML con indirizzo per dropdown
                     value: option.value,
                     data: {
                         codice: codice,
-                        indirizzo: indirizzo
+                        indirizzo: indirizzo,
+                        nome: nome
                     }
                 });
             }
@@ -181,6 +182,17 @@ class EventiSlimSelectInitializer {
             console.warn('[EVENTI] Elemento ente_id non trovato');
             return;
         }
+
+        // Controlla se Slim Select è disabilitato per questo elemento
+        if (enteSelect.hasAttribute('data-slim-select-disabled')) {
+            console.log('[EVENTI] Slim Select disabilitato per ente_id, uso select nativo');
+            this.fallbackToNativeSelect(enteSelect, 'ente_id');
+            return;
+        }
+
+        // Cattura il valore selezionato prima dell'inizializzazione di SlimSelect
+        const selectedValue = enteSelect.value;
+        console.log('[EVENTI] Valore ente pre-SlimSelect:', selectedValue);
 
         try {
             const slimInstance = new SlimSelect({
@@ -216,11 +228,33 @@ class EventiSlimSelectInitializer {
                         
                         // Fallback solo per nome
                         return text.includes(searchLower);
+                    },
+                    afterChange: (newVal) => {
+                        // Forza il display del solo nome nel campo chiuso
+                        if (newVal && newVal.length > 0) {
+                            this.forceSimpleDisplayInClosedField(newVal[0]);
+                        }
                     }
                 }
             });
 
             this.instances.set('ente_id', slimInstance);
+            
+            // Ripristina il valore selezionato dopo l'inizializzazione di SlimSelect
+            if (selectedValue) {
+                setTimeout(() => {
+                    slimInstance.setSelected(selectedValue);
+                    console.log('[EVENTI] Valore ente ripristinato post-SlimSelect:', selectedValue);
+                    
+                    // Forza il display del solo nome dopo il ripristino
+                    setTimeout(() => {
+                        const selectedData = slimInstance.getSelected();
+                        if (selectedData && selectedData.length > 0) {
+                            this.forceSimpleDisplayInClosedField(selectedData[0]);
+                        }
+                    }, 50);
+                }, 100);
+            }
             
         } catch (error) {
             console.error('[EVENTI] Errore inizializzazione ente_id:', error);
@@ -264,6 +298,20 @@ class EventiSlimSelectInitializer {
             console.error('[EVENTI] Errore inizializzazione tipologia_evento_id:', error);
             this.fallbackToNativeSelect(tipologiaSelect, 'tipologia_evento_id');
         }
+    }
+
+    forceSimpleDisplayInClosedField(selectedOption) {
+        // Metodo per forzare il display del solo nome nel campo chiuso
+        if (!selectedOption || !selectedOption.data || !selectedOption.data.nome) return;
+        
+        setTimeout(() => {
+            const singleSelected = document.querySelector('#ente_id + .ss-main .ss-single-selected');
+            if (singleSelected) {
+                // Sostituisci tutto il contenuto HTML con solo il nome
+                singleSelected.innerHTML = selectedOption.data.nome;
+                console.log('[EVENTI] Display campo chiuso forzato a:', selectedOption.data.nome);
+            }
+        }, 10);
     }
 
     applyStylesAndFixes() {

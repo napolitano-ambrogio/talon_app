@@ -224,6 +224,126 @@ body.eventi-dashboard #eventDetailsPanel #eventDetailsList {
     z-index: 10;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+
+/* ========================================
+   DASHBOARD TABS STYLES
+   ======================================== */
+
+.dashboard-tabs {
+    display: flex;
+    background: #f8f9fa;
+    border-radius: 8px 8px 0 0;
+    padding: 0;
+    margin: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    gap: 2px;
+}
+
+.tab-btn {
+    flex: 1;
+    min-width: 160px;
+    padding: 11px 16px;
+    border: none;
+    background: #e9ecef;  /* Colore grigio chiaro per tab inattivi */
+    color: #495057;       /* Testo scuro per tab inattivi */
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-radius: 6px 6px 0 0;
+}
+
+.tab-btn:first-child {
+    border-radius: 8px 6px 0 0;
+}
+
+.tab-btn:last-child {
+    border-radius: 6px 8px 0 0;
+}
+
+.tab-btn:hover:not(.active) {
+    background: #667eea;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.tab-btn.active {
+    background: #667eea;  /* Colore blu per tab attivo */
+    color: white;         /* Testo bianco per tab attivo */
+    transform: translateY(0);
+    /* box-shadow: RIMOSSO per continuità visiva */
+    z-index: 1;
+    border: 2px solid #667eea;  /* Bordo blu coordinato */
+    border-bottom: none;  /* Nessun bordo in basso, il grafico ha ora il suo bordo superiore */
+}
+
+/* Rimosso .tab-btn.active::after per continuità visiva con il grafico */
+
+/* Charts Container */
+.charts-container {
+    position: relative;
+    width: 100%;
+}
+
+.chart-view {
+    width: 100%;
+    opacity: 1;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.chart-view:not(.active) {
+    display: none;
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.chart-view.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Container del grafico con bordo blu unificato */
+.chart-container-active {
+    padding: 20px;
+    background: white;
+    border-radius: 0 0 8px 8px;
+    border: 2px solid #667eea;  /* Bordo blu completo attorno al grafico */
+    /* Nessuna box-shadow per aspetto pulito */
+}
+
+/* Responsive design per le schede */
+@media (max-width: 768px) {
+    .dashboard-tabs {
+        flex-direction: column;
+        border-radius: 8px;
+        gap: 1px;
+    }
+    
+    .tab-btn {
+        min-width: auto;
+        justify-content: center;
+        padding: 9px 14px;
+        border-radius: 0;
+    }
+    
+    .tab-btn:first-child {
+        border-radius: 8px 8px 0 0;
+    }
+    
+    .tab-btn:last-child {
+        border-radius: 0 0 8px 8px;
+    }
+    
+    .tab-btn.active::after {
+        display: none;
+    }
+}
 </style>
 {% endblock %}
 
@@ -287,9 +407,31 @@ body.eventi-dashboard #eventDetailsPanel #eventDetailsList {
             </div>
         </div>
 
-        <!-- Main Chart -->
-        <div class="chart-container" style="margin-top: 10px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-            <canvas id="eventChartCanvas" style="display: block; width: 100%;"></canvas>
+        <!-- Dashboard Tabs -->
+        <div class="dashboard-tabs" style="margin-top: 10px; margin-bottom: 0px;">
+            <button class="tab-btn active" data-view="tipologie" id="tabTipologie">
+                View per Tipo Evento
+            </button>
+            <button class="tab-btn" data-view="enti" id="tabEnti">
+                View per Ente
+            </button>
+        </div>
+
+        <!-- Charts Container -->
+        <div class="charts-container">
+            <!-- Vista Tipologie (default) -->
+            <div class="chart-view active" id="chartViewTipologie">
+                <div class="chart-container chart-container-active">
+                    <canvas id="eventChartCanvas" style="display: block; width: 100%;"></canvas>
+                </div>
+            </div>
+
+            <!-- Vista per Ente -->
+            <div class="chart-view" id="chartViewEnti" style="display: none;">
+                <div class="chart-container chart-container-active">
+                    <canvas id="eventEntiChartCanvas" style="display: block; width: 100%;"></canvas>
+                </div>
+            </div>
         </div>
 
         <!-- Info Cards -->
@@ -334,189 +476,24 @@ body.eventi-dashboard #eventDetailsPanel #eventDetailsList {
 {% endblock %}
 
 {% block additional_js %}
-<!-- Chart.js per il drill-down chart eventi -->
+<!-- Chart.js Libraries -->
 <script src="/external/chartjs/chart.umd.min.js"></script>
-<!-- Advanced Table Component per tabelle del drilldown eventi -->
 <script src="{{ url_for('static', filename='js/components/advanced-table.js') }}?v=2.0"></script>
-<!-- Componente drill-down specifico per eventi -->
-<script src="{{ url_for('static', filename='js/components/event_drill-down_chart.js') }}?v=1.2"></script>
+<script src="{{ url_for('static', filename='js/components/event_drill-down_chart.js') }}?v=1.3"></script>
+
+<!-- Dashboard Eventi Controller -->
+<script src="{{ url_for('static', filename='js/components/dashboard-eventi-controller.js') }}?v=1.0"></script>
 <script>
+// Inizializzazione minimale del controller dashboard
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🎯 [Dashboard Eventi] DOM caricato - Inizializzazione componente eventi...');
-    
-    // Verifica che la classe body sia applicata correttamente
-    if (!document.body.classList.contains('eventi-dashboard')) {
-        console.warn('⚠️ [Dashboard Eventi] Classe body "eventi-dashboard" mancante');
-        document.body.classList.add('eventi-dashboard');
-    } else {
-        console.log('✅ [Dashboard Eventi] Classe body "eventi-dashboard" applicata correttamente');
-    }
-    
-    // CALCOLO ALTEZZA ADATTIVO - APPROCCIO CONSERVATIVO
-    function adjustDashboardHeightConservative() {
-        const mainContent = document.getElementById('main-content');
-        const header = document.querySelector('.talon-header');
-        const footer = document.querySelector('.page-footer');
-        
-        if (mainContent && header && footer) {
-            const headerHeight = header.offsetHeight;
-            const footerHeight = footer.offsetHeight;
-            const minHeight = Math.max(400, window.innerHeight - headerHeight - footerHeight - 40);
-            
-            mainContent.style.minHeight = `${minHeight}px`;
-            
-            console.log('📏 [Height Calc] Altezza adattiva applicata:', {
-                minHeight: minHeight,
-                headerHeight: headerHeight,
-                footerHeight: footerHeight,
-                windowHeight: window.innerHeight
-            });
-        }
-    }
-    
-    // Il calcolo dell'altezza del grafico è ora gestito direttamente dal componente Chart.js
-    
-    // Applica calcolo altezza dopo inizializzazione
-    setTimeout(adjustDashboardHeightConservative, 200);
-    
-    // Applica calcolo altezza grafico dopo che il chart è stato inizializzato
-    setTimeout(function() {
-        // La funzione calculateOptimalChartHeight è chiamata automaticamente dal componente
-        console.log('📊 [Dashboard Eventi] Chart height calculation delegated to component');
-        
-        // Ricalcola quando si cambia periodo o si naviga nel drill-down
-        const periodButtons = document.querySelectorAll('.period-btn');
-        periodButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                // L'altezza viene calcolata automaticamente nel componente
-                console.log('📊 [Dashboard Eventi] Period changed, height auto-calculated');
-            });
-        });
-    }, 1000);
-    
-    // Ricalcola su resize (debounced)
-    let resizeTimeout;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(function() {
-            adjustDashboardHeightConservative();
-            // L'altezza chart viene gestita automaticamente dal componente
-            console.log('📊 [Dashboard Eventi] Resize handled by component');
-        }, 300);
-    });
-    
-    // Funzioni per gestione periodo personalizzato eventi
-    window.toggleEventCustomPeriod = function() {
-        const selector = document.getElementById('eventCustomPeriodSelector');
-        const isVisible = selector.style.display !== 'none';
-        selector.style.display = isVisible ? 'none' : 'block';
-        
-        // Aggiorna stato attivo del bottone
-        document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
-        if (!isVisible) {
-            document.querySelector('[data-period="custom"]').classList.add('active');
-        }
-    };
-    
-    window.applyEventCustomPeriod = function() {
-        const startDate = document.getElementById('eventStartDate').value;
-        const endDate = document.getElementById('eventEndDate').value;
-        
-        if (!startDate || !endDate) {
-            alert('Seleziona entrambe le date');
-            return;
-        }
-        
-        if (new Date(startDate) > new Date(endDate)) {
-            alert('La data di inizio deve essere precedente alla data di fine');
-            return;
-        }
-        
-        // Applica il periodo personalizzato
-        if (window.eventDrillDownChart && window.eventDrillDownChart.setCustomPeriod) {
-            window.eventDrillDownChart.setCustomPeriod(startDate, endDate);
-        }
-        
-        // Nascondi il selettore e mostra info periodo
-        document.getElementById('eventCustomPeriodSelector').style.display = 'none';
-        const periodInfo = document.getElementById('eventPeriodInfo');
-        const periodText = document.getElementById('eventPeriodInfoText');
-        periodText.textContent = `Periodo personalizzato: ${startDate} - ${endDate}`;
-        periodInfo.style.display = 'block';
-    };
-    
-    window.cancelEventCustomPeriod = function() {
-        document.getElementById('eventCustomPeriodSelector').style.display = 'none';
-        document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector('[data-period="year"]').classList.add('active');
-    };
-    
-    // Gestione click sui bottoni periodo
-    document.querySelectorAll('.period-btn[data-period]:not([data-period="custom"])').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const period = this.getAttribute('data-period');
-            
-            // Aggiorna stati attivi
-            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            
-            // Nascondi selettore custom e info periodo
-            document.getElementById('eventCustomPeriodSelector').style.display = 'none';
-            document.getElementById('eventPeriodInfo').style.display = 'none';
-            
-            // Applica il nuovo periodo
-            if (window.eventDrillDownChart && window.eventDrillDownChart.setPeriod) {
-                window.eventDrillDownChart.setPeriod(period);
-            }
-        });
-    });
-    
-    // Gestione toggle carattere eventi
-    document.querySelectorAll('input[name="evento_carattere"]').forEach(input => {
-        input.addEventListener('change', function() {
-            // Aggiorna stili visivi
-            document.querySelectorAll('.carattere-btn').forEach(btn => {
-                btn.classList.remove('active');
-                btn.style.background = '#e9ecef';
-                btn.style.color = '#495057';
-            });
-            
-            const selectedLabel = document.querySelector(`label[for="${this.id}"]`);
-            if (selectedLabel) {
-                selectedLabel.classList.add('active');
-                selectedLabel.style.background = '#667eea';
-                selectedLabel.style.color = 'white';
-            }
-            
-            // Ricarica dati con nuovo filtro carattere mantenendo livello corrente
-            if (window.eventDrillDownChart && window.eventDrillDownChart.refreshCurrentLevel) {
-                window.eventDrillDownChart.refreshCurrentLevel();
-            }
-        });
-    });
-    
-    console.log('🔧 [Dashboard Eventi] Verifica disponibilità classe:', {
-        TalonEventDrillDownChart: typeof window.TalonEventDrillDownChart,
-        Chart: typeof window.Chart,
-        jQuery: typeof window.$
-    });
-    
-    // Inizializza il drill-down chart per eventi
     try {
-        if (typeof window.TalonEventDrillDownChart === 'undefined') {
-            console.error('❌ [Dashboard Eventi] Classe TalonEventDrillDownChart NON trovata!');
-            return;
+        if (typeof TalonDashboardEventiController !== 'undefined') {
+            window.dashboardEventiController = new TalonDashboardEventiController();
+        } else {
+            console.error('❌ TalonDashboardEventiController non trovato');
         }
-        
-        console.log('✅ [Dashboard Eventi] Classe trovata, creazione istanza...');
-        window.eventDrillDownChart = new TalonEventDrillDownChart({
-            canvas: 'eventChartCanvas',
-            period: 'year'
-        });
-        console.log('🚀 [Dashboard Eventi] Istanza creata con successo:', window.eventDrillDownChart);
-        console.log('[Dashboard Eventi] Componente drill-down eventi inizializzato con successo');
     } catch (error) {
-        console.error('[Dashboard Eventi] Errore inizializzazione drill-down eventi:', error);
+        console.error('❌ Errore inizializzazione dashboard eventi:', error);
     }
 });
 </script>

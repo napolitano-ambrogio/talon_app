@@ -276,9 +276,17 @@ def visualizza_evento(id):
                                     
                                     # Recupera i dati completi dell'evento seguito usando il cursor esistente
                                     cur.execute("""
-                                        SELECT prot_msg_evento, data_msg_evento, dettagli_evento, carattere, tipo_evento
-                                        FROM eventi 
-                                        WHERE id = %s
+                                        SELECT 
+                                            e.prot_msg_evento, 
+                                            e.data_msg_evento, 
+                                            e.note as dettagli_evento, 
+                                            e.carattere, 
+                                            e.tipo_evento,
+                                            te.nome as tipologia_nome,
+                                            te.descrizione as tipologia_descrizione
+                                        FROM eventi e
+                                        LEFT JOIN tipologia_evento te ON e.tipologia_evento_id = te.id
+                                        WHERE e.id = %s
                                     """, (seguito['evento_id'],))
                                     
                                     evento_seguito_data = cur.fetchone()
@@ -301,6 +309,15 @@ def visualizza_evento(id):
                                         seguito['dettagli_evento'] = str(evento_seguito_data['dettagli_evento']) if evento_seguito_data['dettagli_evento'] else 'N/D'
                                         seguito['carattere'] = str(evento_seguito_data['carattere']) if evento_seguito_data['carattere'] else 'N/D'
                                         seguito['tipo_evento'] = str(evento_seguito_data['tipo_evento']) if evento_seguito_data['tipo_evento'] else 'N/D'
+                                        seguito['tipologia_nome'] = str(evento_seguito_data['tipologia_nome']) if evento_seguito_data['tipologia_nome'] else 'N/D'
+                                        seguito['tipologia_descrizione'] = str(evento_seguito_data['tipologia_descrizione']) if evento_seguito_data['tipologia_descrizione'] else 'N/D'
+                                        
+                                        # Debug per tipologie
+                                        print(f"[EVENTI] Debug tipologia per evento {seguito['evento_id']}:")
+                                        print(f"  - tipologia_nome recuperato: '{evento_seguito_data['tipologia_nome']}'")
+                                        print(f"  - tipologia_descrizione recuperata: '{evento_seguito_data['tipologia_descrizione']}'")
+                                        print(f"  - tipologia_nome impostata: '{seguito['tipologia_nome']}'")
+                                        print(f"  - tipologia_descrizione impostata: '{seguito['tipologia_descrizione']}')")
                                         
                                         print(f"[EVENTI] Evento seguito {seguito['evento_id']} AGGIORNATO:")
                                         print(f"  - Protocollo: {seguito['prot_msg_evento']}")
@@ -416,6 +433,17 @@ def salva_evento():
         tipologia_evento_id = request.form.get('tipologia_evento_id')
         note = request.form.get('note', '').upper()
         prot_msg_evento = request.form.get('prot_msg_evento', '').upper()
+        
+        # Validazione e formattazione protocollo a 7 cifre
+        prot_msg_evento_clean = ''.join(filter(str.isdigit, prot_msg_evento))
+        if not prot_msg_evento_clean.isdigit():
+            print(f"[EVENTI] Errore validazione protocollo: '{prot_msg_evento}' non è numerico")
+            flash('Il protocollo messaggio evento deve contenere solo numeri.', 'error')
+            return redirect(url_for('eventi.inserisci_evento_form'))
+        
+        prot_msg_evento = prot_msg_evento_clean.zfill(7)  # Applica padding a 7 cifre
+        print(f"[EVENTI] Protocollo formattato: '{prot_msg_evento}'")
+        
         data_msg_evento = request.form.get('data_msg_evento')
         seguiti_eventi = request.form.get('seguiti_eventi', '').strip()
         
@@ -570,9 +598,17 @@ def modifica_evento_form(id):
                                     
                                     # Recupera i dati completi dell'evento seguito usando il cursor esistente
                                     cur.execute("""
-                                        SELECT prot_msg_evento, data_msg_evento, dettagli_evento, carattere, tipo_evento
-                                        FROM eventi 
-                                        WHERE id = %s
+                                        SELECT 
+                                            e.prot_msg_evento, 
+                                            e.data_msg_evento, 
+                                            e.note as dettagli_evento, 
+                                            e.carattere, 
+                                            e.tipo_evento,
+                                            te.nome as tipologia_nome,
+                                            te.descrizione as tipologia_descrizione
+                                        FROM eventi e
+                                        LEFT JOIN tipologia_evento te ON e.tipologia_evento_id = te.id
+                                        WHERE e.id = %s
                                     """, (seguito['evento_id'],))
                                     
                                     evento_seguito_data = cur.fetchone()
@@ -595,6 +631,15 @@ def modifica_evento_form(id):
                                         seguito['dettagli_evento'] = str(evento_seguito_data['dettagli_evento']) if evento_seguito_data['dettagli_evento'] else 'N/D'
                                         seguito['carattere'] = str(evento_seguito_data['carattere']) if evento_seguito_data['carattere'] else 'N/D'
                                         seguito['tipo_evento'] = str(evento_seguito_data['tipo_evento']) if evento_seguito_data['tipo_evento'] else 'N/D'
+                                        seguito['tipologia_nome'] = str(evento_seguito_data['tipologia_nome']) if evento_seguito_data['tipologia_nome'] else 'N/D'
+                                        seguito['tipologia_descrizione'] = str(evento_seguito_data['tipologia_descrizione']) if evento_seguito_data['tipologia_descrizione'] else 'N/D'
+                                        
+                                        # Debug per tipologie
+                                        print(f"[EVENTI] Debug tipologia per evento {seguito['evento_id']}:")
+                                        print(f"  - tipologia_nome recuperato: '{evento_seguito_data['tipologia_nome']}'")
+                                        print(f"  - tipologia_descrizione recuperata: '{evento_seguito_data['tipologia_descrizione']}'")
+                                        print(f"  - tipologia_nome impostata: '{seguito['tipologia_nome']}'")
+                                        print(f"  - tipologia_descrizione impostata: '{seguito['tipologia_descrizione']}')")
                                         
                                         print(f"[EVENTI] Evento seguito {seguito['evento_id']} arricchito per modifica")
                                     else:
@@ -653,6 +698,17 @@ def aggiorna_evento(id):
         tipologia_evento_id = request.form.get('tipologia_evento_id')
         note = request.form.get('note', '').upper()
         prot_msg_evento = request.form.get('prot_msg_evento', '').upper()
+        
+        # Validazione e formattazione protocollo a 7 cifre
+        prot_msg_evento_clean = ''.join(filter(str.isdigit, prot_msg_evento))
+        if not prot_msg_evento_clean.isdigit():
+            print(f"[EVENTI] Errore validazione protocollo: '{prot_msg_evento}' non è numerico")
+            flash('Il protocollo messaggio evento deve contenere solo numeri.', 'error')
+            return redirect(url_for('eventi.modifica_evento_form', id=id))
+        
+        prot_msg_evento = prot_msg_evento_clean.zfill(7)  # Applica padding a 7 cifre
+        print(f"[EVENTI] Protocollo formattato: '{prot_msg_evento}'")
+        
         data_msg_evento = request.form.get('data_msg_evento')
         seguiti_eventi = request.form.get('seguiti_eventi', '').strip()
         
@@ -661,16 +717,16 @@ def aggiorna_evento(id):
         print(f"  - carattere: '{carattere}' ({'OK' if carattere else 'VUOTO'})")
         print(f"  - tipo_evento: '{tipo_evento}' ({'OK' if tipo_evento else 'VUOTO'})")
         print(f"  - data_evento: '{data_evento}' ({'OK' if data_evento else 'VUOTO'})")
-        print(f"  - dettagli_evento: '{dettagli_evento[:50]}...' ({'OK' if dettagli_evento else 'VUOTO'})")
+        print(f"  - note: '{note[:50]}...' ({'OK' if note else 'VUOTO'})")
         print(f"  - prot_msg_evento: '{prot_msg_evento}' ({'OK' if prot_msg_evento else 'VUOTO'})")
         print(f"  - data_msg_evento: '{data_msg_evento}' ({'OK' if data_msg_evento else 'VUOTO'})")
         print(f"  - seguiti_eventi: '{seguiti_eventi[:100]}...' ({'OK' if seguiti_eventi else 'VUOTO'})")
         
         # Validazione
-        campi_obbligatori = [ente_id, carattere, tipo_evento, dettagli_evento, prot_msg_evento, data_msg_evento]
+        campi_obbligatori = [ente_id, carattere, tipo_evento, note, prot_msg_evento, data_msg_evento]
         if not all(campi_obbligatori):
             print(f"[EVENTI] VALIDAZIONE FALLITA - campi mancanti:")
-            for i, campo in enumerate(['ente_id', 'carattere', 'tipo_evento', 'dettagli_evento', 'prot_msg_evento', 'data_msg_evento']):
+            for i, campo in enumerate(['ente_id', 'carattere', 'tipo_evento', 'note', 'prot_msg_evento', 'data_msg_evento']):
                 if not campi_obbligatori[i]:
                     print(f"  - {campo}: MANCANTE")
             flash('Tutti i campi obbligatori devono essere compilati.', 'error')
@@ -898,6 +954,351 @@ def api_enti_livello1():
         
     except Exception as e:
         print(f"[EVENTI] Errore API enti livello 1: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@eventi.route('/api/enti-stacked')
+@login_required
+def api_enti_stacked():
+    """API per dati stacked per la vista per-ente (Comando Logistico + figli diretti con breakdown per tipo evento)"""
+    
+    if not is_operatore_or_above():
+        return jsonify({'error': 'Accesso negato'}), 403
+    
+    try:
+        period = request.args.get('period', 'year')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        carattere_filtro = request.args.get('carattere_filtro', '')
+        ente_parent = request.args.get('ente_parent')  # Parametro per drill-down livello 1-2
+        ente_parent_nome = request.args.get('ente_parent_nome')  # Nome ente per drill-down livello 1-2
+        ente_specifico_nome = request.args.get('ente_specifico_nome')  # Nome ente specifico livello 3
+        livello_3 = request.args.get('livello_3') == 'true'  # Flag per livello 3
+        
+        # Calcola il periodo
+        if period == 'custom' and start_date and end_date:
+            date_filter = f"e.data_msg_evento BETWEEN '{start_date}' AND '{end_date}'"
+        else:
+            days_map = {
+                'week': 7,
+                'month': 30,
+                'quarter': 90,
+                'year': 365
+            }
+            days = days_map.get(period, 365)
+            date_filter = f"e.data_msg_evento >= CURRENT_DATE - INTERVAL '{days} days'"
+        
+        # Aggiungi filtro carattere se presente
+        additional_filters = []
+        if carattere_filtro:
+            additional_filters.append(f"e.carattere = '{carattere_filtro}'")
+        
+        where_clause = date_filter
+        if additional_filters:
+            where_clause += " AND " + " AND ".join(additional_filters)
+        
+        # Converti nome ente in ID se fornito
+        if ente_parent_nome and not ente_parent:
+            conn_temp = get_auth_db_connection()
+            try:
+                with conn_temp.cursor() as cur_temp:
+                    cur_temp.execute("SELECT id FROM enti_militari WHERE nome = %s", (ente_parent_nome,))
+                    result = cur_temp.fetchone()
+                    if result:
+                        ente_parent = result[0]
+                        print(f"[EVENTI API STACKED DEBUG] Converted '{ente_parent_nome}' to ID: {ente_parent}")
+                    else:
+                        print(f"[EVENTI API STACKED DEBUG] WARNING: Ente '{ente_parent_nome}' not found")
+            finally:
+                conn_temp.close()
+        
+        # Converti nome ente specifico per livello 3
+        ente_specifico_id = None
+        if ente_specifico_nome and livello_3:
+            conn_temp = get_auth_db_connection()
+            try:
+                with conn_temp.cursor() as cur_temp:
+                    cur_temp.execute("SELECT id FROM enti_militari WHERE nome = %s", (ente_specifico_nome,))
+                    result = cur_temp.fetchone()
+                    if result:
+                        ente_specifico_id = result[0]
+                        print(f"[EVENTI API STACKED DEBUG] Level 3 - Converted '{ente_specifico_nome}' to ID: {ente_specifico_id}")
+                    else:
+                        print(f"[EVENTI API STACKED DEBUG] WARNING: Ente specifico '{ente_specifico_nome}' not found")
+            finally:
+                conn_temp.close()
+        
+        conn = get_auth_db_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Prima controlla se ci sono eventi nel database
+                cur.execute(f"SELECT COUNT(*) as total FROM eventi e WHERE {where_clause}")
+                total_eventi = cur.fetchone()['total']
+                print(f"[EVENTI API STACKED DEBUG] Total events in period: {total_eventi}")
+                
+                if total_eventi == 0:
+                    print(f"[EVENTI API STACKED DEBUG] No events found with filter: {where_clause}")
+                    stacked_data = []
+                else:
+                    if livello_3 and ente_specifico_id:
+                        # Livello 3: mostra tipi evento per ente specifico con aggregazione ricorsiva
+                        print(f"[EVENTI API STACKED DEBUG] Level 3 - Event types for ente: {ente_specifico_id}")
+                        cur.execute(f"""
+                            WITH RECURSIVE gerarchia_ente AS (
+                                SELECT id, nome, parent_id, 0 as livello
+                                FROM enti_militari 
+                                WHERE id = {ente_specifico_id}
+                                
+                                UNION ALL
+                                
+                                SELECT e.id, e.nome, e.parent_id, g.livello + 1
+                                FROM enti_militari e
+                                INNER JOIN gerarchia_ente g ON e.parent_id = g.id
+                            )
+                            SELECT 
+                                e.tipo_evento,
+                                COUNT(*) as count
+                            FROM eventi e
+                            INNER JOIN gerarchia_ente g ON e.ente_id = g.id
+                            WHERE {where_clause}
+                            GROUP BY e.tipo_evento
+                            ORDER BY e.tipo_evento
+                        """)
+                    elif ente_parent:
+                        # Drill-down livello 1+: mostra ente padre + figli diretti con aggregazione ricorsiva
+                        print(f"[EVENTI API STACKED DEBUG] Drill-down for parent: {ente_parent} (shows parent + children)")
+                        cur.execute(f"""
+                            WITH eventi_aggregati AS (
+                                SELECT 
+                                    CASE 
+                                        WHEN em.id = {ente_parent} THEN em.id  -- Ente padre stesso
+                                        WHEN em.parent_id = {ente_parent} THEN em.id  -- Figli diretti
+                                        WHEN parent.parent_id = {ente_parent} THEN parent.id  -- Nipoti → Padre
+                                        WHEN grandparent.parent_id = {ente_parent} THEN grandparent.id  -- Pronipoti → Nonno
+                                        ELSE NULL
+                                    END as ente_target_id,
+                                    e.tipo_evento
+                                FROM eventi e
+                                JOIN enti_militari em ON e.ente_id = em.id
+                                LEFT JOIN enti_militari parent ON em.parent_id = parent.id
+                                LEFT JOIN enti_militari grandparent ON parent.parent_id = grandparent.id
+                                WHERE {where_clause}
+                                AND (em.id = {ente_parent} OR em.parent_id = {ente_parent} OR parent.parent_id = {ente_parent} OR grandparent.parent_id = {ente_parent})
+                            )
+                            SELECT 
+                                em_target.nome,
+                                ea.tipo_evento,
+                                COUNT(*) as count
+                            FROM eventi_aggregati ea
+                            JOIN enti_militari em_target ON ea.ente_target_id = em_target.id
+                            WHERE ea.ente_target_id IS NOT NULL
+                            GROUP BY em_target.nome, ea.tipo_evento
+                            ORDER BY em_target.nome, ea.tipo_evento
+                        """)
+                    else:
+                        # Query con aggregazione ricorsiva per enti di primo livello (livello 0)
+                        cur.execute(f"""
+                            WITH eventi_aggregati AS (
+                                SELECT 
+                                    CASE 
+                                        WHEN em.id = 1 THEN em.id  -- Comando principale stesso
+                                        WHEN em.parent_id = 1 THEN em.id  -- Enti diretti
+                                        WHEN parent.parent_id = 1 THEN parent.id  -- Nipoti → Padre
+                                        WHEN grandparent.parent_id = 1 THEN grandparent.id  -- Pronipoti → Nonno
+                                        ELSE NULL -- Escludi eventi fuori gerarchia
+                                    END as ente_primo_livello_id,
+                                    e.tipo_evento
+                                FROM eventi e
+                                JOIN enti_militari em ON e.ente_id = em.id
+                                LEFT JOIN enti_militari parent ON em.parent_id = parent.id
+                                LEFT JOIN enti_militari grandparent ON parent.parent_id = grandparent.id
+                                WHERE {where_clause}
+                                AND (em.id = 1 OR em.parent_id = 1 OR parent.parent_id = 1 OR grandparent.parent_id = 1)
+                            )
+                            SELECT 
+                                em_target.nome,
+                                ea.tipo_evento,
+                                COUNT(*) as count
+                            FROM eventi_aggregati ea
+                            JOIN enti_militari em_target ON ea.ente_primo_livello_id = em_target.id
+                            WHERE ea.ente_primo_livello_id IS NOT NULL
+                            GROUP BY em_target.nome, ea.tipo_evento
+                            ORDER BY em_target.nome, ea.tipo_evento
+                        """)
+                stacked_data = cur.fetchall()
+                
+                # Debug della query per capire perché i totali sono 0
+                print(f"[EVENTI API STACKED RICORSIVA] Query executed successfully. Raw results count: {len(stacked_data)}")
+                for i, row in enumerate(stacked_data[:5]):  # Prime 5 righe per debug
+                    print(f"[EVENTI API STACKED] Row {i}: {dict(row)}")
+                
+                if stacked_data:
+                    print(f"[EVENTI API STACKED DEBUG] First row example: {dict(stacked_data[0])}")
+                else:
+                    print("[EVENTI API STACKED DEBUG] No stacked_data found")
+                
+        finally:
+            conn.close()
+        
+        if not stacked_data:
+            return jsonify({
+                'success': True,
+                'stackedData': {
+                    'labels': [],
+                    'totals': [],
+                    'backgroundColor': [],
+                    'breakdown': {}
+                }
+            })
+        
+        # Elabora i dati per il formato stacked
+        if livello_3 and ente_specifico_id:
+            # Livello 3: dati per tipo evento (come vista tipologie livello 0)
+            labels = []
+            totals = []
+            backgroundColor = []
+            
+            # Colori per i tipi evento
+            tipo_colors = [
+                'rgba(54, 162, 235, 0.8)',   # Blu - TIPO A
+                'rgba(255, 99, 132, 0.8)',   # Rosa - TIPO B  
+                'rgba(255, 205, 86, 0.8)',   # Giallo - TIPO C
+                'rgba(75, 192, 192, 0.8)',   # Verde acqua - TIPO D
+                'rgba(153, 102, 255, 0.8)',  # Viola - TIPO E
+            ]
+            
+            for i, row in enumerate(stacked_data):
+                labels.append(row['tipo_evento'])
+                totals.append(row['count'])
+                backgroundColor.append(tipo_colors[i % len(tipo_colors)])
+            
+            return jsonify({
+                'success': True,
+                'stackedData': {
+                    'labels': labels,
+                    'totals': totals,
+                    'backgroundColor': backgroundColor,
+                    'breakdown': {}  # Non serve breakdown per livello 3
+                }
+            })
+        else:
+            # Livelli 0-2: dati per enti (comportamento originale)
+            enti_map = {}
+            tipi_evento_trovati = set()
+            
+            # Prima passata: raccoglie tutti i tipi evento trovati e inizializza enti
+            for row in stacked_data:
+                ente_nome = row['nome']
+                tipo_evento = row['tipo_evento']
+                tipi_evento_trovati.add(tipo_evento)
+                
+                if ente_nome not in enti_map:
+                    enti_map[ente_nome] = {}
+        
+        # Usa i tipi evento trovati nel database invece di hardcode
+        tipi_evento = list(tipi_evento_trovati) if tipi_evento_trovati else ['TIPO A', 'TIPO B', 'TIPO C', 'TIPO D', 'TIPO E']
+        
+        # Inizializza tutti gli enti con tutti i tipi evento a 0
+        for ente_nome in enti_map:
+            enti_map[ente_nome] = {tipo: 0 for tipo in tipi_evento}
+        
+        # Popola i dati per tipo evento
+        for row in stacked_data:
+            ente_nome = row['nome']
+            tipo_evento = row['tipo_evento']
+            count = row['count']
+            if ente_nome in enti_map and tipo_evento in enti_map[ente_nome]:
+                enti_map[ente_nome][tipo_evento] = count
+        
+        # Formatta per Chart.js
+        labels = list(enti_map.keys())
+        totals = []
+        breakdown = {}
+        
+        # Colori per gli enti
+        ente_colors = [
+            'rgba(54, 162, 235, 0.8)',   # Blu
+            'rgba(255, 99, 132, 0.8)',   # Rosa
+            'rgba(255, 205, 86, 0.8)',   # Giallo
+            'rgba(75, 192, 192, 0.8)',   # Verde acqua
+            'rgba(153, 102, 255, 0.8)',  # Viola
+            'rgba(255, 159, 64, 0.8)',   # Arancione
+            'rgba(199, 199, 199, 0.8)',  # Grigio
+            'rgba(83, 102, 255, 0.8)'    # Blu scuro
+        ]
+        
+        backgroundColor = []
+        
+        for i, (ente_nome, tipo_counts) in enumerate(enti_map.items()):
+            # Calcola totale per questo ente
+            totale_ente = sum(tipo_counts.values())
+            totals.append(totale_ente)
+            
+            # Breakdown per tipo evento
+            breakdown[ente_nome] = tipo_counts
+            
+            # Colore per questo ente
+            color_index = i % len(ente_colors)
+            backgroundColor.append(ente_colors[color_index])
+        
+        # Statistiche aggregate
+        total_events = sum(totals)
+        unique_entities = len(labels)
+        
+        # Calcolo eventi positivi/negativi se disponibili
+        positive_events = 0
+        negative_events = 0
+        
+        if not carattere_filtro:
+            # Query separata per carattere solo se non è già filtrato
+            with get_auth_db_connection() as conn_stats:
+                with conn_stats.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute(f"""
+                        SELECT carattere, COUNT(*) as count
+                        FROM eventi e
+                        JOIN enti_militari em ON e.ente_id = em.id
+                        LEFT JOIN enti_militari parent ON em.parent_id = parent.id
+                        LEFT JOIN enti_militari grandparent ON parent.parent_id = grandparent.id
+                        WHERE {date_filter}
+                        AND (em.id = 1 OR em.parent_id = 1 OR parent.parent_id = 1 OR grandparent.parent_id = 1)
+                        GROUP BY carattere
+                    """)
+                    carattere_data = cur.fetchall()
+                    
+                    for row in carattere_data:
+                        if row['carattere'] == 'positivo':
+                            positive_events = row['count']
+                        elif row['carattere'] == 'negativo':
+                            negative_events = row['count']
+        
+        stats = {
+            'total_events': total_events,
+            'categories': len(tipi_evento),  # Sempre 5 tipi evento
+            'entities': unique_entities,
+            'positive_events': positive_events,
+            'negative_events': negative_events
+        }
+        
+        # Debug logging per verificare dati
+        print(f"[EVENTI API STACKED] Raw data count: {len(stacked_data)}")
+        print(f"[EVENTI API STACKED] Labels: {labels}")
+        print(f"[EVENTI API STACKED] Totals: {totals}")
+        print(f"[EVENTI API STACKED] Stats: {stats}")
+        print(f"[EVENTI API STACKED] Breakdown keys: {list(breakdown.keys()) if breakdown else 'None'}")
+        print(f"[EVENTI API STACKED] Date filter used: {where_clause}")
+        
+        return jsonify({
+            'success': True,
+            'stackedData': {
+                'labels': labels,
+                'totals': totals,
+                'backgroundColor': backgroundColor,
+                'breakdown': breakdown
+            },
+            'stats': stats
+        })
+        
+    except Exception as e:
+        print(f"[EVENTI] Errore API enti stacked: {e}")
         return jsonify({'error': str(e)}), 500
 
 @eventi.route('/api/enti-livello2')
@@ -1327,17 +1728,21 @@ def api_eventi_dettagli():
     if not is_operatore_or_above():
         return jsonify({'error': 'Accesso negato'}), 403
     
-    carattere = request.args.get('categoria', '')
-    tipo_evento = request.args.get('sottocategoria', '')
+    # Fix parameter mapping: frontend sends categoria/sottocategoria
+    carattere_filter = request.args.get('carattere', '') or request.args.get('categoria', '')  # for filtering by carattere (positive/negative)
+    tipo_evento = request.args.get('sottocategoria', '')  # for filtering by tipo_evento (e.g., tipo_e)
     ente_nome = request.args.get('ente', '')
+    level = request.args.get('level', '0')  # Level indicates drill-down depth
+    aggregate_for_chart = request.args.get('aggregate_for_chart', 'false')  # NEW: Request chart aggregation
     period = request.args.get('period', 'month')
     start_date = request.args.get('start_date', '')
     end_date = request.args.get('end_date', '')
     
     print(f"[EVENTI API] Dettagli richiesti con parametri:")
     print(f"  - ente: '{ente_nome}'")
-    print(f"  - carattere: '{carattere}'")
-    print(f"  - tipo_evento: '{tipo_evento}'")
+    print(f"  - carattere_filter: '{carattere_filter}'") 
+    print(f"  - sottocategoria (tipo_evento): '{tipo_evento}'")
+    print(f"  - level: '{level}'")
     print(f"  - period: '{period}'")
     print(f"  - start_date: '{start_date}'")
     print(f"  - end_date: '{end_date}'")
@@ -1354,47 +1759,119 @@ def api_eventi_dettagli():
         conn = get_auth_db_connection()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                where_conditions = [date_filter]
-                params = []
                 
-                if carattere:
-                    where_conditions.append("e.carattere = %s")
-                    params.append(carattere)
-                if tipo_evento:
-                    where_conditions.append("e.tipo_evento = %s")
-                    params.append(tipo_evento)
-                if ente_nome:
-                    where_conditions.append("em.nome = %s")
-                    params.append(ente_nome)
+                # Al livello 2, usa query ricorsiva come enti-livello2 per includere enti dipendenti
+                if level == '2' and ente_nome:
+                    print(f"[EVENTI API] Livello 2 rilevato - usando query ricorsiva per ente: {ente_nome}")
+                    
+                    # Prima ottieni l'ID dell'ente parent dal nome
+                    cur.execute("SELECT id FROM enti_militari WHERE nome = %s", (ente_nome,))
+                    parent_result = cur.fetchone()
+                    
+                    if not parent_result:
+                        return jsonify({'error': f'Ente parent "{ente_nome}" non trovato'}), 404
+                    
+                    parent_id = parent_result['id']
+                    
+                    # Costruisci filtri aggiuntivi per la query ricorsiva
+                    additional_filters = []
+                    recursive_params = [parent_id]
+                    
+                    if carattere_filter:
+                        additional_filters.append("e.carattere = %s")
+                        recursive_params.append(carattere_filter)
+                    if tipo_evento:
+                        additional_filters.append("e.tipo_evento = %s")
+                        recursive_params.append(tipo_evento)
+                    
+                    where_clause_recursive = date_filter
+                    if additional_filters:
+                        where_clause_recursive += " AND " + " AND ".join(additional_filters)
+                    
+                    # Query ricorsiva per ottenere tutti gli eventi degli enti dipendenti
+                    cur.execute(f"""
+                        WITH RECURSIVE gerarchia_enti AS (
+                            -- Caso base: ente selezionato
+                            SELECT id, nome, parent_id, 0 as livello_rel
+                            FROM enti_militari 
+                            WHERE id = %s
+                            
+                            UNION ALL
+                            
+                            -- Caso ricorsivo: tutti gli enti dipendenti
+                            SELECT em.id, em.nome, em.parent_id, g.livello_rel + 1
+                            FROM enti_militari em
+                            INNER JOIN gerarchia_enti g ON em.parent_id = g.id
+                        )
+                        SELECT 
+                            e.id,
+                            e.data_evento,
+                            e.data_msg_evento,
+                            e.prot_msg_evento,
+                            e.carattere,
+                            e.tipo_evento,
+                            e.rife_evento,
+                            e.note,
+                            em.nome as ente_nome,
+                            te.nome as tipologia_nome,
+                            te.descrizione as tipologia_descrizione,
+                            u.nome || ' ' || u.cognome as creato_da_nome
+                        FROM eventi e
+                        JOIN enti_militari em ON e.ente_id = em.id
+                        JOIN gerarchia_enti g ON em.id = g.id  -- Include solo enti nella gerarchia
+                        LEFT JOIN tipologia_evento te ON e.tipologia_evento_id = te.id
+                        LEFT JOIN utenti u ON e.creato_da = u.id
+                        WHERE {where_clause_recursive}
+                        ORDER BY e.data_msg_evento DESC, e.id DESC
+                        LIMIT 1000
+                    """, recursive_params)
+                    
+                else:
+                    # Livelli 0, 1, 3+ - usa query standard (non ricorsiva)
+                    print(f"[EVENTI API] Livello {level} - usando query standard")
+                    
+                    where_conditions = [date_filter]
+                    params = []
+                    
+                    if carattere_filter:
+                        where_conditions.append("e.carattere = %s")
+                        params.append(carattere_filter)
+                    if tipo_evento:
+                        where_conditions.append("e.tipo_evento = %s")
+                        params.append(tipo_evento)
+                    if ente_nome:
+                        where_conditions.append("em.nome = %s")
+                        params.append(ente_nome)
+                    
+                    where_clause = " AND ".join(where_conditions)
                 
-                where_clause = " AND ".join(where_conditions)
+                    print(f"[EVENTI API] Esecuzione query standard con WHERE: {where_clause}")
+                    print(f"[EVENTI API] Parametri query: {params}")
+                    
+                    # Query corretta con struttura database reale
+                    cur.execute(f"""
+                        SELECT 
+                            e.id,
+                            e.data_evento,
+                            e.data_msg_evento,
+                            e.prot_msg_evento,
+                            e.carattere,
+                            e.tipo_evento,
+                            e.rife_evento,
+                            e.note,
+                            em.nome as ente_nome,
+                            te.nome as tipologia_nome,
+                            te.descrizione as tipologia_descrizione,
+                            u.nome || ' ' || u.cognome as creato_da_nome
+                        FROM eventi e
+                        JOIN enti_militari em ON e.ente_id = em.id
+                        LEFT JOIN tipologia_evento te ON e.tipologia_evento_id = te.id
+                        LEFT JOIN utenti u ON e.creato_da = u.id
+                        WHERE {where_clause}
+                        ORDER BY e.data_msg_evento DESC, e.id DESC
+                        LIMIT 100
+                    """, params)
                 
-                print(f"[EVENTI API] Esecuzione query con WHERE: {where_clause}")
-                print(f"[EVENTI API] Parametri query: {params}")
-                
-                # Query corretta con struttura database reale
-                cur.execute(f"""
-                    SELECT 
-                        e.id,
-                        e.data_evento,
-                        e.data_msg_evento,
-                        e.prot_msg_evento,
-                        e.carattere,
-                        e.tipo_evento,
-                        e.rife_evento,
-                        e.note,
-                        em.nome as ente_nome,
-                        te.nome as tipologia_nome,
-                        te.descrizione as tipologia_descrizione,
-                        u.nome || ' ' || u.cognome as creato_da_nome
-                    FROM eventi e
-                    JOIN enti_militari em ON e.ente_id = em.id
-                    LEFT JOIN tipologia_evento te ON e.tipologia_evento_id = te.id
-                    LEFT JOIN utenti u ON e.creato_da = u.id
-                    WHERE {where_clause}
-                    ORDER BY e.data_msg_evento DESC, e.id DESC
-                    LIMIT 100
-                """, params)
                 results = cur.fetchall()
                 
                 print(f"[EVENTI API] Query eseguita, risultati trovati: {len(results)}")
@@ -1403,6 +1880,18 @@ def api_eventi_dettagli():
                 else:
                     print(f"[EVENTI API] NESSUN RISULTATO - Query: {where_clause}")
                     print(f"[EVENTI API] Parametri query: {params}")
+
+                # Calcola statistiche caratteri per validazione
+                character_stats = {'positivi': 0, 'negativi': 0, 'totale': len(results)}
+                for row in results:
+                    if row['carattere']:
+                        carattere_norm = row['carattere'].lower().strip()
+                        if carattere_norm == 'positivo':
+                            character_stats['positivi'] += 1
+                        elif carattere_norm == 'negativo':
+                            character_stats['negativi'] += 1
+                
+                print(f"[EVENTI API] Statistiche caratteri: {character_stats}")
                 
         finally:
             conn.close()
@@ -1441,11 +1930,70 @@ def api_eventi_dettagli():
                 'creato_da': str(row['creato_da_nome']) if row['creato_da_nome'] else 'N/D'
             } for row in results]
         
-        print(f"[EVENTI API] Ritorno risultati: {len(formatted_results)} eventi")
+        # NEW: Se richiesta aggregazione per grafico, restituisci dati in formato chart
+        if aggregate_for_chart == 'true' and level == '3':
+            print(f"[EVENTI API] Livello 3 - Preparazione dati aggregati per grafico")
+            
+            # Aggrega eventi per mese per creare grafico temporale
+            from collections import defaultdict
+            from datetime import datetime
+            
+            monthly_data = defaultdict(int)
+            
+            for event in results:
+                try:
+                    if event['data_msg_evento']:
+                        # Estrai anno-mese dalla data
+                        date_obj = event['data_msg_evento']
+                        if isinstance(date_obj, str):
+                            date_obj = datetime.strptime(date_obj, '%Y-%m-%d')
+                        
+                        month_key = date_obj.strftime('%Y-%m')
+                        monthly_data[month_key] += 1
+                except Exception as e:
+                    print(f"[EVENTI API] Errore parsing data: {e}")
+                    continue
+            
+            # Ordina per mese e prepara dati chart
+            sorted_months = sorted(monthly_data.keys())
+            labels = []
+            values = []
+            
+            for month in sorted_months:
+                try:
+                    month_obj = datetime.strptime(month, '%Y-%m')
+                    # Formato italiano per le etichette
+                    month_label = month_obj.strftime('%b %Y')
+                    labels.append(month_label)
+                    values.append(monthly_data[month])
+                except:
+                    labels.append(month)
+                    values.append(monthly_data[month])
+            
+            # Colori per il grafico livello 3
+            colors = ['rgba(74, 144, 226, 0.8)' for _ in values]
+            
+            print(f"[EVENTI API] Dati chart generati: {len(labels)} mesi, {sum(values)} eventi totali")
+            
+            return jsonify({
+                'success': True,
+                'labels': labels,
+                'data': values,
+                'backgroundColor': colors,
+                'stats': {
+                    'total_events': sum(values),
+                    'character_stats': character_stats
+                },
+                'chart_data': True  # Indica che sono dati per grafico
+            })
+        
+        # Risposta standard per dettagli
+        print(f"[EVENTI API] Ritorno risultati: {len(formatted_results)} eventi con stats: {character_stats}")
         return jsonify({
             'success': True,
             'data': formatted_results,
-            'total': len(formatted_results)
+            'total': len(formatted_results),
+            'character_stats': character_stats  # Add character statistics to response
         })
         
     except Exception as e:
@@ -1719,7 +2267,7 @@ def cerca_eventi_seguiti():
                         e.data_msg_evento,
                         e.carattere,
                         e.tipo_evento,
-                        e.dettagli_evento,
+                        e.note as dettagli_evento,
                         e.creato_il,
                         em.nome as ente_nome,
                         em.codice as ente_codice
@@ -1763,7 +2311,99 @@ def cerca_eventi_seguiti():
         return jsonify({'error': f'Errore durante la ricerca: {str(e)}'}), 500
 
 
+@eventi.route('/api/debug-tipologie')
+@login_required
+def debug_tipologie():
+    """Debug endpoint per controllare tipologie evento"""
+    if not is_admin():
+        return jsonify({'error': 'Accesso negato'}), 403
+    
+    try:
+        with get_auth_db_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Verifica tutte le tipologie (anche non attive)
+                cur.execute("SELECT id, nome, descrizione, attivo FROM tipologia_evento ORDER BY id")
+                tutte_tipologie = cur.fetchall()
+                
+                # Verifica quanti eventi hanno tipologia_evento_id
+                cur.execute("""
+                    SELECT 
+                        COUNT(*) as totale_eventi,
+                        COUNT(tipologia_evento_id) as eventi_con_tipologia,
+                        COUNT(*) - COUNT(tipologia_evento_id) as eventi_senza_tipologia
+                    FROM eventi
+                """)
+                statistiche_eventi = cur.fetchone()
+                
+                # Esempi di eventi per debug
+                cur.execute("""
+                    SELECT id, prot_msg_evento, tipologia_evento_id, ente_id
+                    FROM eventi 
+                    ORDER BY id DESC 
+                    LIMIT 5
+                """)
+                esempi_eventi = cur.fetchall()
+                
+                return jsonify({
+                    'tipologie_totali': len(tutte_tipologie),
+                    'tipologie': [dict(row) for row in tutte_tipologie],
+                    'statistiche_eventi': dict(statistiche_eventi),
+                    'esempi_eventi': [dict(row) for row in esempi_eventi]
+                })
+                
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@eventi.route('/api/init-tipologie', methods=['POST'])
+@login_required
+def init_tipologie():
+    """Inizializza tipologie evento di base se non esistono"""
+    if not is_admin():
+        return jsonify({'error': 'Accesso negato'}), 403
+    
+    tipologie_base = [
+        {'nome': 'INCIDENTE STRADALE', 'descrizione': 'INCIDENTI STRADALI CHE COINVOLGONO PERSONALE O MEZZI MILITARI'},
+        {'nome': 'INCIDENTE AERONAUTICO', 'descrizione': 'INCIDENTI CHE COINVOLGONO AEROMOBILI MILITARI'},
+        {'nome': 'INCIDENTE NAVALE', 'descrizione': 'INCIDENTI CHE COINVOLGONO UNITÀ NAVALI'},
+        {'nome': 'INCIDENTE DI SERVIZIO', 'descrizione': 'INCIDENTI OCCORSI DURANTE IL SERVIZIO MILITARE'},
+        {'nome': 'MALATTIA PROFESSIONALE', 'descrizione': 'MALATTIE CORRELATE ALL\'ATTIVITÀ LAVORATIVA MILITARE'},
+        {'nome': 'EVENTO DI SICUREZZA', 'descrizione': 'EVENTI RELATIVI ALLA SICUREZZA DELLE INSTALLAZIONI'},
+        {'nome': 'ALTRO', 'descrizione': 'ALTRI TIPI DI EVENTI NON CLASSIFICABILI NELLE CATEGORIE PRECEDENTI'}
+    ]
+    
+    try:
+        with get_auth_db_connection() as conn:
+            with conn.cursor() as cur:
+                tipologie_create = 0
+                
+                for tipologia in tipologie_base:
+                    # Verifica se esiste già
+                    cur.execute("SELECT id FROM tipologia_evento WHERE nome = %s", (tipologia['nome'],))
+                    if not cur.fetchone():
+                        # Crea la tipologia
+                        cur.execute("""
+                            INSERT INTO tipologia_evento (nome, descrizione, attivo)
+                            VALUES (%s, %s, true)
+                        """, (tipologia['nome'], tipologia['descrizione']))
+                        tipologie_create += 1
+                
+                conn.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'tipologie_create': tipologie_create,
+                    'messaggio': f'Sono state create {tipologie_create} tipologie di base'
+                })
+                
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @eventi.errorhandler(500)
 def internal_error(error):
+    # Se è una richiesta API, restituisci JSON
+    if request.path.startswith('/eventi/api/'):
+        return jsonify({'error': 'Errore interno del server'}), 500
+    
+    # Altrimenti, gestisci come una normale pagina web
     flash('Errore interno nel sistema eventi', 'error')
     return redirect(url_for('main.dashboard'))

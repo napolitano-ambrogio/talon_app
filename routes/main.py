@@ -271,7 +271,7 @@ def get_dashboard_stats(user_role):
                     '''
                     SELECT COUNT(*) AS count
                     FROM attivita
-                    WHERE data_ora >= CURRENT_DATE - INTERVAL '7 days'
+                    WHERE data_creazione >= CURRENT_DATE - INTERVAL '7 days'
                     '''
                 )
                 stats['attivita_recenti'] = int(cur.fetchone()['count'])
@@ -367,7 +367,7 @@ def get_admin_dashboard_stats():
                     '''
                     SELECT COUNT(*) AS count
                     FROM attivita
-                    WHERE DATE(data_ora) = CURRENT_DATE
+                    WHERE DATE(data_creazione) = CURRENT_DATE
                     '''
                 )
                 stats['attivita_oggi'] = int(cur.fetchone()['count'])
@@ -376,7 +376,7 @@ def get_admin_dashboard_stats():
                     '''
                     SELECT COUNT(*) AS count
                     FROM attivita
-                    WHERE data_ora >= CURRENT_DATE - INTERVAL '7 days'
+                    WHERE data_creazione >= CURRENT_DATE - INTERVAL '7 days'
                     '''
                 )
                 stats['attivita_settimana'] = int(cur.fetchone()['count'])
@@ -385,7 +385,7 @@ def get_admin_dashboard_stats():
                     '''
                     SELECT COUNT(*) AS count
                     FROM attivita
-                    WHERE data_ora >= CURRENT_DATE - INTERVAL '30 days'
+                    WHERE data_creazione >= CURRENT_DATE - INTERVAL '30 days'
                     '''
                 )
                 stats['attivita_mese'] = int(cur.fetchone()['count'])

@@ -233,9 +233,9 @@
                 <!-- Tipologia Evento e Note integrate nella sezione DATI EVENTO -->
                 <div class="form-group">
                     <label>Tipologia Evento</label>
-                    <p><strong>{{ evento.tipologia_nome or 'N/D' }}</strong></p>
+                    <p><strong>{{ (evento.tipologia_nome or 'N/D') | upper }}</strong></p>
                     {% if evento.tipologia_descrizione %}
-                    <p class="details-text">{{ evento.tipologia_descrizione }}</p>
+                    <p class="details-text">{{ evento.tipologia_descrizione | upper }}</p>
                     {% endif %}
                 </div>
                 
@@ -267,8 +267,8 @@
                                 <td>{{ seguito.prot_msg_evento or seguito.protocollo or 'N/D' }}</td>
                                 <td>{{ seguito.data_msg_evento or 'N/D' }}</td>
                                 <td>
-                                    <span class="dettagli-troncati" title="{{ seguito.tipologia_descrizione or seguito.tipologia_nome or 'N/D' }}">
-                                        {{ seguito.tipologia_descrizione or seguito.tipologia_nome or 'N/D' }}
+                                    <span class="dettagli-troncati" title="{{ (seguito.tipologia_nome or seguito.tipologia_descrizione or 'N/D') | upper }}">
+                                        {{ (seguito.tipologia_nome or seguito.tipologia_descrizione or 'N/D') | upper }}
                                     </span>
                                     <i class="fas fa-external-link-alt seguiti-link-icon" title="Clicca per visualizzare"></i>
                                 </td>

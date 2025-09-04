@@ -36,6 +36,30 @@ class EventiSearchAPI {
         window.confermaSeguitiSelezionati = () => this.confermaSeguitiSelezionati();
         window.rimuoviSeguitoSelezionato = (eventoId) => this.rimuoviSeguitoSelezionato(eventoId);
         window.rimuoviSeguitoDaLista = (index) => this.rimuoviSeguitoDaLista(index);
+        window.resetRicerca = () => this.resetRicerca();
+    }
+
+    resetRicerca() {
+        // Delega al modal manager se disponibile
+        if (this.modalManager && typeof this.modalManager.resetRicerca === 'function') {
+            this.modalManager.resetRicerca();
+        } else {
+            // Fallback: reset manuale dei campi
+            const protocolloInput = document.getElementById('search-protocollo');
+            const dataInput = document.getElementById('search-data');
+            
+            if (protocolloInput) protocolloInput.value = '';
+            if (dataInput) dataInput.value = '';
+            
+            // Reset risultati
+            const risultatiContainer = document.getElementById('risultati-ricerca');
+            if (risultatiContainer) {
+                risultatiContainer.innerHTML = `
+                    <div class="alert alert-info" id="info-ricerca">
+                        <i class="fas fa-info-circle"></i> Inserisci i criteri di ricerca e premi "Cerca Eventi"
+                    </div>`;
+            }
+        }
     }
 
     async cercaEventi() {
@@ -60,6 +84,12 @@ class EventiSearchAPI {
             
             const risultati = await response.json();
             
+            // Controlla se la risposta contiene un errore
+            if (risultati.error) {
+                this.mostraErroreRicerca(risultati.error);
+                return;
+            }
+            
             // Salva risultati per riferimento
             if (this.modalManager) {
                 this.modalManager.setUltimiRisultati(risultati);
@@ -70,7 +100,14 @@ class EventiSearchAPI {
             
         } catch (error) {
             console.error('[SEARCH] Errore durante la ricerca:', error);
-            this.mostraErroreRicerca(error.message);
+            
+            // Gestione specifica per errori di parsing JSON
+            let errorMessage = error.message;
+            if (error.message.includes('Unexpected token')) {
+                errorMessage = 'Errore del server: ricevuta risposta non valida. Controllare i log del server.';
+            }
+            
+            this.mostraErroreRicerca(errorMessage);
         }
     }
 
