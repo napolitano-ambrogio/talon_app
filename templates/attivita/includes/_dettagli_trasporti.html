@@ -1,0 +1,31 @@
+<!-- SEZIONE DETTAGLI TRASPORTI (include modulare) -->
+<div id="dettagli-trasporti" class="form-section detail-section" style="display: none;" data-active="false" data-tipologia-id="4">
+    <h4 class="section-title">DETTAGLI MOVIMENTI E TRASPORTI</h4>
+    
+    <div class="form-group">
+        <label for="tipologia_carico">Tipologia di Carico</label>
+        <input type="text" id="tipologia_carico" name="tipologia_carico" class="form-control">
+    </div>
+    
+    <div class="form-row">
+        <div class="form-group flex-grow">
+            <label for="quantita">Quantità</label>
+            <input type="number" step="any" id="quantita" name="quantita" class="form-control">
+        </div>
+        <div class="form-group">
+            <label for="unita_di_misura">Unità di Misura</label>
+            <select id="unita_di_misura" name="unita_di_misura" class="form-control">
+                <option value="">-- Seleziona --</option>
+                <option value="UNITÀ">Unità</option>
+                <option value="LITRI">Litri</option>
+                <option value="KG">Kg</option>
+                <option value="M3">m³</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label for="mezzo_impiegato">Mezzo Impiegato (Targa/Matricola)</label>
+        <input type="text" id="mezzo_impiegato" name="mezzo_impiegato" class="form-control">
+    </div>
+</div>

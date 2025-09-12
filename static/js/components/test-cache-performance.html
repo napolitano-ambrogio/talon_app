@@ -1,0 +1,1734 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Performance Cache - TALON Sistema Eventi</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .test-panel {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .test-panel h3 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            font-size: 1.3rem;
+        }
+        
+        .test-button {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,123,255,0.3);
+        }
+        
+        .test-button.success {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+        
+        .test-button.warning {
+            background: linear-gradient(45deg, #ffc107, #fd7e14);
+        }
+        
+        .test-button.danger {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+        }
+        
+        .results {
+            background: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .results-header {
+            background: #f1f3f4;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e9ecef;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .results-content {
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .metric-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #007bff;
+            margin: 0;
+        }
+        
+        .metric-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin: 5px 0 0;
+        }
+        
+        .performance-chart {
+            width: 100%;
+            height: 200px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            margin: 15px 0;
+            position: relative;
+        }
+        
+        .log-entry {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 8px 12px;
+            margin: 2px 0;
+            border-radius: 4px;
+            border-left: 3px solid #28a745;
+            background: #f8fff9;
+        }
+        
+        .log-entry.error {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+            color: #721c24;
+        }
+        
+        .log-entry.warning {
+            border-left-color: #ffc107;
+            background: #fffbf0;
+            color: #856404;
+        }
+        
+        .log-entry.info {
+            border-left-color: #17a2b8;
+            background: #f0f9ff;
+            color: #0c5460;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #28a745);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .real-time-monitor {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .toggle-monitor {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            width: 50px;
+            height: 50px;
+            z-index: 1001;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Test Performance Cache TALON</h1>
+            <p>Sistema di verifica avanzato per cache LRU con TTL dinamico</p>
+        </div>
+        
+        <div class="content">
+            <!-- Pannelli di Test -->
+            <div class="test-grid">
+                <div class="test-panel">
+                    <h3>📊 Test Performance Base</h3>
+                    <p>Verifica hit ratio, tempi di risposta e confronto con/senza cache</p>
+                    <button class="test-button" onclick="runPerformanceTest()">
+                        🏃‍♂️ Test Performance
+                    </button>
+                    <button class="test-button success" onclick="runComparisonTest()">
+                        ⚡ Confronto Cache vs No-Cache
+                    </button>
+                </div>
+                
+                <div class="test-panel">
+                    <h3>🧠 Test Gestione Memoria</h3>
+                    <p>Verifica LRU eviction, memory limits e cleanup automatico</p>
+                    <button class="test-button" onclick="runMemoryTest()">
+                        💾 Test Memoria LRU
+                    </button>
+                    <button class="test-button warning" onclick="runMemoryStressTest()">
+                        🔥 Stress Test Memoria
+                    </button>
+                </div>
+                
+                <div class="test-panel">
+                    <h3>⏰ Test TTL e Invalidazione</h3>
+                    <p>Verifica scadenza automatica e invalidazione intelligente</p>
+                    <button class="test-button" onclick="runTTLTest()">
+                        ⌛ Test TTL Dinamico
+                    </button>
+                    <button class="test-button warning" onclick="runInvalidationTest()">
+                        🗑️ Test Invalidazione
+                    </button>
+                </div>
+                
+                <div class="test-panel">
+                    <h3>🎯 Test Preload Strategico</h3>
+                    <p>Verifica preload intelligente e anticipazione navigazione</p>
+                    <button class="test-button success" onclick="runPreloadTest()">
+                        ⚡ Test Preload
+                    </button>
+                    <button class="test-button" onclick="runNavigationTest()">
+                        🧭 Simulazione Navigazione
+                    </button>
+                </div>
+                
+                <div class="test-panel">
+                    <h3>🔄 Test Concorrenza</h3>
+                    <p>Test con richieste simultanee e race conditions</p>
+                    <button class="test-button danger" onclick="runConcurrencyTest()">
+                        ⚡ Test Concorrenza
+                    </button>
+                    <button class="test-button danger" onclick="runRaceConditionTest()">
+                        🏁 Race Conditions
+                    </button>
+                </div>
+                
+                <div class="test-panel">
+                    <h3>📊 Test Eventi Carattere</h3>
+                    <p>Test specifici per il calcolo dei dati carattere eventi positivi/negativi</p>
+                    <button class="test-button success" onclick="runCharacterDataTest()">
+                        🧮 Test Dati Carattere
+                    </button>
+                </div>
+                
+                <div class="test-panel">
+                    <h3>🔬 Test Robustezza Sistema</h3>
+                    <p>Test completo di robustezza, validazione e coerenza dati</p>
+                    <button class="test-button danger" onclick="runSystemRobustnessTest()">
+                        🛡️ Test Robustezza
+                    </button>
+                </div>
+                
+                <div class="test-panel">
+                    <h3>🎯 Test Filtro Carattere</h3>
+                    <p>Test integrazione completa del filtro carattere con grafici e infocard</p>
+                    <button class="test-button warning" onclick="runCharacterFilterIntegrationTest()">
+                        🎛️ Test Filtro Carattere
+                    </button>
+                </div>
+                
+                <div class="test-panel">
+                    <h3>🛠️ Utilità Cache</h3>
+                    <p>Controllo e gestione manuale della cache</p>
+                    <button class="test-button success" onclick="showCacheStats()">
+                        📈 Statistiche Live
+                    </button>
+                    <button class="test-button warning" onclick="clearAllCache()">
+                        🧹 Pulisci Cache
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Monitor Real-time -->
+            <button class="toggle-monitor" onclick="toggleMonitor()" title="Toggle Real-time Monitor">📊</button>
+            <div class="real-time-monitor" id="realTimeMonitor">
+                <strong>📊 Cache Monitor</strong>
+                <div id="monitorContent">Inizializzazione...</div>
+            </div>
+            
+            <!-- Risultati -->
+            <div class="results">
+                <div class="results-header">
+                    📋 Risultati Test Performance
+                    <span style="float: right; color: #28a745;" id="testStatus">In attesa...</span>
+                </div>
+                <div class="results-content" id="resultsContent">
+                    <div class="metric-card">
+                        <p class="metric-value" id="loadStatus">Non inizializzato</p>
+                        <p class="metric-label">Stato Cache Manager</p>
+                    </div>
+                    
+                    <div id="statsGrid" class="stats-grid">
+                        <!-- Statistiche dinamiche -->
+                    </div>
+                    
+                    <div class="performance-chart" id="performanceChart">
+                        📊 Grafici performance appariranno qui dopo i test
+                    </div>
+                    
+                    <div id="testLogs">
+                        <!-- Log dei test -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Carica moduli TALON -->
+    <script src="talon-cache-manager.js"></script>
+    <script src="talon-chart-core.js"></script>
+
+    <script>
+        // ========================================
+        // INIZIALIZZAZIONE SISTEMA TEST
+        // ========================================
+        
+        let cacheManager = null;
+        let testResults = {
+            performance: {},
+            memory: {},
+            ttl: {},
+            preload: {},
+            concurrency: {}
+        };
+        
+        // Mock Chart.js per test
+        if (typeof Chart === 'undefined') {
+            window.Chart = function(ctx, config) {
+                this.destroy = () => console.log('Mock chart destroyed');
+                return this;
+            };
+        }
+        
+        // Inizializzazione
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCacheSystem();
+            startRealTimeMonitor();
+        });
+        
+        function initializeCacheSystem() {
+            try {
+                if (typeof window.TalonCacheManager === 'undefined') {
+                    throw new Error('TalonCacheManager non disponibile');
+                }
+                
+                // Inizializza cache manager per test
+                cacheManager = window.TalonCacheManager.createTalonCache({
+                    maxEntries: 50,
+                    maxMemoryMB: 5,
+                    defaultTTL: 30 * 1000, // 30 secondi per test rapidi
+                    cleanupInterval: 5 * 1000, // 5 secondi per test
+                    compressionEnabled: true,
+                    strategies: {
+                        '/test/api/fast': 10 * 1000,      // 10 secondi
+                        '/test/api/medium': 30 * 1000,    // 30 secondi  
+                        '/test/api/slow': 60 * 1000,      // 60 secondi
+                        'default': 20 * 1000
+                    }
+                });
+                
+                // Setup event listeners per monitoring
+                setupCacheEventListeners();
+                
+                updateStatus('✅ Cache Manager Inizializzato', 'success');
+                
+                // Inizializza anche il core per test
+                if (typeof window.TalonChartCore !== 'undefined') {
+                    window.TalonChartCore.init({
+                        cacheConfig: {
+                            maxEntries: 50,
+                            maxMemoryMB: 5,
+                            compressionEnabled: true
+                        }
+                    });
+                }
+                
+                logTest('✅ Sistema cache inizializzato con successo', 'info');
+                
+            } catch (error) {
+                updateStatus('❌ Errore Inizializzazione', 'error');
+                logTest('❌ Errore: ' + error.message, 'error');
+            }
+        }
+        
+        function setupCacheEventListeners() {
+            if (!cacheManager) return;
+            
+            cacheManager.on('hit', (data) => {
+                logTest(`⚡ CACHE HIT: ${data.key.substring(0, 50)}... (age: ${Math.round(data.age/1000)}s)`, 'info');
+            });
+            
+            cacheManager.on('miss', (data) => {
+                logTest(`💫 CACHE MISS: ${data.key.substring(0, 50)}... ${data.reason ? '(' + data.reason + ')' : ''}`, 'warning');
+            });
+            
+            cacheManager.on('eviction', (data) => {
+                logTest(`🗑️ EVICTION: ${data.evicted.length} entries (${cacheManager.formatBytes(data.freedSpace)})`, 'warning');
+            });
+            
+            cacheManager.on('memoryWarning', (data) => {
+                logTest(`⚠️ MEMORY WARNING: ${data.percentage.toFixed(1)}% utilizzato`, 'error');
+            });
+        }
+        
+        // ========================================
+        // MOCK API PER TEST
+        // ========================================
+        
+        function mockAPICall(endpoint, delay = 100, dataSize = 1000) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    // Genera dati mock realistici
+                    const mockData = {
+                        success: true,
+                        endpoint: endpoint,
+                        timestamp: Date.now(),
+                        data: {
+                            labels: Array.from({length: 10}, (_, i) => `Item ${i + 1}`),
+                            values: Array.from({length: 10}, () => Math.floor(Math.random() * 100)),
+                            metadata: 'x'.repeat(dataSize) // Simula dimensioni dati reali
+                        },
+                        stats: {
+                            total_events: Math.floor(Math.random() * 1000),
+                            positive_events: Math.floor(Math.random() * 500),
+                            negative_events: Math.floor(Math.random() * 200)
+                        }
+                    };
+                    resolve(mockData);
+                }, delay);
+            });
+        }
+        
+        // Override fetch per test
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options = {}) {
+            // Intercetta chiamate API per test
+            if (url.includes('/test/api/')) {
+                const delay = url.includes('fast') ? 50 : url.includes('slow') ? 500 : 200;
+                const size = url.includes('large') ? 5000 : 1000;
+                
+                return Promise.resolve({
+                    ok: true,
+                    json: () => mockAPICall(url, delay, size)
+                });
+            }
+            
+            // Fallback a fetch originale per altre chiamate
+            return originalFetch ? originalFetch.call(this, url, options) : Promise.reject(new Error('Fetch not available'));
+        };
+        
+        // ========================================
+        // TEST PERFORMANCE BASE
+        // ========================================
+        
+        async function runPerformanceTest() {
+            if (!cacheManager) {
+                logTest('❌ Cache manager non disponibile', 'error');
+                return;
+            }
+            
+            updateStatus('🏃‍♂️ Running Performance Test...', 'info');
+            logTest('🚀 Avvio test performance base...', 'info');
+            
+            const testEndpoint = '/test/api/performance';
+            const iterations = 5;
+            const times = [];
+            
+            // Reset cache per test pulito
+            cacheManager.invalidateAll();
+            
+            try {
+                // Test cache miss (prima chiamata)
+                const startMiss = performance.now();
+                const dataMiss = await mockAPICall(testEndpoint, 200);
+                const timeMiss = performance.now() - startMiss;
+                times.push({type: 'miss', time: timeMiss});
+                
+                // Memorizza in cache
+                cacheManager.set(testEndpoint, dataMiss, 30000);
+                
+                // Test cache hits (chiamate successive)
+                for (let i = 0; i < iterations; i++) {
+                    const startHit = performance.now();
+                    const dataHit = await cacheManager.get(testEndpoint);
+                    const timeHit = performance.now() - startHit;
+                    times.push({type: 'hit', time: timeHit});
+                }
+                
+                // Analisi risultati
+                const missTime = times.find(t => t.type === 'miss').time;
+                const hitTimes = times.filter(t => t.type === 'hit').map(t => t.time);
+                const avgHitTime = hitTimes.reduce((a, b) => a + b, 0) / hitTimes.length;
+                
+                const improvement = ((missTime - avgHitTime) / missTime * 100);
+                
+                testResults.performance = {
+                    missTime: missTime.toFixed(2),
+                    avgHitTime: avgHitTime.toFixed(2),
+                    improvement: improvement.toFixed(1),
+                    iterations: iterations
+                };
+                
+                logTest(`⏱️ Cache MISS: ${missTime.toFixed(2)}ms`, 'info');
+                logTest(`⚡ Cache HIT medio: ${avgHitTime.toFixed(2)}ms`, 'info');
+                logTest(`📈 Miglioramento: ${improvement.toFixed(1)}%`, 'info');
+                
+                updateStats();
+                updateStatus('✅ Performance Test Completato', 'success');
+                
+            } catch (error) {
+                logTest('❌ Errore test performance: ' + error.message, 'error');
+                updateStatus('❌ Performance Test Fallito', 'error');
+            }
+        }
+        
+        async function runComparisonTest() {
+            if (!window.TalonChartCore) {
+                logTest('❌ TalonChartCore non disponibile per test confronto', 'error');
+                return;
+            }
+            
+            updateStatus('⚡ Running Comparison Test...', 'info');
+            logTest('🔄 Avvio test confronto cache vs no-cache...', 'info');
+            
+            const testUrls = [
+                '/test/api/fast',
+                '/test/api/medium', 
+                '/test/api/slow'
+            ];
+            
+            const results = {
+                withCache: [],
+                withoutCache: []
+            };
+            
+            try {
+                // Test senza cache
+                for (const url of testUrls) {
+                    const start = performance.now();
+                    await window.TalonChartCore.fetchWithCache(url, {skipCache: true});
+                    const time = performance.now() - start;
+                    results.withoutCache.push({url, time});
+                }
+                
+                // Test con cache (dovrebbe essere cache hit)
+                for (const url of testUrls) {
+                    const start = performance.now();
+                    await window.TalonChartCore.fetchWithCache(url);
+                    const time = performance.now() - start;
+                    results.withCache.push({url, time});
+                }
+                
+                // Analizza risultati
+                const totalTimeWithout = results.withoutCache.reduce((sum, r) => sum + r.time, 0);
+                const totalTimeWith = results.withCache.reduce((sum, r) => sum + r.time, 0);
+                const improvement = ((totalTimeWithout - totalTimeWith) / totalTimeWithout * 100);
+                
+                logTest(`📊 Tempo totale SENZA cache: ${totalTimeWithout.toFixed(2)}ms`, 'info');
+                logTest(`📊 Tempo totale CON cache: ${totalTimeWith.toFixed(2)}ms`, 'info');
+                logTest(`🚀 Miglioramento complessivo: ${improvement.toFixed(1)}%`, 'info');
+                
+                updateStatus('✅ Comparison Test Completato', 'success');
+                
+            } catch (error) {
+                logTest('❌ Errore test confronto: ' + error.message, 'error');
+                updateStatus('❌ Comparison Test Fallito', 'error');
+            }
+        }
+        
+        // ========================================
+        // TEST GESTIONE MEMORIA LRU
+        // ========================================
+        
+        async function runMemoryTest() {
+            if (!cacheManager) {
+                logTest('❌ Cache manager non disponibile', 'error');
+                return;
+            }
+            
+            updateStatus('💾 Running Memory Test...', 'info');
+            logTest('🧠 Avvio test gestione memoria LRU...', 'info');
+            
+            // Reset cache
+            cacheManager.invalidateAll();
+            
+            const maxEntries = cacheManager.config.maxEntries;
+            const testData = Array.from({length: maxEntries + 10}, (_, i) => ({
+                key: `/test/memory/item-${i}`,
+                data: `Data for item ${i}`.repeat(100) // ~1KB per entry
+            }));
+            
+            try {
+                // Riempi cache oltre il limite
+                for (const item of testData) {
+                    cacheManager.set(item.key, item.data);
+                }
+                
+                // Verifica stato cache
+                const stats = cacheManager.getStatistics();
+                const report = cacheManager.getDetailedReport();
+                
+                logTest(`📦 Entries in cache: ${stats.currentEntries}/${maxEntries}`, 'info');
+                logTest(`💾 Memoria utilizzata: ${stats.memoryUsageMB} MB`, 'info');
+                logTest(`🗑️ Evictions eseguite: ${stats.evictions}`, 'info');
+                
+                // Test LRU order
+                const firstKey = testData[0].key;
+                const lastKey = testData[testData.length - 1].key;
+                
+                const firstExists = await cacheManager.get(firstKey);
+                const lastExists = await cacheManager.get(lastKey);
+                
+                logTest(`🔄 Primo elemento (dovrebbe essere evicted): ${firstExists ? 'PRESENTE' : 'EVICTED ✅'}`, 
+                       firstExists ? 'warning' : 'info');
+                logTest(`🆕 Ultimo elemento (dovrebbe essere presente): ${lastExists ? 'PRESENTE ✅' : 'EVICTED'}`, 
+                       lastExists ? 'info' : 'warning');
+                
+                testResults.memory = {
+                    maxEntries: maxEntries,
+                    finalEntries: stats.currentEntries,
+                    memoryUsage: stats.memoryUsageMB,
+                    evictions: stats.evictions,
+                    lruWorking: !firstExists && lastExists
+                };
+                
+                updateStats();
+                updateStatus('✅ Memory Test Completato', 'success');
+                
+            } catch (error) {
+                logTest('❌ Errore test memoria: ' + error.message, 'error');
+                updateStatus('❌ Memory Test Fallito', 'error');
+            }
+        }
+        
+        async function runMemoryStressTest() {
+            if (!cacheManager) {
+                logTest('❌ Cache manager non disponibile', 'error');
+                return;
+            }
+            
+            updateStatus('🔥 Running Memory Stress Test...', 'warning');
+            logTest('💥 Avvio stress test memoria...', 'warning');
+            
+            const iterations = 100;
+            const largeDataSize = 10000; // ~10KB per entry
+            
+            try {
+                const startStats = cacheManager.getStatistics();
+                
+                // Stress test con dati grandi
+                for (let i = 0; i < iterations; i++) {
+                    const key = `/stress/test/item-${i}`;
+                    const largeData = {
+                        id: i,
+                        data: 'X'.repeat(largeDataSize),
+                        timestamp: Date.now(),
+                        metadata: Array.from({length: 100}, (_, j) => `metadata-${j}`)
+                    };
+                    
+                    cacheManager.set(key, largeData);
+                    
+                    // Log progress every 20 items
+                    if (i % 20 === 0) {
+                        const currentStats = cacheManager.getStatistics();
+                        logTest(`🔥 Progress: ${i}/${iterations} - Memoria: ${currentStats.memoryUsageMB}MB`, 'warning');
+                        
+                        // Update progress bar
+                        const progress = (i / iterations) * 100;
+                        updateProgressBar(progress);
+                    }
+                }
+                
+                const finalStats = cacheManager.getStatistics();
+                
+                logTest(`📊 Stress test completato:`, 'info');
+                logTest(`   - Entries create: ${iterations}`, 'info');
+                logTest(`   - Entries finali: ${finalStats.currentEntries}`, 'info');
+                logTest(`   - Memoria finale: ${finalStats.memoryUsageMB} MB`, 'info');
+                logTest(`   - Evictions totali: ${finalStats.evictions - startStats.evictions}`, 'info');
+                logTest(`   - Hit ratio: ${finalStats.hitRatio}%`, 'info');
+                
+                updateProgressBar(100);
+                updateStatus('✅ Stress Test Completato', 'success');
+                
+            } catch (error) {
+                logTest('❌ Errore stress test: ' + error.message, 'error');
+                updateStatus('❌ Stress Test Fallito', 'error');
+            }
+        }
+        
+        // ========================================
+        // TEST TTL E INVALIDAZIONE
+        // ========================================
+        
+        async function runTTLTest() {
+            if (!cacheManager) {
+                logTest('❌ Cache manager non disponibile', 'error');
+                return;
+            }
+            
+            updateStatus('⌛ Running TTL Test...', 'info');
+            logTest('⏰ Avvio test TTL dinamico...', 'info');
+            
+            const shortTTL = 2000; // 2 secondi
+            const longTTL = 10000; // 10 secondi
+            
+            try {
+                // Memorizza con TTL breve
+                const shortKey = '/test/ttl/short';
+                const longKey = '/test/ttl/long';
+                
+                cacheManager.set(shortKey, {data: 'short ttl data'}, shortTTL);
+                cacheManager.set(longKey, {data: 'long ttl data'}, longTTL);
+                
+                logTest(`📝 Memorizzati dati con TTL: ${shortTTL}ms e ${longTTL}ms`, 'info');
+                
+                // Verifica immediata
+                const immediateShort = await cacheManager.get(shortKey);
+                const immediateLong = await cacheManager.get(longKey);
+                
+                logTest(`✅ Verifica immediata - Short: ${immediateShort ? 'OK' : 'FAIL'}, Long: ${immediateLong ? 'OK' : 'FAIL'}`, 'info');
+                
+                // Attendi scadenza TTL breve
+                logTest('⏳ Attendo 3 secondi per scadenza TTL breve...', 'warning');
+                
+                setTimeout(async () => {
+                    const expiredShort = await cacheManager.get(shortKey);
+                    const validLong = await cacheManager.get(longKey);
+                    
+                    logTest(`🕐 Dopo 3s - Short: ${expiredShort ? 'FAIL (non scaduto!)' : 'OK (scaduto ✅)'}, Long: ${validLong ? 'OK (ancora valido ✅)' : 'FAIL (scaduto troppo presto!)'}`, expiredShort ? 'error' : 'info');
+                    
+                    testResults.ttl = {
+                        shortExpired: !expiredShort,
+                        longValid: !!validLong
+                    };
+                    
+                    updateStatus('✅ TTL Test Completato', 'success');
+                }, 3000);
+                
+            } catch (error) {
+                logTest('❌ Errore test TTL: ' + error.message, 'error');
+                updateStatus('❌ TTL Test Fallito', 'error');
+            }
+        }
+        
+        async function runInvalidationTest() {
+            if (!cacheManager) {
+                logTest('❌ Cache manager non disponibile', 'error');
+                return;
+            }
+            
+            updateStatus('🗑️ Running Invalidation Test...', 'warning');
+            logTest('🔄 Avvio test invalidazione intelligente...', 'info');
+            
+            try {
+                // Popola cache con pattern diversi
+                const testPatterns = [
+                    '/eventi/api/dashboard-data',
+                    '/eventi/api/enti-livello1', 
+                    '/eventi/api/enti-livello2',
+                    '/test/other/data1',
+                    '/test/other/data2'
+                ];
+                
+                for (const pattern of testPatterns) {
+                    cacheManager.set(pattern, {data: `Data for ${pattern}`});
+                }
+                
+                const initialCount = cacheManager.getStatistics().currentEntries;
+                logTest(`📦 Memorizzati ${initialCount} elementi in cache`, 'info');
+                
+                // Test invalidazione per pattern
+                const invalidated = cacheManager.invalidate('/eventi/api/');
+                logTest(`🗑️ Invalidati ${invalidated.length} elementi con pattern '/eventi/api/'`, 'info');
+                
+                // Verifica risultato
+                const remainingCount = cacheManager.getStatistics().currentEntries;
+                const expectedRemaining = testPatterns.filter(p => !p.includes('/eventi/api/')).length;
+                
+                logTest(`📊 Elementi rimasti: ${remainingCount} (attesi: ${expectedRemaining})`, remainingCount === expectedRemaining ? 'info' : 'error');
+                
+                // Test invalidazione completa
+                const totalInvalidated = cacheManager.invalidateAll();
+                logTest(`🧹 Invalidazione completa: ${totalInvalidated} elementi rimossi`, 'info');
+                
+                const finalCount = cacheManager.getStatistics().currentEntries;
+                logTest(`📝 Cache finale: ${finalCount} elementi (dovrebbe essere 0)`, finalCount === 0 ? 'info' : 'error');
+                
+                updateStatus('✅ Invalidation Test Completato', 'success');
+                
+            } catch (error) {
+                logTest('❌ Errore test invalidazione: ' + error.message, 'error');
+                updateStatus('❌ Invalidation Test Fallito', 'error');
+            }
+        }
+        
+        // ========================================
+        // TEST PRELOAD E NAVIGAZIONE
+        // ========================================
+        
+        async function runPreloadTest() {
+            if (!cacheManager) {
+                logTest('❌ Cache manager non disponibile', 'error');
+                return;
+            }
+            
+            updateStatus('⚡ Running Preload Test...', 'info');
+            logTest('🎯 Avvio test preload strategico...', 'info');
+            
+            const preloadUrls = [
+                '/test/api/preload1',
+                '/test/api/preload2', 
+                '/test/api/preload3'
+            ];
+            
+            try {
+                // Reset per test pulito
+                cacheManager.invalidateAll();
+                
+                // Avvia preload in background
+                const preloadPromises = preloadUrls.map(url => 
+                    cacheManager.preload(url, () => mockAPICall(url, 100), {
+                        ttl: 30000,
+                        metadata: {trigger: 'test_preload'}
+                    })
+                );
+                
+                // Attendi completamento preload
+                await Promise.all(preloadPromises);
+                
+                logTest('⚡ Preload completato, verifica disponibilità...', 'info');
+                
+                // Verifica che i dati siano stati precaricati
+                let preloadSuccesses = 0;
+                for (const url of preloadUrls) {
+                    const start = performance.now();
+                    const data = await cacheManager.get(url);
+                    const time = performance.now() - start;
+                    
+                    if (data && time < 5) { // Dovrebbe essere quasi istantaneo se precaricato
+                        preloadSuccesses++;
+                        logTest(`✅ Preload success per ${url}: ${time.toFixed(2)}ms`, 'info');
+                    } else {
+                        logTest(`❌ Preload failed per ${url}: ${data ? 'presente ma lento' : 'non trovato'}`, 'error');
+                    }
+                }
+                
+                const successRate = (preloadSuccesses / preloadUrls.length) * 100;
+                logTest(`📊 Tasso successo preload: ${successRate.toFixed(1)}%`, successRate > 80 ? 'info' : 'warning');
+                
+                const stats = cacheManager.getStatistics();
+                logTest(`⚡ Hit preload registrati: ${stats.preloadHits}`, 'info');
+                
+                updateStatus('✅ Preload Test Completato', 'success');
+                
+            } catch (error) {
+                logTest('❌ Errore test preload: ' + error.message, 'error');
+                updateStatus('❌ Preload Test Fallito', 'error');
+            }
+        }
+        
+        async function runNavigationTest() {
+            if (!window.TalonChartCore) {
+                logTest('❌ TalonChartCore non disponibile', 'error');
+                return;
+            }
+            
+            updateStatus('🧭 Running Navigation Simulation...', 'info');
+            logTest('👤 Simulazione pattern navigazione utente...', 'info');
+            
+            // Simula pattern navigazione tipico TALON
+            const navigationFlow = [
+                {url: '/eventi/api/dashboard-data?period=year', description: 'Dashboard iniziale'},
+                {url: '/eventi/api/enti-livello1?tipo_evento=tipo_a&period=year', description: 'Drill-down TIPO A'},
+                {url: '/eventi/api/enti-livello2?tipo_evento=tipo_a&ente_parent=COMANDO_LOG&period=year', description: 'Sottoenti'},
+                {url: '/eventi/api/dettagli?tipo_evento=tipo_a&ente=ENTE_SPECIFICO&period=year', description: 'Dettagli eventi'},
+                {url: '/eventi/api/dashboard-data?period=year', description: 'Ritorno dashboard (cache hit atteso)'},
+                {url: '/eventi/api/enti-livello1?tipo_evento=tipo_a&period=year', description: 'Re-drill TIPO A (cache hit atteso)'}
+            ];
+            
+            try {
+                const timings = [];
+                const initialStats = cacheManager ? cacheManager.getStatistics() : {hits: 0, misses: 0};
+                
+                for (let i = 0; i < navigationFlow.length; i++) {
+                    const step = navigationFlow[i];
+                    logTest(`🚶 Step ${i + 1}: ${step.description}`, 'info');
+                    
+                    const start = performance.now();
+                    await window.TalonChartCore.fetchWithCache(step.url);
+                    const time = performance.now() - start;
+                    
+                    timings.push({step: i + 1, time, description: step.description});
+                    logTest(`   ⏱️ Tempo: ${time.toFixed(2)}ms`, time < 50 ? 'info' : 'warning');
+                    
+                    // Piccola pausa per simulare interazione utente
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+                
+                const finalStats = cacheManager ? cacheManager.getStatistics() : {hits: 0, misses: 0};
+                const hitsDuringTest = finalStats.hits - initialStats.hits;
+                const totalRequests = navigationFlow.length;
+                const hitRatio = (hitsDuringTest / totalRequests) * 100;
+                
+                logTest(`📊 Statistiche navigazione:`, 'info');
+                logTest(`   - Richieste totali: ${totalRequests}`, 'info');
+                logTest(`   - Cache hits: ${hitsDuringTest}`, 'info');
+                logTest(`   - Hit ratio: ${hitRatio.toFixed(1)}%`, 'info');
+                
+                // Gli ultimi step dovrebbero essere cache hits
+                const returnSteps = timings.slice(-2);
+                const fastReturns = returnSteps.filter(t => t.time < 50).length;
+                const returnEfficiency = (fastReturns / returnSteps.length) * 100;
+                
+                logTest(`🔄 Efficienza ritorno: ${returnEfficiency.toFixed(1)}% (${fastReturns}/${returnSteps.length} rapidi)`, 
+                       returnEfficiency > 50 ? 'info' : 'warning');
+                
+                updateStatus('✅ Navigation Test Completato', 'success');
+                
+            } catch (error) {
+                logTest('❌ Errore simulazione navigazione: ' + error.message, 'error');
+                updateStatus('❌ Navigation Test Fallito', 'error');
+            }
+        }
+        
+        // ========================================
+        // TEST CONCORRENZA
+        // ========================================
+        
+        async function runConcurrencyTest() {
+            if (!cacheManager) {
+                logTest('❌ Cache manager non disponibile', 'error');
+                return;
+            }
+            
+            updateStatus('⚡ Running Concurrency Test...', 'warning');
+            logTest('🔀 Avvio test richieste concorrenti...', 'warning');
+            
+            const concurrentRequests = 20;
+            const sameEndpoint = '/test/api/concurrent';
+            
+            try {
+                // Reset cache
+                cacheManager.invalidateAll();
+                
+                // Crea array di promise concorrenti
+                const concurrentPromises = Array.from({length: concurrentRequests}, (_, i) => 
+                    (async () => {
+                        const start = performance.now();
+                        const result = await cacheManager.get(sameEndpoint) || 
+                                     await cacheManager.set(sameEndpoint, await mockAPICall(sameEndpoint), 30000) ||
+                                     await cacheManager.get(sameEndpoint);
+                        const time = performance.now() - start;
+                        return {id: i, time, result: !!result};
+                    })()
+                );
+                
+                // Esegui tutto in parallelo
+                const results = await Promise.all(concurrentPromises);
+                
+                // Analizza risultati
+                const successfulRequests = results.filter(r => r.result).length;
+                const avgTime = results.reduce((sum, r) => sum + r.time, 0) / results.length;
+                const minTime = Math.min(...results.map(r => r.time));
+                const maxTime = Math.max(...results.map(r => r.time));
+                
+                logTest(`📊 Risultati concorrenza:`, 'info');
+                logTest(`   - Richieste: ${concurrentRequests}`, 'info');
+                logTest(`   - Successi: ${successfulRequests}`, 'info');
+                logTest(`   - Tempo medio: ${avgTime.toFixed(2)}ms`, 'info');
+                logTest(`   - Tempo min/max: ${minTime.toFixed(2)}ms / ${maxTime.toFixed(2)}ms`, 'info');
+                
+                const stats = cacheManager.getStatistics();
+                logTest(`💾 Stato cache post-test: ${stats.currentEntries} entries`, 'info');
+                
+                updateStatus('✅ Concurrency Test Completato', 'success');
+                
+            } catch (error) {
+                logTest('❌ Errore test concorrenza: ' + error.message, 'error');
+                updateStatus('❌ Concurrency Test Fallito', 'error');
+            }
+        }
+        
+        async function runRaceConditionTest() {
+            if (!window.TalonChartCore) {
+                logTest('❌ TalonChartCore non disponibile', 'error');
+                return;
+            }
+            
+            updateStatus('🏁 Running Race Condition Test...', 'warning');
+            logTest('⚡ Test race conditions con fetchWithCache...', 'warning');
+            
+            const raceEndpoint = '/test/api/race-condition';
+            const simultaneousCalls = 10;
+            
+            try {
+                // Assicurati che l'endpoint non sia in cache
+                if (cacheManager) {
+                    cacheManager.invalidate(raceEndpoint);
+                }
+                
+                // Avvia chiamate simultanee alla stessa API
+                const racePromises = Array.from({length: simultaneousCalls}, (_, i) => 
+                    (async () => {
+                        const start = performance.now();
+                        const result = await window.TalonChartCore.fetchWithCache(raceEndpoint);
+                        const time = performance.now() - start;
+                        return {
+                            id: i,
+                            time,
+                            dataId: result?.data?.metadata?.substring(0, 10) || 'unknown',
+                            success: !!result
+                        };
+                    })()
+                );
+                
+                const raceResults = await Promise.all(racePromises);
+                
+                // Analizza race conditions
+                const uniqueDataIds = new Set(raceResults.map(r => r.dataId));
+                const allSuccess = raceResults.every(r => r.success);
+                const timings = raceResults.map(r => r.time);
+                const avgTime = timings.reduce((a, b) => a + b, 0) / timings.length;
+                
+                logTest(`🏁 Risultati race condition:`, 'info');
+                logTest(`   - Chiamate simultanee: ${simultaneousCalls}`, 'info');
+                logTest(`   - Tutte riuscite: ${allSuccess ? '✅' : '❌'}`, allSuccess ? 'info' : 'error');
+                logTest(`   - Dati unici ricevuti: ${uniqueDataIds.size} ${uniqueDataIds.size === 1 ? '✅' : '⚠️'}`, uniqueDataIds.size === 1 ? 'info' : 'warning');
+                logTest(`   - Tempo medio: ${avgTime.toFixed(2)}ms`, 'info');
+                
+                if (uniqueDataIds.size === 1) {
+                    logTest('✅ Race condition gestita correttamente - tutti ricevono stessi dati', 'info');
+                } else {
+                    logTest('⚠️ Possibile race condition - dati inconsistenti', 'warning');
+                }
+                
+                updateStatus('✅ Race Condition Test Completato', 'success');
+                
+            } catch (error) {
+                logTest('❌ Errore test race condition: ' + error.message, 'error');
+                updateStatus('❌ Race Condition Test Fallito', 'error');
+            }
+        }
+        
+        // ========================================
+        // TEST SPECIFICI EVENTI CARATTERE
+        // ========================================
+        
+        async function runCharacterDataTest() {
+            try {
+                updateStatus('⏳ Testando calcolo dati carattere eventi...', 'loading');
+                logTest('🧪 === TEST CALCOLO DATI CARATTERE ===', 'info');
+                
+                if (!window.TalonChartCore || typeof window.TalonChartCore.calculateCharacterDataFromEventDetails !== 'function') {
+                    logTest('❌ Funzione calculateCharacterDataFromEventDetails non disponibile', 'error');
+                    updateStatus('❌ Test Dati Carattere Fallito', 'error');
+                    return;
+                }
+                
+                const startTime = performance.now();
+                
+                // Test 1: Calcolo senza filtri (tutti gli eventi)
+                logTest('🔍 Test 1: Calcolo eventi carattere senza filtri', 'info');
+                const result1 = await window.TalonChartCore.calculateCharacterDataFromEventDetails();
+                
+                if (result1 && result1.success) {
+                    logTest(`✅ Dati calcolati: ${result1.positivi} positivi, ${result1.negativi} negativi, ${result1.totale} totali`, 'success');
+                } else {
+                    logTest(`❌ Test 1 fallito: ${result1 ? result1.error : 'Nessun dato'}`, 'error');
+                }
+                
+                // Test 2: Con filtro per categoria (se disponibile)
+                logTest('🔍 Test 2: Calcolo eventi con filtro categoria', 'info');
+                const result2 = await window.TalonChartCore.calculateCharacterDataFromEventDetails('TIPO A');
+                
+                if (result2 && result2.success) {
+                    logTest(`✅ Filtro TIPO A: ${result2.positivi} positivi, ${result2.negativi} negativi, ${result2.totale} totali`, 'success');
+                } else {
+                    logTest(`❌ Test 2 fallito: ${result2 ? result2.error : 'Nessun dato'}`, 'error');
+                }
+                
+                // Test 3: Performance del caching
+                logTest('🔍 Test 3: Performance caching chiamate ripetute', 'info');
+                const cache1Start = performance.now();
+                const cachedResult1 = await window.TalonChartCore.calculateCharacterDataFromEventDetails();
+                const cache1Time = performance.now() - cache1Start;
+                
+                const cache2Start = performance.now();
+                const cachedResult2 = await window.TalonChartCore.calculateCharacterDataFromEventDetails();
+                const cache2Time = performance.now() - cache2Start;
+                
+                const speedImprovement = cache1Time > 0 ? ((cache1Time - cache2Time) / cache1Time * 100).toFixed(1) : 0;
+                logTest(`⚡ Prima chiamata: ${cache1Time.toFixed(1)}ms | Seconda chiamata: ${cache2Time.toFixed(1)}ms`, 'info');
+                logTest(`🚀 Miglioramento velocità cache: ${speedImprovement}%`, cache2Time < cache1Time ? 'success' : 'warning');
+                
+                // Test 4: Verifica integrazione con updateInfoCards
+                logTest('🔍 Test 4: Integrazione con updateInfoCards', 'info');
+                if (window.TalonChartCore.updateInfoCards) {
+                    // Simula chiamata livello 0 tipologie senza stats
+                    window.TalonChartCore.updateInfoCards([100, 50, 75], null, { viewType: 'tipologie', level: 0 });
+                    logTest('✅ Chiamata updateInfoCards per livello 0 eseguita', 'success');
+                    
+                    // Attendi un po' per vedere se la chiamata asincrona si completa
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    logTest('⏳ Atteso completamento chiamata asincrona dati carattere', 'info');
+                } else {
+                    logTest('❌ Funzione updateInfoCards non disponibile', 'error');
+                }
+                
+                const totalTime = performance.now() - startTime;
+                logTest(`🏁 Test completato in ${totalTime.toFixed(1)}ms`, 'success');
+                updateStatus('✅ Test Dati Carattere Completato', 'success');
+                
+            } catch (error) {
+                logTest('❌ Errore test dati carattere: ' + error.message, 'error');
+                updateStatus('❌ Test Dati Carattere Fallito', 'error');
+            }
+        }
+        
+        // ========================================
+        // TEST ROBUSTEZZA SISTEMA COMPLETO
+        // ========================================
+        
+        async function runSystemRobustnessTest() {
+            try {
+                updateStatus('⏳ Testando robustezza sistema completo...', 'loading');
+                logTest('🔬 === TEST ROBUSTEZZA SISTEMA ===', 'info');
+                
+                if (!window.TalonChartCore) {
+                    logTest('❌ TalonChartCore non disponibile', 'error');
+                    updateStatus('❌ Test Robustezza Fallito', 'error');
+                    return;
+                }
+                
+                const startTime = performance.now();
+                let allTestsPassed = true;
+                
+                // Test 1: Verifica DataValidator
+                logTest('🔍 Test 1: Verifica DataValidator e sistema di validazione', 'info');
+                if (window.TalonChartCore.dataValidator) {
+                    logTest('✅ DataValidator disponibile', 'success');
+                    
+                    // Test validazione base
+                    const testData = [100, 50, 75];
+                    const testStats = { positive_events: 60, negative_events: 40, tipologie: 3 };
+                    
+                    const validation = await window.TalonChartCore.dataValidator.validateLevel(
+                        testData, testStats, 0, 'tipologie', { test: true }
+                    );
+                    
+                    if (validation && validation.validation) {
+                        logTest(`✅ Validazione completata - Valido: ${validation.validation.isValid}`, 'success');
+                        logTest(`📊 Risultati: Total=${validation.totalEvents}, Pos=${validation.positiveEvents}, Neg=${validation.negativeEvents}`, 'info');
+                    } else {
+                        logTest('❌ Validazione fallita', 'error');
+                        allTestsPassed = false;
+                    }
+                } else {
+                    logTest('❌ DataValidator non disponibile', 'error');
+                    allTestsPassed = false;
+                }
+                
+                // Test 2: Verifica calcolo statistiche isolate
+                logTest('🔍 Test 2: Calcolo statistiche isolate per livelli', 'info');
+                if (window.TalonChartCore.calculateLevelStatistics) {
+                    const testResults = [];
+                    
+                    // Testa tutti i livelli
+                    for (let level = 0; level <= 3; level++) {
+                        const testData = [Math.random() * 100, Math.random() * 50, Math.random() * 75];
+                        const testStats = { 
+                            positive_events: Math.floor(Math.random() * 50), 
+                            negative_events: Math.floor(Math.random() * 30),
+                            tipologie: level === 0 ? 3 : 1
+                        };
+                        
+                        const result = await window.TalonChartCore.calculateLevelStatistics(
+                            testData, testStats, level, 'tipologie', { levelTest: level }
+                        );
+                        
+                        testResults.push({
+                            level: level,
+                            isValid: result.validation.isValid,
+                            totalEvents: result.totalEvents,
+                            warnings: result.validation.warnings.length
+                        });
+                        
+                        logTest(`📊 Level ${level}: Total=${result.totalEvents}, Valido=${result.validation.isValid}, Warnings=${result.validation.warnings.length}`, 
+                               result.validation.isValid ? 'success' : 'warning');
+                    }
+                    
+                    const validLevels = testResults.filter(r => r.isValid).length;
+                    logTest(`✅ Livelli validati: ${validLevels}/4`, validLevels === 4 ? 'success' : 'warning');
+                } else {
+                    logTest('❌ calculateLevelStatistics non disponibile', 'error');
+                    allTestsPassed = false;
+                }
+                
+                // Test 3: Verifica updateInfoCards robusta
+                logTest('🔍 Test 3: updateInfoCards con parametri obbligatori', 'info');
+                if (window.TalonChartCore.updateInfoCards) {
+                    try {
+                        // Test con parametri corretti
+                        const result = await window.TalonChartCore.updateInfoCards(
+                            [100, 50, 75], 
+                            { positive_events: 60, negative_events: 40 }, 
+                            { viewType: 'tipologie', level: 0, context: { test: true } }
+                        );
+                        
+                        if (result && result.validation) {
+                            logTest(`✅ updateInfoCards funziona - Valido: ${result.validation.isValid}`, 'success');
+                        } else {
+                            logTest('⚠️ updateInfoCards restituisce risultato parziale', 'warning');
+                        }
+                        
+                        // Test con parametri mancanti (dovrebbe fallire)
+                        try {
+                            await window.TalonChartCore.updateInfoCards([100], null, {});
+                            logTest('❌ updateInfoCards non ha rilevato parametri mancanti', 'error');
+                            allTestsPassed = false;
+                        } catch (error) {
+                            logTest('✅ updateInfoCards correttamente rifiuta parametri mancanti', 'success');
+                        }
+                        
+                    } catch (error) {
+                        logTest(`❌ Errore test updateInfoCards: ${error.message}`, 'error');
+                        allTestsPassed = false;
+                    }
+                } else {
+                    logTest('❌ updateInfoCards non disponibile', 'error');
+                    allTestsPassed = false;
+                }
+                
+                // Test 4: Simulazione cambio filtri
+                logTest('🔍 Test 4: Simulazione robustezza con cambio filtri', 'info');
+                const originalPeriod = window.TalonChartCore.state ? window.TalonChartCore.state.currentPeriod : 'unknown';
+                logTest(`📅 Periodo corrente: ${originalPeriod}`, 'info');
+                
+                // Simula diversi scenari di filtro
+                const filterScenarios = [
+                    { period: 'month', category: 'TIPO A' },
+                    { period: 'quarter', category: 'TIPO B' },
+                    { period: 'year', category: null }
+                ];
+                
+                for (const scenario of filterScenarios) {
+                    try {
+                        // Simula chiamata con filtri specifici
+                        const result = await window.TalonChartCore.calculateLevelStatistics(
+                            [Math.random() * 100], 
+                            null, 
+                            1, 
+                            'tipologie', 
+                            { 
+                                simulatedPeriod: scenario.period,
+                                currentCategory: scenario.category,
+                                filterTest: true
+                            }
+                        );
+                        
+                        logTest(`✅ Scenario ${scenario.period}/${scenario.category || 'all'}: Valido=${result.validation.isValid}`, 
+                               result.validation.isValid ? 'success' : 'warning');
+                    } catch (error) {
+                        logTest(`❌ Errore scenario filtri: ${error.message}`, 'error');
+                        allTestsPassed = false;
+                    }
+                }
+                
+                // Test 5: Controllo coerenza dati
+                logTest('🔍 Test 5: Controllo coerenza tra grafico e infocard', 'info');
+                if (window.TalonChartCore.dataValidator) {
+                    const testScenarios = [
+                        { graphData: [100, 50, 25], statsTotal: 175, shouldBeValid: true },
+                        { graphData: [100, 50, 25], statsTotal: 200, shouldBeValid: false }, // Discrepanza
+                        { graphData: [0], statsTotal: 0, shouldBeValid: true },
+                        { graphData: [50], statsTotal: 0, shouldBeValid: true } // Stats vuote ma grafico con dati
+                    ];
+                    
+                    let validityTests = 0;
+                    for (let i = 0; i < testScenarios.length; i++) {
+                        const scenario = testScenarios[i];
+                        const graphTotal = Array.isArray(scenario.graphData) ? 
+                            scenario.graphData.reduce((sum, val) => sum + val, 0) : scenario.graphData;
+                        
+                        const consistency = window.TalonChartCore.dataValidator.checkDataConsistency(
+                            {
+                                graphTotal: graphTotal,
+                                statsTotal: scenario.statsTotal,
+                                positive: 30,
+                                negative: 20,
+                                categories: 1,
+                                entities: 1
+                            },
+                            0, 'tipologie', { test: true }
+                        );
+                        
+                        const testPassed = consistency.isValid === scenario.shouldBeValid;
+                        if (testPassed) validityTests++;
+                        
+                        logTest(`Scenario ${i+1}: Grafico=${graphTotal}, Stats=${scenario.statsTotal} -> Valido=${consistency.isValid} ${testPassed ? '✅' : '❌'}`,
+                               testPassed ? 'success' : 'error');
+                        
+                        if (!testPassed) allTestsPassed = false;
+                    }
+                    
+                    logTest(`🎯 Test coerenza: ${validityTests}/${testScenarios.length} passati`, 
+                           validityTests === testScenarios.length ? 'success' : 'warning');
+                }
+                
+                const totalTime = performance.now() - startTime;
+                logTest(`🏁 Test robustezza completato in ${totalTime.toFixed(1)}ms`, 'success');
+                
+                if (allTestsPassed) {
+                    logTest('🎉 TUTTI I TEST DI ROBUSTEZZA SUPERATI', 'success');
+                    updateStatus('✅ Test Robustezza Completato - Sistema Robusto', 'success');
+                } else {
+                    logTest('⚠️ Alcuni test di robustezza hanno rilevato problemi', 'warning');
+                    updateStatus('⚠️ Test Robustezza Completato - Vedere Log', 'warning');
+                }
+                
+            } catch (error) {
+                logTest('❌ Errore test robustezza: ' + error.message, 'error');
+                updateStatus('❌ Test Robustezza Fallito', 'error');
+            }
+        }
+        
+        // ========================================
+        // TEST INTEGRAZIONE FILTRO CARATTERE
+        // ========================================
+        
+        async function runCharacterFilterIntegrationTest() {
+            try {
+                updateStatus('⏳ Testando integrazione filtro carattere...', 'loading');
+                logTest('🎯 === TEST INTEGRAZIONE FILTRO CARATTERE ===', 'info');
+                
+                if (!window.TalonChartCore) {
+                    logTest('❌ TalonChartCore non disponibile', 'error');
+                    updateStatus('❌ Test Filtro Carattere Fallito', 'error');
+                    return;
+                }
+                
+                const startTime = performance.now();
+                let allTestsPassed = true;
+                
+                // Test 1: Verifica funzione getCharacterFilter
+                logTest('🔍 Test 1: Verifica getCharacterFilter', 'info');
+                const currentFilter = window.TalonChartCore.getCharacterFilter();
+                logTest(`📋 Filtro corrente: "${currentFilter}"`, 'info');
+                
+                // Test 2: Test calcolo statistiche con diversi filtri carattere
+                logTest('🔍 Test 2: Calcolo statistiche con filtri diversi', 'info');
+                const testData = [100, 80, 60];
+                const testStats = { positive_events: 140, negative_events: 100, tipologie: 3 };
+                
+                // Simula filtro "tutti" (nessun filtro)
+                const allEventsResult = await window.TalonChartCore.calculateLevelStatistics(
+                    testData, testStats, 0, 'tipologie', { filterTest: 'tutti' }
+                );
+                
+                logTest(`📊 Senza filtro: Total=${allEventsResult.totalEvents}, Pos=${allEventsResult.positiveEvents}, Neg=${allEventsResult.negativeEvents}`, 
+                       allEventsResult.validation.isValid ? 'success' : 'warning');
+                
+                // Test 3: Simulazione filtro "positivo"
+                logTest('🔍 Test 3: Simulazione filtro "solo positivi"', 'info');
+                
+                // Crea un mock del filtro carattere
+                const originalGetCharacterFilter = window.TalonChartCore.getCharacterFilter;
+                window.TalonChartCore.getCharacterFilter = () => 'positivo';
+                
+                const positiveResult = await window.TalonChartCore.calculateLevelStatistics(
+                    testData, testStats, 0, 'tipologie', { filterTest: 'positivo' }
+                );
+                
+                // Verifica che con filtro positivo i negativi siano 0
+                const positivoTestPassed = positiveResult.negativeEvents === 0 && positiveResult.totalEvents === positiveResult.positiveEvents;
+                if (positivoTestPassed) {
+                    logTest(`✅ Filtro positivo: Solo ${positiveResult.totalEvents} eventi positivi, 0 negativi`, 'success');
+                } else {
+                    logTest(`❌ Filtro positivo non funziona: Pos=${positiveResult.positiveEvents}, Neg=${positiveResult.negativeEvents}, Tot=${positiveResult.totalEvents}`, 'error');
+                    allTestsPassed = false;
+                }
+                
+                // Test 4: Simulazione filtro "negativo"
+                logTest('🔍 Test 4: Simulazione filtro "solo negativi"', 'info');
+                
+                window.TalonChartCore.getCharacterFilter = () => 'negativo';
+                
+                const negativeResult = await window.TalonChartCore.calculateLevelStatistics(
+                    testData, testStats, 0, 'tipologie', { filterTest: 'negativo' }
+                );
+                
+                // Verifica che con filtro negativo i positivi siano 0
+                const negativoTestPassed = negativeResult.positiveEvents === 0 && negativeResult.totalEvents === negativeResult.negativeEvents;
+                if (negativoTestPassed) {
+                    logTest(`✅ Filtro negativo: Solo ${negativeResult.totalEvents} eventi negativi, 0 positivi`, 'success');
+                } else {
+                    logTest(`❌ Filtro negativo non funziona: Pos=${negativeResult.positiveEvents}, Neg=${negativeResult.negativeEvents}, Tot=${negativeResult.totalEvents}`, 'error');
+                    allTestsPassed = false;
+                }
+                
+                // Ripristina la funzione originale
+                window.TalonChartCore.getCharacterFilter = originalGetCharacterFilter;
+                
+                // Test 5: Test caching con filtro carattere
+                logTest('🔍 Test 5: Caching con filtro carattere', 'info');
+                if (window.TalonChartCore.cacheManager) {
+                    // Verifica che il filtro carattere sia incluso nella chiave di cache
+                    const testUrl = '/eventi/api/test';
+                    const testParams = new URLSearchParams('test=1');
+                    
+                    // Mock filtro
+                    window.TalonChartCore.getCharacterFilter = () => 'positivo';
+                    const key1 = window.TalonChartCore.generateCacheKey(testUrl, testParams);
+                    
+                    window.TalonChartCore.getCharacterFilter = () => 'negativo';
+                    const key2 = window.TalonChartCore.generateCacheKey(testUrl, testParams);
+                    
+                    if (key1 !== key2) {
+                        logTest('✅ Filtro carattere genera chiavi cache diverse', 'success');
+                        logTest(`🔑 Chiave positivo: ...${key1.slice(-50)}`, 'info');
+                        logTest(`🔑 Chiave negativo: ...${key2.slice(-50)}`, 'info');
+                    } else {
+                        logTest('❌ Filtro carattere non differenzia chiavi cache', 'error');
+                        allTestsPassed = false;
+                    }
+                    
+                    // Ripristina
+                    window.TalonChartCore.getCharacterFilter = originalGetCharacterFilter;
+                } else {
+                    logTest('⚠️ Cache manager non disponibile per test', 'warning');
+                }
+                
+                // Test 6: Test calculateCharacterDataFromEventDetails con filtro
+                logTest('🔍 Test 6: calculateCharacterDataFromEventDetails con filtro', 'info');
+                if (window.TalonChartCore.calculateCharacterDataFromEventDetails) {
+                    try {
+                        // Mock filtro positivo
+                        window.TalonChartCore.getCharacterFilter = () => 'positivo';
+                        
+                        const characterResult = await window.TalonChartCore.calculateCharacterDataFromEventDetails();
+                        
+                        if (characterResult) {
+                            const hasCharacterFilterInfo = characterResult.hasOwnProperty('characterFilter') && 
+                                                         characterResult.hasOwnProperty('characterFilterActive');
+                            
+                            if (hasCharacterFilterInfo) {
+                                logTest(`✅ calculateCharacterDataFromEventDetails include info filtro: ${characterResult.characterFilter}`, 'success');
+                            } else {
+                                logTest('❌ calculateCharacterDataFromEventDetails manca info filtro', 'error');
+                                allTestsPassed = false;
+                            }
+                        }
+                        
+                        // Ripristina
+                        window.TalonChartCore.getCharacterFilter = originalGetCharacterFilter;
+                        
+                    } catch (error) {
+                        logTest(`⚠️ Test calculateCharacterDataFromEventDetails fallito: ${error.message}`, 'warning');
+                    }
+                }
+                
+                // Test 7: Test updateInfoCards con filtro carattere
+                logTest('🔍 Test 7: updateInfoCards con filtro carattere', 'info');
+                if (window.TalonChartCore.updateInfoCards) {
+                    try {
+                        // Mock filtro
+                        window.TalonChartCore.getCharacterFilter = () => 'positivo';
+                        
+                        const infocardResult = await window.TalonChartCore.updateInfoCards(
+                            [100, 50], 
+                            { positive_events: 80, negative_events: 70 }, 
+                            { viewType: 'tipologie', level: 0, context: { test: 'filtro' } }
+                        );
+                        
+                        if (infocardResult && infocardResult.characterFilterActive) {
+                            logTest(`✅ updateInfoCards riconosce filtro attivo: "${infocardResult.characterFilter}"`, 'success');
+                        } else {
+                            logTest('❌ updateInfoCards non riconosce filtro carattere', 'error');
+                            allTestsPassed = false;
+                        }
+                        
+                        // Ripristina
+                        window.TalonChartCore.getCharacterFilter = originalGetCharacterFilter;
+                        
+                    } catch (error) {
+                        logTest(`⚠️ Test updateInfoCards fallito: ${error.message}`, 'warning');
+                    }
+                }
+                
+                const totalTime = performance.now() - startTime;
+                logTest(`🏁 Test integrazione filtro carattere completato in ${totalTime.toFixed(1)}ms`, 'success');
+                
+                if (allTestsPassed) {
+                    logTest('🎉 TUTTI I TEST FILTRO CARATTERE SUPERATI', 'success');
+                    updateStatus('✅ Test Filtro Carattere Completato - Integrazione OK', 'success');
+                } else {
+                    logTest('⚠️ Alcuni test filtro carattere hanno rilevato problemi', 'warning');
+                    updateStatus('⚠️ Test Filtro Carattere Completato - Vedere Log', 'warning');
+                }
+                
+            } catch (error) {
+                logTest('❌ Errore test integrazione filtro carattere: ' + error.message, 'error');
+                updateStatus('❌ Test Filtro Carattere Fallito', 'error');
+            }
+        }
+        
+        // ========================================
+        // UTILITY E UI
+        // ========================================
+        
+        function showCacheStats() {
+            if (!cacheManager) {
+                logTest('❌ Cache manager non disponibile', 'error');
+                return;
+            }
+            
+            const stats = cacheManager.getStatistics();
+            const report = cacheManager.getDetailedReport();
+            
+            logTest('📊 === STATISTICHE CACHE LIVE ===', 'info');
+            logTest(`📈 Hit Ratio: ${stats.hitRatio}%`, 'info');
+            logTest(`📦 Entries: ${stats.currentEntries}/${cacheManager.config.maxEntries}`, 'info');
+            logTest(`💾 Memoria: ${stats.memoryUsageMB} MB (${stats.memoryUsagePercent}%)`, 'info');
+            logTest(`⚡ Hits: ${stats.hits} | Misses: ${stats.misses}`, 'info');
+            logTest(`🗑️ Evictions: ${stats.evictions}`, 'info');
+            logTest(`⚡ Preload Hits: ${stats.preloadHits}`, 'info');
+            
+            if (stats.compressionRatio > 0) {
+                logTest(`🗜️ Compressione: ${stats.compressionRatio}% risparmio`, 'info');
+            }
+            
+            logTest('🔝 === TOP CONSUMERS ===', 'info');
+            report.topConsumers.slice(0, 3).forEach((entry, i) => {
+                logTest(`${i+1}. ${entry.key.substring(0, 50)}... (${cacheManager.formatBytes(entry.size)})`, 'info');
+            });
+            
+            updateStats();
+        }
+        
+        function clearAllCache() {
+            if (!cacheManager) {
+                logTest('❌ Cache manager non disponibile', 'error');
+                return;
+            }
+            
+            const cleared = cacheManager.invalidateAll();
+            logTest(`🧹 Cache pulita: ${cleared} entries rimosse`, 'warning');
+            updateStats();
+            updateStatus('🧹 Cache Pulita', 'info');
+        }
+        
+        function updateStats() {
+            if (!cacheManager) return;
+            
+            const stats = cacheManager.getStatistics();
+            const statsGrid = document.getElementById('statsGrid');
+            
+            statsGrid.innerHTML = `
+                <div class="metric-card">
+                    <p class="metric-value">${stats.hitRatio}%</p>
+                    <p class="metric-label">Hit Ratio</p>
+                </div>
+                <div class="metric-card">
+                    <p class="metric-value">${stats.currentEntries}</p>
+                    <p class="metric-label">Entries Cache</p>
+                </div>
+                <div class="metric-card">
+                    <p class="metric-value">${stats.memoryUsageMB} MB</p>
+                    <p class="metric-label">Memoria Utilizzata</p>
+                </div>
+                <div class="metric-card">
+                    <p class="metric-value">${stats.hits}</p>
+                    <p class="metric-label">Cache Hits</p>
+                </div>
+                <div class="metric-card">
+                    <p class="metric-value">${stats.misses}</p>
+                    <p class="metric-label">Cache Misses</p>
+                </div>
+                <div class="metric-card">
+                    <p class="metric-value">${stats.evictions}</p>
+                    <p class="metric-label">Evictions</p>
+                </div>
+            `;
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('testStatus');
+            const loadStatusEl = document.getElementById('loadStatus');
+            
+            if (statusEl) {
+                statusEl.textContent = message;
+                statusEl.className = type === 'success' ? 'text-success' : 
+                                   type === 'error' ? 'text-danger' : 
+                                   type === 'warning' ? 'text-warning' : '';
+            }
+            
+            if (loadStatusEl && type === 'success') {
+                loadStatusEl.textContent = 'Operativo ✅';
+                loadStatusEl.style.color = '#28a745';
+            }
+        }
+        
+        function updateProgressBar(percentage) {
+            const progressFill = document.querySelector('.progress-fill');
+            if (progressFill) {
+                progressFill.style.width = percentage + '%';
+            }
+        }
+        
+        function logTest(message, type = 'info') {
+            const logsContainer = document.getElementById('testLogs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+        
+        // ========================================
+        // MONITOR REAL-TIME
+        // ========================================
+        
+        function startRealTimeMonitor() {
+            setInterval(updateRealTimeMonitor, 1000);
+        }
+        
+        function updateRealTimeMonitor() {
+            if (!cacheManager) return;
+            
+            const stats = cacheManager.getStatistics();
+            const monitorContent = document.getElementById('monitorContent');
+            
+            if (monitorContent) {
+                monitorContent.innerHTML = `
+                    <div>Entries: ${stats.currentEntries}/${cacheManager.config.maxEntries}</div>
+                    <div>Memory: ${stats.memoryUsageMB} MB (${stats.memoryUsagePercent}%)</div>
+                    <div>Hit Ratio: ${stats.hitRatio}%</div>
+                    <div>Hits: ${stats.hits} | Misses: ${stats.misses}</div>
+                    <div>Evictions: ${stats.evictions}</div>
+                `;
+            }
+        }
+        
+        function toggleMonitor() {
+            const monitor = document.getElementById('realTimeMonitor');
+            if (monitor.style.display === 'none' || !monitor.style.display) {
+                monitor.style.display = 'block';
+            } else {
+                monitor.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!-- SEZIONE DETTAGLI GETRA (include modulare) -->
+<div id="dettagli-getra" class="form-section detail-section" style="display: none;" data-active="false" data-tipologia-id="15">
+    <h4 class="section-title">DETTAGLI GESTIONE TRANSITO (GETRA)</h4>
+
+    <div class="form-group">
+        <label for="tipo_vettore">Tipo Vettore</label>
+        <div class="searchable-select" data-select-id="tipo_vettore"></div>
+        <select id="tipo_vettore" name="tipo_vettore" style="display: none;">
+            <option value="">-- Seleziona Vettore --</option>
+            {% include 'attivita/includes/_vettori_getra.html' %}
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="seriale_vettore">Seriale / Targa / Nominativo</label>
+        <input type="text" id="seriale_vettore" name="seriale_vettore" class="form-control">
+    </div>
+
+    <div class="form-row getra-row">
+        <div class="form-group">
+            <label for="numero_personale">Personale Movimentato</label>
+            <input type="number" id="numero_personale" name="numero_personale" min="0" class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label for="numero_mezzi">Mezzi Movimentati</label>
+            <input type="number" id="numero_mezzi" name="numero_mezzi" min="0" class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label for="volume">Quantità/Volume</label>
+            <input type="number" id="volume" name="volume" min="0" step="any" class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label for="unita_di_misura_getra">Unità di Misura</label>
+            <select id="unita_di_misura_getra" name="unita_di_misura_getra" class="form-control">
+                <option value="">--</option>
+                <option value="KG">Kg</option>
+                <option value="M_LIN">Metri lineari</option>
+                <option value="M3">Metri cubi</option>
+            </select>
+        </div>
+    </div>
+</div>

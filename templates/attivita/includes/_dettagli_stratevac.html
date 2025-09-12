@@ -1,0 +1,99 @@
+<!-- SEZIONE DETTAGLI STRATEVAC (include modulare) -->
+<div id="dettagli-stratevac" class="form-section detail-section" style="display: none;" data-active="false" data-tipologia-id="12">
+    <h4 class="section-title">DETTAGLI SGOMBERI SANITARI/VETERINARI</h4>
+    
+    <!-- Priorità e Forza Armata affiancate -->
+    <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 1rem;">
+        <div class="form-group" style="flex: 1;">
+            <label for="priorita">Priorità <span class="required">*</span></label>
+            <select id="priorita" name="priorita" class="form-control">
+                <option value="">-- Seleziona --</option>
+                <option value="PRIORITÀ 1">Priorità 1</option>
+                <option value="PRIORITÀ 2">Priorità 2</option>
+                <option value="PRIORITÀ 3">Priorità 3</option>
+            </select>
+        </div>
+        
+        <div class="form-group" style="flex: 1;">
+            <label for="forza_armata">Forza Armata</label>
+            <select id="forza_armata" name="forza_armata" class="form-control">
+                <option value="">-- Seleziona --</option>
+                <option value="ESERCITO ITALIANO">Esercito Italiano</option>
+                <option value="MARINA MILITARE">Marina Militare</option>
+                <option value="AERONAUTICA MILITARE">Aeronautica Militare</option>
+                <option value="ARMA DEI CARABINIERI">Arma dei Carabinieri</option>
+                <option value="GUARDIA DI FINANZA">Guardia di Finanza</option>
+                <option value="ALTRO">Altro</option>
+            </select>
+        </div>
+    </div>
+    
+    <!-- Ente di Appartenenza - Largo come i due campi sopra -->
+    <div class="form-group" id="ente_appartenenza_select_container" style="display: none;">
+        <label for="ente_appartenenza">Ente di Appartenenza</label>
+        <div class="searchable-select" data-select-id="ente_appartenenza"></div>
+        <select name="ente_appartenenza" id="ente_appartenenza" style="display: none;">
+            <option value="">-- Seleziona (opzionale) --</option>
+            {% for ente in enti_militari %}
+                <option value="militare-{{ ente.id }}"
+                        data-tipo="militare"
+                        data-codice="{{ ente.codice or '' }}"
+                        data-indirizzo="{{ ente.indirizzo or '' }}"
+                        data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}">
+                    {{ ente.nome }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <div class="form-group" id="ente_appartenenza_text_container" style="display: none;">
+        <label for="ente_appartenenza_testo">Ente di Appartenenza</label>
+        <input type="text" id="ente_appartenenza_testo" name="ente_appartenenza_testo" class="form-control" 
+               placeholder="Inserisci il nome dell'ente di appartenenza">
+    </div>
+    
+    <!-- Numero Unità e Grado affiancati -->
+    <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 1rem;">
+        <div class="form-group" style="flex: 1;">
+            <label for="num_unita">Numero Unità</label>
+            <input type="number" id="num_unita" name="num_unita" class="form-control" min="0">
+        </div>
+        
+        <div class="form-group" style="flex: 1;">
+            <label for="grado">Grado</label>
+            <input type="text" id="grado" name="grado" class="form-control">
+        </div>
+    </div>
+    
+    <!-- Tipo Vettore e Seriale affiancati -->
+    <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 1rem;">
+        <div class="form-group" style="flex: 1;">
+            <label for="tipo_vettore_stratevac">Tipo Vettore <small class="text-muted">(o "volo civile")</small></label>
+            <div class="searchable-select" data-select-id="tipo_vettore_stratevac"></div>
+            <select id="tipo_vettore_stratevac" name="tipo_vettore_stratevac" style="display: none;">
+                <option value="">-- Seleziona Vettore --</option>
+                {% include 'attivita/includes/_vettori_getra.html' %}
+            </select>
+        </div>
+        
+        <div class="form-group" style="flex: 1;">
+            <label for="seriale_vettore_stratevac">Seriale</label>
+            <input type="text" id="seriale_vettore_stratevac" name="seriale_vettore_stratevac" class="form-control">
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label for="motivo_sgombero">Motivo Sgombero</label>
+        <textarea id="motivo_sgombero" name="motivo_sgombero" class="form-control" rows="3"
+                  placeholder="Descrivi il motivo dello sgombero sanitario/veterinario"></textarea>
+    </div>
+    
+    <div class="form-group">
+        <label for="trasporto_a_cura">Trasporto a Cura di</label>
+        <select id="trasporto_a_cura" name="trasporto_a_cura" class="form-control">
+            <option value="">-- Seleziona --</option>
+            <option value="POLICLINICO MILITARE DI ROMA \"CELIO\"">Policlinico Militare di Roma "CELIO"</option>
+            <option value="COMANDO MOUNTING">Comando Mounting</option>
+        </select>
+    </div>
+</div>

@@ -1,0 +1,39 @@
+<!-- SEZIONE DETTAGLI RIFORNIMENTI (include modulare) -->
+<div id="dettagli-rifornimenti" class="form-section detail-section" style="display: none;" data-active="false" data-tipologia-id="2">
+    <h4 class="section-title">DETTAGLI RIFORNIMENTI</h4>
+    
+    <div class="form-group">
+        <label for="tipologia_rifornimento">Tipologia di Rifornimento</label>
+        <select id="tipologia_rifornimento" name="tipologia_rifornimento" class="form-control">
+            <option value="">-- Seleziona --</option>
+            <option value="CARBURANTE">Carburante</option>
+            <option value="ASSEGNAZIONE MEZZI">Assegnazione mezzi</option>
+            <option value="ASSEGNAZIONE MATERIALE">Assegnazione materiale</option>
+            <option value="RAZIONI VIVERI DA COMBATTIMENTO">Razioni viveri da combattimento</option>
+            <option value="ALTRO">Altro</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="dettaglio_materiale">Dettaglio Materiale</label>
+        <input type="text" id="dettaglio_materiale" name="dettaglio_materiale" class="form-control"
+               placeholder="Tipo carburante, mezzo, materiale, altro">
+    </div>
+    
+    <div class="form-row">
+        <div class="form-group flex-grow">
+            <label for="quantita_rifornimento">Quantità</label>
+            <input type="number" id="quantita_rifornimento" name="quantita_rifornimento" class="form-control" min="0" step="1">
+        </div>
+        <div class="form-group">
+            <label for="unita_di_misura_rifornimento">Unità di Misura</label>
+            <select id="unita_di_misura_rifornimento" name="unita_di_misura_rifornimento" class="form-control">
+                <option value="">-- Seleziona --</option>
+                <option value="UNITÀ">Unità</option>
+                <option value="LITRI">Litri</option>
+                <option value="KG">Kg</option>
+                <option value="M3">m³</option>
+            </select>
+        </div>
+    </div>
+</div>

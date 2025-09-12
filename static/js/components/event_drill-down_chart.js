@@ -823,6 +823,12 @@ function createStackedEventChart(canvas, labels, stackedData, customHeight = nul
 }
 
 function createEventChart(labels, dataOrObject, backgroundColor, customHeight = null, forceCanvasId = null) {
+    // CRITICO: Non creare chart se il sistema modulare è attivo per evitare conflitti
+    if (window.TALON_MODULAR_SYSTEM_ACTIVE) {
+        console.log('🚧 [createEventChart] Sistema modulare attivo, delegando al sistema modulare');
+        return null;
+    }
+    
     // Validazione input
     if (!labels || !Array.isArray(labels) || labels.length === 0) {
         console.error('🚨 [createEventChart] Labels non valide:', labels);
@@ -921,10 +927,29 @@ function createEventChart(labels, dataOrObject, backgroundColor, customHeight = 
         // Altrimenti usa il grafico normale per gli enti
     }
     
-    // Distruggi il chart esistente se presente
+    // Distruggi il chart esistente se presente (incluso quello dal sistema modulare)
     if (eventChart) {
         eventChart.destroy();
         eventChart = null;
+    }
+    
+    // CRITICO: Controlla anche i chart dei moduli (tipologie-view)
+    if (window.TalonEventiTipologieView && window.TalonEventiTipologieView.state.chart) {
+        console.log('🧹 [createEventChart] Distruggendo chart del modulo tipologie per evitare conflitto canvas');
+        window.TalonEventiTipologieView.state.chart.destroy();
+        window.TalonEventiTipologieView.state.chart = null;
+    }
+    
+    // Controllo aggiuntivo: verifica Chart.js instances sul canvas
+    try {
+        const existingChart = Chart.getChart(canvas);
+        if (existingChart) {
+            console.log('🧹 [createEventChart] Trovato chart Chart.js esistente, distruggendo...');
+            existingChart.destroy();
+        }
+    } catch (error) {
+        // Chart.getChart potrebbe non essere disponibile in versioni più vecchie
+        console.warn('⚠️ [createEventChart] Chart.getChart non disponibile:', error.message);
     }
     
     // Applica altezza personalizzata PRIMA di creare il chart
@@ -1427,14 +1452,16 @@ async function loadEntiLevel1(enteNome) {
             console.log('✅ [loadEntiLevel1] Livello 1 caricato con', apiData.labels.length, 'enti');
         } else {
             const chartHeight = calculateOptimalChartHeight();
-            createEventChart(['Nessun Dato'], [0], ['rgba(200, 200, 200, 0.8)'], chartHeight);
+            const canvasId = 'eventEntiChartCanvas';
+            createEventChart(['Nessun Dato'], [0], ['rgba(200, 200, 200, 0.8)'], chartHeight, canvasId);
             updateEventInfoCards([0]);
             updateEventBreadcrumb();
         }
     } catch (error) {
         console.error('🚨 Errore caricamento enti livello 1:', error);
         const chartHeight = calculateOptimalChartHeight();
-        createEventChart(['Errore Caricamento'], [0], ['rgba(255, 0, 0, 0.8)'], chartHeight);
+        const canvasId = 'eventEntiChartCanvas';
+        createEventChart(['Errore Caricamento'], [0], ['rgba(255, 0, 0, 0.8)'], chartHeight, canvasId);
         updateEventInfoCards([0]);
         updateEventBreadcrumb();
     }
@@ -1457,14 +1484,16 @@ async function loadEntiLevel2(enteNome) {
             console.log('✅ [loadEntiLevel2] Livello 2 caricato con', apiData.labels.length, 'enti');
         } else {
             const chartHeight = calculateOptimalChartHeight();
-            createEventChart(['Nessun Dato'], [0], ['rgba(200, 200, 200, 0.8)'], chartHeight);
+            const canvasId = 'eventEntiChartCanvas';
+            createEventChart(['Nessun Dato'], [0], ['rgba(200, 200, 200, 0.8)'], chartHeight, canvasId);
             updateEventInfoCards([0]);
             updateEventBreadcrumb();
         }
     } catch (error) {
         console.error('🚨 Errore caricamento enti livello 2:', error);
         const chartHeight = calculateOptimalChartHeight();
-        createEventChart(['Errore Caricamento'], [0], ['rgba(255, 0, 0, 0.8)'], chartHeight);
+        const canvasId = 'eventEntiChartCanvas';
+        createEventChart(['Errore Caricamento'], [0], ['rgba(255, 0, 0, 0.8)'], chartHeight, canvasId);
         updateEventInfoCards([0]);
         updateEventBreadcrumb();
     }
@@ -1516,7 +1545,8 @@ async function loadEntiLevel3(enteNome) {
         } else {
             console.warn('❌ [loadEntiLevel3] Nessun dato grafico disponibile');
             const chartHeight = calculateOptimalChartHeight();
-            createEventChart(['Nessun Dato'], [0], ['rgba(200, 200, 200, 0.8)'], chartHeight);
+            const canvasId = 'eventEntiChartCanvas';
+            createEventChart(['Nessun Dato'], [0], ['rgba(200, 200, 200, 0.8)'], chartHeight, canvasId);
             updateLevel3InfoCards(graphData, detailsData);
         }
         
@@ -1771,15 +1801,54 @@ function updateEventInfoCards(data, stats = null) {
     
     if (stats) {
         // Usa statistiche dall'API - preferite quando disponibili
-        totalEvents = stats.total_events || 0;
+        // CORREZIONE CRITICA: Per livello 0 tipologie, calcola totalEvents dai dati reali dell'array
+        if (activeViewType === 'tipologie' && eventState.currentLevel === 0 && 
+            data && Array.isArray(data) && (!stats.total_events || stats.total_events === 0)) {
+            // Calcola dai dati reali del grafico per il livello 0
+            totalEvents = data.reduce((sum, value) => sum + value, 0);
+            console.log('✅ [updateEventInfoCards] Livello 0 - totalEvents calcolato dai dati reali invece che da stats:', totalEvents);
+        } else {
+            totalEvents = stats.total_events || 0;
+        }
+        
         positiveEvents = stats.positive_events || 0;
         negativeEvents = stats.negative_events || 0;
         
         // Per tipologie e enti, usa logic specifica per livello
         if (activeViewType === 'tipologie' && eventState.currentLevel === 0) {
             // Livello 0: statistiche globali di tutto il sistema
-            categoriesCount = stats.tipologie || 0;
+            categoriesCount = data && Array.isArray(data) ? data.length : (stats.tipologie || 0); // Priorità ai dati del grafico
             entitiesCount = stats.enti_coinvolti || 0;
+            
+            // CORREZIONE: Calcola eventi positivi/negativi dai dati reali per il livello 0
+            if ((positiveEvents === 0 && negativeEvents === 0) || 
+                (!stats.positive_events && !stats.negative_events)) {
+                
+                console.log('🔄 [updateEventInfoCards] Livello 0 - Caricamento eventi carattere dai dati reali...');
+                
+                // Usa la stessa logica del livello 1, ma senza filtro per categoria specifica
+                calculateCharacterDataFromEventDetails().then(characterData => {
+                    if (characterData) {
+                        console.log('✅ [updateEventInfoCards] Livello 0 - Dati carattere ricevuti:', characterData);
+                        
+                        const positiveValueEl = document.getElementById('eventPositiveValue');
+                        const negativeValueEl = document.getElementById('eventNegativeValue');
+                        
+                        if (positiveValueEl) {
+                            positiveValueEl.textContent = characterData.positivi || 0;
+                            console.log('✅ [updateEventInfoCards] Livello 0 - Eventi positivi aggiornati:', characterData.positivi || 0);
+                        }
+                        if (negativeValueEl) {
+                            negativeValueEl.textContent = characterData.negativi || 0;
+                            console.log('✅ [updateEventInfoCards] Livello 0 - Eventi negativi aggiornati:', characterData.negativi || 0);
+                        }
+                    } else {
+                        console.warn('⚠️ [updateEventInfoCards] Livello 0 - Nessun dato carattere disponibile');
+                    }
+                }).catch(error => {
+                    console.error('🚨 [updateEventInfoCards] Livello 0 - Errore caricamento dati carattere:', error);
+                });
+            }
         } else if (activeViewType === 'tipologie' && eventState.currentLevel === 1) {
             // Livello 1: statistiche specifiche per la tipologia selezionata
             categoriesCount = 1; // Una sola tipologia selezionata (es. "TIPO A")
@@ -1834,16 +1903,11 @@ function updateEventInfoCards(data, stats = null) {
             });
         }
     } else if (data && Array.isArray(data)) {
-        // Calcola dai dati del chart
+        // Calcola dai dati del chart per TUTTI i livelli e viste
         totalEvents = data.reduce((sum, value) => sum + value, 0);
         
-        // Logica specifica per vista tipologie livello 0
-        if (activeViewType === 'tipologie' && eventState.currentLevel === 0) {
-            // Livello 0 vista tipologie: ogni elemento data è una tipologia (TIPO A, B, C, ...)
-            categoriesCount = data.length; // Numero di tipologie differenti presenti
-            entitiesCount = 0; // Verrà preso dalle stats API se disponibili
-            
-        } else if (activeViewType === 'tipologie' && eventState.currentLevel === 1) {
+        // Logica specifica per altri livelli della vista tipologie
+        if (activeViewType === 'tipologie' && eventState.currentLevel === 1) {
             // Livello 1 vista tipologie: ogni elemento data è un ente per una tipologia specifica
             categoriesCount = 1; // Una sola tipologia selezionata
             entitiesCount = data.length; // Numero di enti che hanno questa tipologia
@@ -2104,21 +2168,76 @@ function updateEventInfoCards(data, stats = null) {
             }
             
         } else if (activeViewType === 'enti') {
-            // Vista enti: entitiesCount rappresenta gli enti mostrati
-            categoriesCount = data.length; // Numero di enti mostrati
-            entitiesCount = data.length;
+            // Vista enti: logica specifica per ogni livello
+            console.log('🏢 [updateEventInfoCards] Vista enti - Livello:', eventState.currentLevel, 'Dati:', data?.length || 0, 'Stats:', !!stats);
             
-            // CORREZIONE CRITICA: Calcola totalEvents dai dati reali invece che da stats
-            if (Array.isArray(data) && data.length > 0) {
-                totalEvents = data.reduce((sum, value) => sum + value, 0);
-                console.log('✅ [updateEventInfoCards] Vista enti - Calcolato totalEvents dai dati reali:', totalEvents);
+            if (eventState.currentLevel === 0) {
+                // Livello 0 vista enti: tutti gli enti principali del sistema
+                if (stats) {
+                    totalEvents = stats.total_events || stats.totale || 0;
+                    categoriesCount = stats.tipologie || 0; // Tipologie di eventi nel sistema
+                    entitiesCount = stats.enti_coinvolti || data.length || 0; // Enti principali
+                    positiveEvents = stats.positive_events || stats.positivi || 0;
+                    negativeEvents = stats.negative_events || stats.negativi || 0;
+                } else if (Array.isArray(data)) {
+                    totalEvents = data.reduce((sum, value) => sum + value, 0);
+                    categoriesCount = 0; // Sarà calcolato dinamicamente se possibile
+                    entitiesCount = data.length; // Numero di enti mostrati nel grafico
+                }
+                
+            } else if (eventState.currentLevel === 1) {
+                // Livello 1 vista enti: ente selezionato + enti figli
+                if (stats) {
+                    totalEvents = stats.total_events || stats.totale || 0;
+                    categoriesCount = stats.tipologie || 0; // Tipologie presenti nell'ente
+                    entitiesCount = 1 + (data.length - 1 || 0); // Ente principale + figli
+                    positiveEvents = stats.positive_events || stats.positivi || 0;
+                    negativeEvents = stats.negative_events || stats.negativi || 0;
+                } else if (Array.isArray(data)) {
+                    totalEvents = data.reduce((sum, value) => sum + value, 0);
+                    categoriesCount = 1; // Assumiamo almeno una tipologia
+                    entitiesCount = data.length; // Enti mostrati (principale + figli)
+                }
+                
+            } else if (eventState.currentLevel === 2) {
+                // Livello 2 vista enti: ente selezionato + enti dipendenti dettagliati
+                if (stats) {
+                    totalEvents = stats.total_events || stats.totale || 0;
+                    categoriesCount = stats.tipologie || 1; // Tipologie nell'ente specifico
+                    entitiesCount = 1 + (data.length - 1 || 0); // Ente principale + dipendenti
+                    positiveEvents = stats.positive_events || stats.positivi || 0;
+                    negativeEvents = stats.negative_events || stats.negativi || 0;
+                } else if (Array.isArray(data)) {
+                    totalEvents = data.reduce((sum, value) => sum + value, 0);
+                    categoriesCount = 1; // Assumiamo almeno una tipologia
+                    entitiesCount = data.length; // Enti dipendenti mostrati
+                }
+                
+            } else if (eventState.currentLevel >= 3) {
+                // Livello 3+ vista enti: dettagli tipi evento per l'ente selezionato
+                // A questo livello i dati rappresentano i tipi di evento, non gli enti
+                if (stats) {
+                    totalEvents = stats.total_events || stats.totale || 0;
+                    categoriesCount = data.length || stats.tipologie || 0; // Tipi evento mostrati nel grafico
+                    entitiesCount = 1; // Un solo ente (quello selezionato)
+                    positiveEvents = stats.positive_events || stats.positivi || 0;
+                    negativeEvents = stats.negative_events || stats.negativi || 0;
+                } else if (Array.isArray(data)) {
+                    totalEvents = data.reduce((sum, value) => sum + value, 0);
+                    categoriesCount = data.length; // Tipi evento mostrati nel grafico
+                    entitiesCount = 1; // Un solo ente selezionato
+                }
             }
             
-            // Per eventi positivi/negativi, usa stats se disponibili
-            if (stats) {
-                positiveEvents = stats.positive_events || 0;
-                negativeEvents = stats.negative_events || 0;
-            }
+            console.log('✅ [updateEventInfoCards] Vista enti - Valori calcolati:', {
+                level: eventState.currentLevel,
+                entity: eventState.currentEntity,
+                totalEvents,
+                categoriesCount,
+                entitiesCount,
+                positiveEvents,
+                negativeEvents
+            });
             
         }
     } else {
@@ -2181,8 +2300,25 @@ function updateLevel3InfoCards(graphData, detailsData) {
         hasDetailsData: !!detailsData,
         detailsDataLength: detailsData ? detailsData.length : 0,
         level: eventState.currentLevel,
-        entity: eventState.currentEntity
+        entity: eventState.currentEntity,
+        viewType: eventState.viewType
     });
+
+    // Rileva vista attiva per calcoli corretti
+    function getActiveViewFromDOM() {
+        const tipologieView = document.getElementById('chartViewTipologie');
+        const entiView = document.getElementById('chartViewEnti');
+        
+        if (tipologieView && tipologieView.style.display !== 'none' && tipologieView.classList.contains('active')) {
+            return 'tipologie';
+        }
+        if (entiView && entiView.style.display !== 'none') {
+            return 'enti';
+        }
+        return eventState.viewType; // fallback
+    }
+    
+    const activeViewType = getActiveViewFromDOM();
 
     // Calcola totale eventi - priorità a graphData.data (dati temporali aggregati)
     let totalEvents = 0;
@@ -2215,9 +2351,28 @@ function updateLevel3InfoCards(graphData, detailsData) {
         });
     }
     
-    // Valori fissi per livello 3
-    const categoriesCount = 1; // Una sola tipologia (ereditata dal livello 1)
-    const entitiesCount = 1;   // Un solo ente specifico (livello 2 -> 3)
+    // Calcola categoriesCount e entitiesCount in base alla vista attiva
+    let categoriesCount, entitiesCount;
+    
+    if (activeViewType === 'tipologie') {
+        // Vista tipologie al livello 3: dettaglio temporale per ente specifico
+        categoriesCount = 1; // Una sola tipologia (ereditata dal livello 1)
+        entitiesCount = 1;   // Un solo ente specifico (livello 2 -> 3)
+    } else if (activeViewType === 'enti') {
+        // Vista enti al livello 3: tipi evento per l'ente selezionato
+        categoriesCount = graphData?.labels ? graphData.labels.length : (graphData?.data ? graphData.data.length : 0); // Tipi evento mostrati nel grafico
+        entitiesCount = 1;   // Un solo ente selezionato
+        
+        console.log('🏢 [updateLevel3InfoCards] Vista enti - Tipi evento per ente:', {
+            tipiEvento: categoriesCount,
+            entiCoinvolti: entitiesCount,
+            totalEvents: totalEvents
+        });
+    } else {
+        // Fallback ai valori originali
+        categoriesCount = 1;
+        entitiesCount = 1;
+    }
     
     // Aggiorna elementi DOM direttamente
     const elements = {
@@ -3161,6 +3316,12 @@ async function refreshLevel3Data() {
 // ========================================
 
 async function initEventChart() {
+    // CRITICO: Non inizializzare se il sistema modulare è attivo per evitare conflitti
+    if (window.TALON_MODULAR_SYSTEM_ACTIVE) {
+        console.log('🚧 [initEventChart] Sistema modulare attivo, saltando inizializzazione legacy');
+        return;
+    }
+    
     try {
         
         const apiData = await loadEventDataFromAPI(0);

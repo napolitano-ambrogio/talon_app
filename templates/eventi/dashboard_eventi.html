@@ -479,22 +479,359 @@ body.eventi-dashboard #eventDetailsPanel #eventDetailsList {
 <!-- Chart.js Libraries -->
 <script src="/external/chartjs/chart.umd.min.js"></script>
 <script src="{{ url_for('static', filename='js/components/advanced-table.js') }}?v=2.0"></script>
+
+<!-- ========================================
+     ARCHITETTURA MODULARE REFACTORATA
+     ======================================== -->
+     
+<!-- Moduli Core e Viste (Nuova Architettura) -->
+<script src="{{ url_for('static', filename='js/components/talon-cache-manager.js') }}?v=1.0"></script>
+<script src="{{ url_for('static', filename='js/components/talon-chart-core.js') }}?v=1.1"></script>
+<script src="{{ url_for('static', filename='js/components/talon-eventi-tipologie-view.js') }}?v=1.1"></script>
+<script src="{{ url_for('static', filename='js/components/talon-eventi-enti-view.js') }}?v=1.1"></script>
+<script src="{{ url_for('static', filename='js/components/talon-eventi-orchestrator.js') }}?v=1.0"></script>
+
+<!-- File Originale (Mantenuto per Retrocompatibilità) -->
 <script src="{{ url_for('static', filename='js/components/event_drill-down_chart.js') }}?v=1.3"></script>
 
 <!-- Dashboard Eventi Controller -->
 <script src="{{ url_for('static', filename='js/components/dashboard-eventi-controller.js') }}?v=1.0"></script>
+
 <script>
-// Inizializzazione minimale del controller dashboard
+// ========================================
+// CONFIGURAZIONE ARCHITETTURA
+// ========================================
+
+// Flag per attivare nuova architettura modulare
+const USE_MODULAR_ARCHITECTURE = true; // Cambia a false per usare file originale
+
+// ========================================
+// INIZIALIZZAZIONE INTELLIGENTE
+// ========================================
+
 document.addEventListener('DOMContentLoaded', function() {
     try {
+        if (USE_MODULAR_ARCHITECTURE) {
+            // *** NUOVA ARCHITETTURA MODULARE ***
+            console.log('🚀 [Dashboard Eventi] Inizializzazione architettura modulare v1.0.0');
+            
+            // Verifica disponibilità moduli
+            if (typeof window.TalonEventiOrchestrator === 'undefined') {
+                console.error('❌ TalonEventiOrchestrator non disponibile, fallback al sistema legacy');
+                initializeLegacySystem();
+                return;
+            }
+            
+            if (typeof window.TalonChartCore === 'undefined' ||
+                typeof window.TalonEventiTipologieView === 'undefined' ||
+                typeof window.TalonEventiEntiView === 'undefined') {
+                console.error('❌ Moduli mancanti per architettura modulare, fallback al sistema legacy');
+                initializeLegacySystem();
+                return;
+            }
+            
+            // Inizializza orchestrator con vista predefinita tipologie e cache avanzato
+            const success = window.TalonEventiOrchestrator.init({
+                defaultView: 'tipologie',
+                config: {
+                    performance: {
+                        animation: false, // Disabilita animazioni per performance
+                        debounceDelay: 300,
+                        maxDataPoints: 100
+                    }
+                },
+                cacheConfig: {
+                    maxEntries: 150,        // Aumentato per dashboard eventi
+                    maxMemoryMB: 15,        // 15MB per cache eventi
+                    defaultTTL: 5 * 60 * 1000,
+                    cleanupInterval: 30 * 1000, // Pulizia ogni 30 secondi
+                    compressionEnabled: true,
+                    strategies: {
+                        '/eventi/api/dashboard-data': 30 * 60 * 1000,      // 30 minuti - dati aggregati
+                        '/eventi/api/enti-livello1': 15 * 60 * 1000,       // 15 minuti - enti livello 1
+                        '/eventi/api/enti-livello2': 10 * 60 * 1000,       // 10 minuti - enti livello 2
+                        '/eventi/api/enti-stacked': 20 * 60 * 1000,        // 20 minuti - dati stacked
+                        '/eventi/api/dettagli': 2 * 60 * 1000,             // 2 minuti - dettagli eventi
+                        'default': 8 * 60 * 1000                           // 8 minuti - default
+                    }
+                }
+            });
+            
+            if (success) {
+                console.log('✅ [Dashboard Eventi] Architettura modulare inizializzata con successo');
+                
+                // Setup debug globale
+                window.TALON_DEBUG = {
+                    orchestrator: window.TalonEventiOrchestrator,
+                    core: window.TalonChartCore,
+                    cache: window.TalonChartCore.cacheManager,
+                    views: {
+                        tipologie: window.TalonEventiTipologieView,
+                        enti: window.TalonEventiEntiView
+                    }
+                };
+                
+                // Log stato iniziale
+                console.log('📊 [Dashboard Eventi] Stato iniziale:', window.TalonEventiOrchestrator.getDebugInfo());
+                
+            } else {
+                console.error('❌ Fallimento inizializzazione architettura modulare, fallback al sistema legacy');
+                initializeLegacySystem();
+            }
+            
+        } else {
+            // *** SISTEMA LEGACY ***
+            console.log('🔄 [Dashboard Eventi] Utilizzo sistema legacy (event_drill-down_chart.js)');
+            initializeLegacySystem();
+        }
+        
+        // Inizializza anche il controller dashboard esistente per compatibilità
         if (typeof TalonDashboardEventiController !== 'undefined') {
             window.dashboardEventiController = new TalonDashboardEventiController();
-        } else {
-            console.error('❌ TalonDashboardEventiController non trovato');
+            console.log('✅ [Dashboard Eventi] Controller legacy inizializzato');
         }
+        
     } catch (error) {
-        console.error('❌ Errore inizializzazione dashboard eventi:', error);
+        console.error('🚨 [Dashboard Eventi] Errore critico inizializzazione:', error);
+        console.error('📍 Stack trace:', error.stack);
+        
+        // Tentativo di fallback estremo
+        console.log('🔄 [Dashboard Eventi] Tentativo fallback estremo al sistema legacy');
+        initializeLegacySystem();
     }
 });
+
+/**
+ * Inizializza il sistema legacy
+ */
+function initializeLegacySystem() {
+    try {
+        console.log('🔄 [Dashboard Eventi] Inizializzazione sistema legacy');
+        
+        // Verifica disponibilità classe legacy principale
+        if (typeof TalonEventDrillDownChart !== 'undefined') {
+            // Inizializza grafico eventi tipologie (legacy)
+            window.eventDrillDownChart = new TalonEventDrillDownChart({
+                canvas: 'eventChartCanvas',
+                period: 'year',
+                viewType: 'tipologie',
+                animation: false
+            });
+            
+            console.log('✅ [Dashboard Eventi] Sistema legacy inizializzato con successo');
+        } else {
+            console.error('❌ [Dashboard Eventi] Sistema legacy non disponibile - TalonEventDrillDownChart non trovato');
+            
+            // Mostra messaggio errore all'utente
+            const chartContainer = document.querySelector('.chart-container');
+            if (chartContainer) {
+                chartContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5>Errore Caricamento Dashboard</h5>
+                        <p>Impossibile inizializzare i componenti del dashboard eventi.</p>
+                        <p>Contattare l'amministratore del sistema.</p>
+                    </div>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('🚨 [Dashboard Eventi] Errore inizializzazione sistema legacy:', error);
+    }
+}
+
+/**
+ * Utility per debug e troubleshooting
+ */
+window.TALON_DASHBOARD_DEBUG = {
+    getArchitectureInfo: function() {
+        return {
+            usingModularArchitecture: USE_MODULAR_ARCHITECTURE,
+            modulesLoaded: {
+                core: typeof window.TalonChartCore !== 'undefined',
+                tipologieView: typeof window.TalonEventiTipologieView !== 'undefined',
+                entiView: typeof window.TalonEventiEntiView !== 'undefined',
+                orchestrator: typeof window.TalonEventiOrchestrator !== 'undefined',
+                legacy: typeof TalonEventDrillDownChart !== 'undefined'
+            },
+            currentState: USE_MODULAR_ARCHITECTURE && window.TalonEventiOrchestrator ? 
+                         window.TalonEventiOrchestrator.getState() : 'Legacy system active'
+        };
+    },
+    
+    switchArchitecture: function(useModular = true) {
+        console.log(`🔄 Switching to ${useModular ? 'modular' : 'legacy'} architecture...`);
+        // Ricarica la pagina con il nuovo flag (in produzione si potrebbe usare sessionStorage)
+        window.location.reload();
+    },
+    
+    testModularArchitecture: function() {
+        if (!USE_MODULAR_ARCHITECTURE) {
+            console.log('❌ Architettura modulare non attiva');
+            return false;
+        }
+        
+        try {
+            const orchestrator = window.TalonEventiOrchestrator;
+            if (!orchestrator) {
+                console.log('❌ Orchestrator non disponibile');
+                return false;
+            }
+            
+            const state = orchestrator.getState();
+            console.log('📊 Stato orchestrator:', state);
+            
+            // Test switch vista
+            console.log('🔄 Test switch a vista enti...');
+            orchestrator.switchToView('enti').then(success => {
+                if (success) {
+                    console.log('✅ Switch a vista enti riuscito');
+                    
+                    // Torna a tipologie dopo 2 secondi
+                    setTimeout(() => {
+                        orchestrator.switchToView('tipologie').then(() => {
+                            console.log('✅ Test architettura modulare completato');
+                        });
+                    }, 2000);
+                } else {
+                    console.log('❌ Switch a vista enti fallito');
+                }
+            });
+            
+            return true;
+        } catch (error) {
+            console.error('🚨 Errore test architettura modulare:', error);
+            return false;
+        }
+    },
+    
+    // ========================================
+    // FUNZIONI DEBUG CACHE
+    // ========================================
+    
+    getCacheStats: function() {
+        if (!window.TalonChartCore || !window.TalonChartCore.cacheManager) {
+            console.log('❌ Cache manager non disponibile');
+            return null;
+        }
+        
+        const stats = window.TalonChartCore.getCacheStats();
+        console.log('📊 [Cache Stats]', stats);
+        return stats;
+    },
+    
+    getCacheReport: function() {
+        if (!window.TalonChartCore || !window.TalonChartCore.cacheManager) {
+            console.log('❌ Cache manager non disponibile');
+            return null;
+        }
+        
+        const report = window.TalonChartCore.getCacheReport();
+        console.log('📋 [Cache Report]', report);
+        return report;
+    },
+    
+    clearCache: function() {
+        if (!window.TalonChartCore || !window.TalonChartCore.cacheManager) {
+            console.log('❌ Cache manager non disponibile');
+            return false;
+        }
+        
+        const cleared = window.TalonChartCore.cacheManager.invalidateAll();
+        console.log(`🧹 Cache pulita: ${cleared} entries rimosse`);
+        return cleared;
+    },
+    
+    testCachePerformance: function() {
+        if (!window.TalonChartCore || !window.TalonChartCore.cacheManager) {
+            console.log('❌ Cache manager non disponibile per test performance');
+            return false;
+        }
+        
+        console.log('🚀 [Cache Performance Test] Iniziando test...');
+        
+        // Test multipli sulla stessa API per verificare cache hit
+        const testUrl = '/eventi/api/dashboard-data?period=year';
+        const startTime = performance.now();
+        
+        // Prima chiamata (cache miss)
+        window.TalonChartCore.fetchWithCache(testUrl, {skipCache: true}).then(data1 => {
+            const firstCallTime = performance.now() - startTime;
+            console.log(`⏱️ Prima chiamata (no cache): ${firstCallTime.toFixed(1)}ms`);
+            
+            // Seconda chiamata (dovrebbe essere cache hit)
+            const secondStartTime = performance.now();
+            return window.TalonChartCore.fetchWithCache(testUrl);
+        }).then(data2 => {
+            const secondCallTime = performance.now() - startTime;
+            console.log(`⚡ Seconda chiamata (cache hit): ${secondCallTime.toFixed(1)}ms`);
+            
+            // Mostra statistiche finali
+            const stats = window.TalonChartCore.getCacheStats();
+            console.log('📊 [Cache Performance Test] Completato:', {
+                hitRatio: stats.hitRatio + '%',
+                totalRequests: stats.totalRequests,
+                memoryUsage: stats.memoryUsageMB + 'MB'
+            });
+            
+        }).catch(error => {
+            console.error('🚨 Errore test cache performance:', error);
+        });
+        
+        return true;
+    },
+    
+    preloadCommonData: function() {
+        if (!window.TalonChartCore) {
+            console.log('❌ TalonChartCore non disponibile');
+            return false;
+        }
+        
+        console.log('⚡ [Preload] Precaricamento dati comuni in corso...');
+        
+        const commonEndpoints = [
+            '/eventi/api/dashboard-data?period=year',
+            '/eventi/api/dashboard-data?period=month',
+            '/eventi/api/enti-livello1?period=year'
+        ];
+        
+        const promises = commonEndpoints.map(url => 
+            window.TalonChartCore.preloadData(url, {
+                trigger: 'manual_preload',
+                cacheTTL: 10 * 60 * 1000 // 10 minuti per preload
+            })
+        );
+        
+        Promise.all(promises).then(() => {
+            console.log('✅ [Preload] Precaricamento completato');
+            const stats = window.TalonChartCore.getCacheStats();
+            console.log('📊 [Preload] Stats dopo preload:', {
+                preloadHits: stats.preloadHits,
+                totalEntries: stats.currentEntries,
+                memoryUsage: stats.memoryUsageMB + 'MB'
+            });
+        }).catch(error => {
+            console.error('🚨 [Preload] Errore precaricamento:', error);
+        });
+        
+        return true;
+    }
+};
+
+// Esponi debug info in console
+console.log('🐛 [Dashboard Eventi] Debug utilities disponibili:');
+console.log('   === ARCHITETTURA ===');
+console.log('   - window.TALON_DASHBOARD_DEBUG.getArchitectureInfo()');
+console.log('   - window.TALON_DASHBOARD_DEBUG.testModularArchitecture()');
+console.log('   - window.TALON_DASHBOARD_DEBUG.switchArchitecture(true/false)');
+console.log('   === CACHE ===');
+console.log('   - window.TALON_DASHBOARD_DEBUG.getCacheStats()');
+console.log('   - window.TALON_DASHBOARD_DEBUG.getCacheReport()');
+console.log('   - window.TALON_DASHBOARD_DEBUG.clearCache()');
+console.log('   - window.TALON_DASHBOARD_DEBUG.testCachePerformance()');
+console.log('   - window.TALON_DASHBOARD_DEBUG.preloadCommonData()');
+console.log('   === DIRETTI ===');
+console.log('   - window.TALON_DEBUG.cache.getStatistics()');
+console.log('   - window.TALON_DEBUG.cache.getDetailedReport()');
+
 </script>
 {% endblock %}

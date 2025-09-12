@@ -1,0 +1,160 @@
+/**
+ * ========================================
+ * TALON - Attività SlimSelect CLEAN
+ * File: static/css/components/attivita-slimselect-clean.css
+ * 
+ * Versione: 4.0.0 - ZERO !important
+ * Descrizione: CSS minimale per SlimSelect senza forzature
+ * Nota: Lascia che SlimSelect gestisca nativamente il comportamento
+ * ========================================
+ */
+
+/* ===== PERSONALIZZAZIONI MINIMALI ===== */
+
+/* Container principale - solo dimensioni base */
+.attivita-form .ss-main,
+.form-section .ss-main {
+    min-height: 42px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    font-size: 0.95rem;
+}
+
+/* Input/single - solo padding per consistenza con altri input */
+.attivita-form .ss-single,
+.form-section .ss-single {
+    padding: 10px 35px 10px 12px;
+    line-height: 1.4;
+}
+
+/* Dropdown content - solo stili visivi base */
+.attivita-form .ss-content,
+.form-section .ss-content {
+    border: 1px solid #ced4da;
+    border-top: none;
+    border-radius: 0 0 5px 5px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: white;
+    z-index: 1050;
+}
+
+/* Lista opzioni - solo altezza massima per scroll */
+.attivita-form .ss-list,
+.form-section .ss-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Singole opzioni - solo padding per spaziatura */
+.attivita-form .ss-option,
+.form-section .ss-option {
+    padding: 8px 12px;
+    line-height: 1.4;
+}
+
+/* Stati hover/highlighted - solo colori */
+.attivita-form .ss-option:hover,
+.form-section .ss-option:hover {
+    background-color: #f8f9fa;
+}
+
+.attivita-form .ss-option.ss-highlighted,
+.form-section .ss-option.ss-highlighted {
+    background-color: #007bff;
+    color: white;
+}
+
+.attivita-form .ss-option.ss-selected,
+.form-section .ss-option.ss-selected {
+    background-color: #28a745;
+    color: white;
+}
+
+/* Input di ricerca - solo padding */
+.attivita-form .ss-search input,
+.form-section .ss-search input {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    border: none;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Scrollbar personalizzata leggera */
+.attivita-form .ss-list::-webkit-scrollbar,
+.form-section .ss-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.attivita-form .ss-list::-webkit-scrollbar-track,
+.form-section .ss-list::-webkit-scrollbar-track {
+    background: #f1f3f4;
+}
+
+.attivita-form .ss-list::-webkit-scrollbar-thumb,
+.form-section .ss-list::-webkit-scrollbar-thumb {
+    background: #ced4da;
+    border-radius: 3px;
+}
+
+.attivita-form .ss-list::-webkit-scrollbar-thumb:hover,
+.form-section .ss-list::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd;
+}
+
+/* Firefox scrollbar */
+.attivita-form .ss-list,
+.form-section .ss-list {
+    scrollbar-width: thin;
+    scrollbar-color: #ced4da #f1f3f4;
+}
+
+/* ===== STILI PER OPZIONI ENTI (con dettagli) ===== */
+
+/* Nome ente */
+.attivita-form .ss-option div[style*="font-size: 15px"],
+.form-section .ss-option div[style*="font-size: 15px"] {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.3;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+}
+
+/* Dettagli ente (indirizzo) */
+.attivita-form .ss-option div[style*="font-size: 11px"],
+.form-section .ss-option div[style*="font-size: 11px"] {
+    font-size: 11px;
+    font-weight: 400;
+    font-style: italic;
+    line-height: 1.2;
+    opacity: 0.8;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .attivita-form .ss-list,
+    .form-section .ss-list {
+        max-height: 250px;
+    }
+    
+    .attivita-form .ss-option,
+    .form-section .ss-option {
+        padding: 10px 12px;
+    }
+}
+
+/* ===== NOTE IMPORTANTI ===== */
+/*
+QUESTO CSS NON USA MAI !important
+
+Le personalizzazioni sono minimali e lasciano che SlimSelect
+gestisca nativamente:
+- Visibilità dropdown (display/visibility/opacity)
+- Posizionamento (position/top/left/right)
+- Dimensioni dinamiche (width/height)
+- Animazioni e transizioni
+- Gestione eventi (click, hover, focus)
+
+Se serve maggiore specificità, usa selettori più specifici
+invece di !important
+*/

@@ -207,56 +207,48 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Core Dependencies -->
 <script src="{{ url_for('static', filename='js/components/advanced-table.js') }}?v={{ cache_buster }}"></script>
 <script src="{{ url_for('static', filename='js/components/slim-searchable-select.js') }}?v={{ cache_buster }}"></script>
 
-<!-- Eventi Bundle - carica tutti i componenti eventi in ordine corretto -->
 <script>window.EVENTI_CACHE_VERSION = '{{ cache_buster }}';</script>
 <script src="{{ url_for('static', filename='js/components/eventi-bundle.js') }}?v={{ cache_buster }}"></script>
 
-<!-- Script per formattazione automatica protocollo -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const protInput = document.getElementById('prot_msg_evento');
     
     if (protInput) {
-        let isFirstEdit = true; // Flag per gestire il primo edit
+        let isFirstEdit = true;
         
-        // Durante la digitazione: gestisci la transizione da formato paddato a numero naturale
         protInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, ''); // Rimuovi caratteri non numerici
+            let value = e.target.value.replace(/\D/g, '');
             
-            // Se è il primo edit e il valore era "0000000", resetta
             if (isFirstEdit && e.target.value.length > 0 && value !== '0000000') {
                 isFirstEdit = false;
-                value = value.replace(/^0+/, ''); // Rimuovi zeri iniziali
-                if (value === '') value = '0'; // Mantieni almeno uno zero se tutto zeri
+                value = value.replace(/^0+/, '');
+                if (value === '') value = '0';
             }
             
             if (value.length > 7) {
-                value = value.slice(0, 7); // Limita a massimo 7 cifre
+                value = value.slice(0, 7);
             }
-            e.target.value = value; // Mostra solo il numero senza padding durante la digitazione
+            e.target.value = value;
         });
         
-        // Applica formattazione quando il campo perde il focus
         protInput.addEventListener('blur', function(e) {
             let value = e.target.value.replace(/\D/g, '');
             if (value.length > 0) {
-                e.target.value = value.padStart(7, '0'); // Applica padding
+                e.target.value = value.padStart(7, '0');
             } else {
-                e.target.value = '0000000'; // Valore di default se vuoto
+                e.target.value = '0000000';
             }
-            isFirstEdit = false; // Reset del flag
+            isFirstEdit = false;
         });
         
-        // Seleziona tutto quando riceve focus per facilitare sovrascrittura
         protInput.addEventListener('focus', function(e) {
             e.target.select();
         });
         
-        console.log('[Inserisci Evento] Auto-formattazione protocollo inizializzata');
     }
 });
 </script>

@@ -485,7 +485,7 @@ def lista_attivita():
             placeholders, params = _build_in_clause(accessible_entities)
             base_query = f"""
                 SELECT
-                    a.id, a.data_inizio, a.data_fine, a.descrizione,
+                    a.id, a.data_inizio, a.data_fine, a.descrizione, a.modalita_effettuazione,
                     em.nome AS ente_nome,
                     ta.nome AS tipologia_nome,
                     o.nome_missione AS operazione_nome,
@@ -709,14 +709,25 @@ def salva_attivita():
                 partenza_militare_id, partenza_civile_id, destinazione_militare_id, destinazione_civile_id = \
                     process_location_ids(request.form.get('partenza_id'), request.form.get('destinazione_id'))
 
+                # Validazione modalità effettuazione
+                modalita_effettuazione = request.form.get('modalita_effettuazione', 'ordinaria').strip()
+                modalita_valide = ['ordinaria', 'squadra_contatto_nazionale', 'squadra_contatto_teatro']
+                if modalita_effettuazione not in modalita_valide:
+                    modalita_effettuazione = 'ordinaria'  # Default sicuro
+
+                # Gestione sac_pianificata (solo per squadre a contatto)
+                sac_pianificata = True  # Default
+                if modalita_effettuazione in ['squadra_contatto_nazionale', 'squadra_contatto_teatro']:
+                    sac_pianificata = request.form.get('sac_pianificata', 'true').lower() == 'true'
+
                 # Inserisci attività
                 cur.execute("""
                     INSERT INTO attivita (
                         ente_svolgimento_id, tipologia_id, data_inizio, data_fine, descrizione,
                         partenza_militare_id, partenza_civile_id, destinazione_militare_id, destinazione_civile_id,
                         personale_ufficiali, personale_sottufficiali, personale_graduati, personale_civili, 
-                        note, operazione_id, esercitazione_id, creato_da, data_creazione
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                        note, operazione_id, esercitazione_id, modalita_effettuazione, sac_pianificata, creato_da, data_creazione
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
                     RETURNING id
                 """, (
                     ente_svolgimento_id,
@@ -733,6 +744,8 @@ def salva_attivita():
                     (request.form.get('note', '') or '').upper().strip(),
                     request.form.get('operazione_id') or None,
                     request.form.get('esercitazione_id') or None,
+                    modalita_effettuazione,
+                    sac_pianificata,
                     user_id
                 ))
                 new_id = cur.fetchone()['id']
@@ -1130,13 +1143,24 @@ def aggiorna_attivita(id):
                 partenza_militare_id, partenza_civile_id, destinazione_militare_id, destinazione_civile_id = \
                     process_location_ids(request.form.get('partenza_id'), request.form.get('destinazione_id'))
 
+                # Validazione modalità effettuazione
+                modalita_effettuazione = request.form.get('modalita_effettuazione', 'ordinaria').strip()
+                modalita_valide = ['ordinaria', 'squadra_contatto_nazionale', 'squadra_contatto_teatro']
+                if modalita_effettuazione not in modalita_valide:
+                    modalita_effettuazione = 'ordinaria'  # Default sicuro
+
+                # Gestione SAC pianificazione
+                sac_pianificata = None
+                if modalita_effettuazione in ['squadra_contatto_nazionale', 'squadra_contatto_teatro']:
+                    sac_pianificata = request.form.get('sac_pianificata', 'true').lower() == 'true'
+
                 # Aggiorna attività
                 cur.execute("""
                     UPDATE attivita SET
                         ente_svolgimento_id=%s, tipologia_id=%s, data_inizio=%s, data_fine=%s, descrizione=%s,
                         partenza_militare_id=%s, partenza_civile_id=%s, destinazione_militare_id=%s, destinazione_civile_id=%s,
                         personale_ufficiali=%s, personale_sottufficiali=%s, personale_graduati=%s, personale_civili=%s, 
-                        note=%s, operazione_id=%s, esercitazione_id=%s, modificato_da=%s, data_modifica=NOW()
+                        note=%s, operazione_id=%s, esercitazione_id=%s, modalita_effettuazione=%s, sac_pianificata=%s, modificato_da=%s, data_modifica=NOW()
                     WHERE id = %s
                 """, (
                     ente_svolgimento_id, request.form['tipologia_id'],
@@ -1151,6 +1175,8 @@ def aggiorna_attivita(id):
                     (request.form.get('note', '') or '').upper().strip(),
                     request.form.get('operazione_id') or None,
                     request.form.get('esercitazione_id') or None,
+                    modalita_effettuazione,
+                    sac_pianificata,
                     user_id,
                     id
                 ))

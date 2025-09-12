@@ -1,0 +1,406 @@
+/**
+ * ========================================
+ * TALON - Attività SlimSelect FINAL FIX
+ * File: static/css/components/attivita-slimselect-final-fix.css
+ * 
+ * Versione: 3.0.0 - DEFINITIVO
+ * Descrizione: CSS con specificità massima per override completo dei conflitti
+ * Nota: DEVE essere l'ultimo CSS caricato per avere priorità assoluta
+ * ========================================
+ */
+
+/* ===== RESET VARIABILI CSS SLIMSELECT ===== */
+:root {
+    --ss-main-height: 42px !important;
+    --ss-content-height: 300px !important;
+    --ss-spacing-s: 3px !important;
+    --ss-spacing-m: 5px !important;
+    --ss-spacing-l: 7px !important;
+}
+
+/* ===== SPECIFICITÀ MASSIMA - CONTAINER PRINCIPALE ===== */
+body.role-admin .attivita-form div.ss-main,
+body.role-operator .attivita-form div.ss-main,
+body.role-viewer .attivita-form div.ss-main,
+div.attivita-form div.ss-main,
+div.form-section div.ss-main,
+.content div.ss-main {
+    /* Dimensioni fisse quando chiuso */
+    width: 100% !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    max-height: 42px !important;
+    
+    /* Controllo overflow critico */
+    overflow: hidden !important;
+    
+    /* Box model */
+    box-sizing: border-box !important;
+    padding: 0 !important;
+    margin: 0 0 1rem 0 !important;
+    
+    /* Stili visivi */
+    border: 1px solid #ced4da !important;
+    border-radius: 5px !important;
+    background: white !important;
+    
+    /* Cursore */
+    cursor: pointer !important;
+}
+
+/* ===== CONTAINER PRINCIPALE QUANDO APERTO ===== */
+body.role-admin .attivita-form div.ss-main.ss-open-below,
+body.role-operator .attivita-form div.ss-main.ss-open-below,
+body.role-viewer .attivita-form div.ss-main.ss-open-below,
+div.attivita-form div.ss-main.ss-open-below,
+div.form-section div.ss-main.ss-open-below,
+.content div.ss-main.ss-open-below {
+    /* Rimuove limite altezza quando aperto */
+    max-height: none !important;
+    overflow: visible !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    z-index: 1040 !important;
+}
+
+/* ===== ELEMENTO INPUT/SINGLE ===== */
+body.role-admin .attivita-form div.ss-main div.ss-single,
+body.role-operator .attivita-form div.ss-main div.ss-single,
+body.role-viewer .attivita-form div.ss-main div.ss-single,
+div.attivita-form div.ss-main div.ss-single,
+div.form-section div.ss-main div.ss-single,
+.content div.ss-main div.ss-single {
+    /* Dimensioni precise */
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    
+    /* Padding interno */
+    padding: 10px 35px 10px 12px !important;
+    margin: 0 !important;
+    
+    /* Controllo testo */
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    line-height: 20px !important;
+    
+    /* Display e allineamento */
+    display: flex !important;
+    align-items: center !important;
+    
+    /* Font */
+    font-size: 0.95rem !important;
+    color: #495057 !important;
+    
+    /* Box model */
+    box-sizing: border-box !important;
+}
+
+/* ===== PLACEHOLDER ===== */
+body.role-admin .attivita-form div.ss-main div.ss-single .placeholder,
+body.role-operator .attivita-form div.ss-main div.ss-single .placeholder,
+body.role-viewer .attivita-form div.ss-main div.ss-single .placeholder,
+div.attivita-form div.ss-main div.ss-single .placeholder,
+div.form-section div.ss-main div.ss-single .placeholder,
+.content div.ss-main div.ss-single .placeholder {
+    color: #6c757d !important;
+    font-style: italic !important;
+    font-weight: 400 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* ===== DROPDOWN CONTENT - CRITICO! ===== */
+body.role-admin .attivita-form div.ss-content,
+body.role-operator .attivita-form div.ss-content,
+body.role-viewer .attivita-form div.ss-content,
+div.attivita-form div.ss-content,
+div.form-section div.ss-content,
+.content div.ss-content {
+    /* STATO DEFAULT - NASCOSTO */
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    
+    /* Posizionamento */
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1050 !important;
+    
+    /* Dimensioni */
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 100px !important;
+    max-height: 400px !important;
+    
+    /* Stili visivi */
+    background: white !important;
+    border: 1px solid #ced4da !important;
+    border-top: none !important;
+    border-radius: 0 0 5px 5px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    
+    /* Box model */
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* ===== DROPDOWN VISIBILE SOLO QUANDO APERTO ===== */
+body.role-admin .attivita-form div.ss-main.ss-open-below div.ss-content,
+body.role-operator .attivita-form div.ss-main.ss-open-below div.ss-content,
+body.role-viewer .attivita-form div.ss-main.ss-open-below div.ss-content,
+div.attivita-form div.ss-main.ss-open-below div.ss-content,
+div.form-section div.ss-main.ss-open-below div.ss-content,
+.content div.ss-main.ss-open-below div.ss-content {
+    /* VISIBILE SOLO QUANDO ss-open-below è presente */
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* ===== LISTA OPZIONI ===== */
+body.role-admin .attivita-form div.ss-content div.ss-list,
+body.role-operator .attivita-form div.ss-content div.ss-list,
+body.role-viewer .attivita-form div.ss-content div.ss-list,
+div.attivita-form div.ss-content div.ss-list,
+div.form-section div.ss-content div.ss-list,
+.content div.ss-content div.ss-list {
+    /* Dimensioni scrollable */
+    min-height: 80px !important;
+    max-height: 380px !important;
+    
+    /* Scroll */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    
+    /* Reset padding/margin */
+    padding: 0 !important;
+    margin: 0 !important;
+    
+    /* Box model */
+    box-sizing: border-box !important;
+    
+    /* Lista */
+    list-style: none !important;
+}
+
+/* ===== SINGOLE OPZIONI ===== */
+body.role-admin .attivita-form div.ss-content div.ss-list div.ss-option,
+body.role-operator .attivita-form div.ss-content div.ss-list div.ss-option,
+body.role-viewer .attivita-form div.ss-content div.ss-list div.ss-option,
+div.attivita-form div.ss-content div.ss-list div.ss-option,
+div.form-section div.ss-content div.ss-list div.ss-option,
+.content div.ss-content div.ss-list div.ss-option {
+    /* Dimensioni */
+    min-height: 35px !important;
+    height: auto !important;
+    
+    /* Padding */
+    padding: 8px 12px !important;
+    margin: 0 !important;
+    
+    /* Display */
+    display: block !important;
+    
+    /* Font */
+    font-size: 0.95rem !important;
+    line-height: 1.4 !important;
+    color: #495057 !important;
+    
+    /* Box model */
+    box-sizing: border-box !important;
+    
+    /* Interazione */
+    cursor: pointer !important;
+    
+    /* Border */
+    border-bottom: 1px solid #f1f3f4 !important;
+}
+
+/* ===== STATI HOVER/HIGHLIGHTED/SELECTED ===== */
+body.role-admin .attivita-form div.ss-content div.ss-list div.ss-option:hover,
+body.role-operator .attivita-form div.ss-content div.ss-list div.ss-option:hover,
+body.role-viewer .attivita-form div.ss-content div.ss-list div.ss-option:hover,
+div.attivita-form div.ss-content div.ss-list div.ss-option:hover,
+div.form-section div.ss-content div.ss-list div.ss-option:hover,
+.content div.ss-content div.ss-list div.ss-option:hover {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+}
+
+body.role-admin .attivita-form div.ss-content div.ss-list div.ss-option.ss-highlighted,
+body.role-operator .attivita-form div.ss-content div.ss-list div.ss-option.ss-highlighted,
+body.role-viewer .attivita-form div.ss-content div.ss-list div.ss-option.ss-highlighted,
+div.attivita-form div.ss-content div.ss-list div.ss-option.ss-highlighted,
+div.form-section div.ss-content div.ss-list div.ss-option.ss-highlighted,
+.content div.ss-content div.ss-list div.ss-option.ss-highlighted {
+    background-color: #007bff !important;
+    color: white !important;
+}
+
+body.role-admin .attivita-form div.ss-content div.ss-list div.ss-option.ss-selected,
+body.role-operator .attivita-form div.ss-content div.ss-list div.ss-option.ss-selected,
+body.role-viewer .attivita-form div.ss-content div.ss-list div.ss-option.ss-selected,
+div.attivita-form div.ss-content div.ss-list div.ss-option.ss-selected,
+div.form-section div.ss-content div.ss-list div.ss-option.ss-selected,
+.content div.ss-content div.ss-list div.ss-option.ss-selected {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+/* ===== RICERCA ===== */
+body.role-admin .attivita-form div.ss-content div.ss-search,
+body.role-operator .attivita-form div.ss-content div.ss-search,
+body.role-viewer .attivita-form div.ss-content div.ss-search,
+div.attivita-form div.ss-content div.ss-search,
+div.form-section div.ss-content div.ss-search,
+.content div.ss-content div.ss-search {
+    padding: 8px !important;
+    border-bottom: 1px solid #dee2e6 !important;
+    margin: 0 !important;
+}
+
+/* ===== DROPDOWN CON SEARCH - ALTEZZA MAGGIORE ===== */
+body.role-admin .attivita-form div.ss-content:has(div.ss-search),
+body.role-operator .attivita-form div.ss-content:has(div.ss-search),
+body.role-viewer .attivita-form div.ss-content:has(div.ss-search),
+div.attivita-form div.ss-content:has(div.ss-search),
+div.form-section div.ss-content:has(div.ss-search),
+.content div.ss-content:has(div.ss-search) {
+    /* Quando c'è ricerca, aumenta altezza minima per compensare spazio search */
+    min-height: 140px !important;
+}
+
+body.role-admin .attivita-form div.ss-content div.ss-search input,
+body.role-operator .attivita-form div.ss-content div.ss-search input,
+body.role-viewer .attivita-form div.ss-content div.ss-search input,
+div.attivita-form div.ss-content div.ss-search input,
+div.form-section div.ss-content div.ss-search input,
+.content div.ss-content div.ss-search input {
+    width: 100% !important;
+    height: 32px !important;
+    padding: 6px 10px !important;
+    border: none !important;
+    font-size: 0.9rem !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+}
+
+/* ===== FRECCIA ===== */
+body.role-admin .attivita-form div.ss-main div.ss-arrow,
+body.role-operator .attivita-form div.ss-main div.ss-arrow,
+body.role-viewer .attivita-form div.ss-main div.ss-arrow,
+div.attivita-form div.ss-main div.ss-arrow,
+div.form-section div.ss-main div.ss-arrow,
+.content div.ss-main div.ss-arrow {
+    position: absolute !important;
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 12px !important;
+    height: 12px !important;
+    pointer-events: none !important;
+}
+
+/* ===== STILI PER OPZIONI ENTI (con nome e indirizzo) ===== */
+body.role-admin .attivita-form div.ss-content div.ss-list div.ss-option div[style*="font-size: 15px"],
+body.role-operator .attivita-form div.ss-content div.ss-list div.ss-option div[style*="font-size: 15px"],
+body.role-viewer .attivita-form div.ss-content div.ss-list div.ss-option div[style*="font-size: 15px"],
+div.attivita-form div.ss-content div.ss-list div.ss-option div[style*="font-size: 15px"],
+div.form-section div.ss-content div.ss-list div.ss-option div[style*="font-size: 15px"],
+.content div.ss-content div.ss-list div.ss-option div[style*="font-size: 15px"] {
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    line-height: 1.3 !important;
+    margin-bottom: 2px !important;
+    text-transform: uppercase !important;
+    color: inherit !important;
+}
+
+body.role-admin .attivita-form div.ss-content div.ss-list div.ss-option div[style*="font-size: 11px"],
+body.role-operator .attivita-form div.ss-content div.ss-list div.ss-option div[style*="font-size: 11px"],
+body.role-viewer .attivita-form div.ss-content div.ss-list div.ss-option div[style*="font-size: 11px"],
+div.attivita-form div.ss-content div.ss-list div.ss-option div[style*="font-size: 11px"],
+div.form-section div.ss-content div.ss-list div.ss-option div[style*="font-size: 11px"],
+.content div.ss-content div.ss-list div.ss-option div[style*="font-size: 11px"] {
+    font-size: 11px !important;
+    font-weight: 400 !important;
+    font-style: italic !important;
+    line-height: 1.2 !important;
+    opacity: 0.8 !important;
+    color: inherit !important;
+}
+
+/* ===== SCROLLBAR ===== */
+body.role-admin .attivita-form div.ss-content div.ss-list::-webkit-scrollbar,
+body.role-operator .attivita-form div.ss-content div.ss-list::-webkit-scrollbar,
+body.role-viewer .attivita-form div.ss-content div.ss-list::-webkit-scrollbar,
+div.attivita-form div.ss-content div.ss-list::-webkit-scrollbar,
+div.form-section div.ss-content div.ss-list::-webkit-scrollbar,
+.content div.ss-content div.ss-list::-webkit-scrollbar {
+    width: 6px !important;
+    background: #f1f3f4 !important;
+}
+
+body.role-admin .attivita-form div.ss-content div.ss-list::-webkit-scrollbar-thumb,
+body.role-operator .attivita-form div.ss-content div.ss-list::-webkit-scrollbar-thumb,
+body.role-viewer .attivita-form div.ss-content div.ss-list::-webkit-scrollbar-thumb,
+div.attivita-form div.ss-content div.ss-list::-webkit-scrollbar-thumb,
+div.form-section div.ss-content div.ss-list::-webkit-scrollbar-thumb,
+.content div.ss-content div.ss-list::-webkit-scrollbar-thumb {
+    background: #ced4da !important;
+    border-radius: 3px !important;
+}
+
+/* ===== RESET FORZATO DI TUTTE LE REGOLE PRECEDENTI ===== */
+
+/* Annulla le regole di eventi-inserisci-styles.css */
+#tipologia_evento_id + .ss-main .ss-content,
+#ente_id + .ss-main .ss-content {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Annulla form_fixes.css conflittuali */
+.ss-content {
+    overflow-x: visible !important;
+}
+
+.ss-main .ss-single-selected {
+    padding-right: initial !important;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    body.role-admin .attivita-form div.ss-content,
+    body.role-operator .attivita-form div.ss-content,
+    body.role-viewer .attivita-form div.ss-content,
+    div.attivita-form div.ss-content,
+    div.form-section div.ss-content,
+    .content div.ss-content {
+        max-height: 200px !important;
+    }
+}
+
+/* ===== DEBUG MODE - Uncomment per debug ===== */
+/*
+body.role-admin .attivita-form div.ss-main,
+body.role-operator .attivita-form div.ss-main,
+body.role-viewer .attivita-form div.ss-main,
+div.attivita-form div.ss-main {
+    border: 3px solid red !important;
+}
+
+body.role-admin .attivita-form div.ss-content,
+body.role-operator .attivita-form div.ss-content,
+body.role-viewer .attivita-form div.ss-content,
+div.attivita-form div.ss-content {
+    border: 3px solid blue !important;
+}
+*/

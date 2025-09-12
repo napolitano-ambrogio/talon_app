@@ -494,49 +494,65 @@ textarea:focus,
 }
 
 /* ========================================
-   FIX SLIM SELECT SPECIFICI
-   ======================================== */
-
+   FIX SLIM SELECT SPECIFICI - DISABILITATI
+   ======================================== 
+   
+   NOTA: Questi fix sono stati disabilitati per evitare conflitti con
+   il nuovo CSS finale attivita-slimselect-final-fix.css che gestisce
+   tutto il comportamento SlimSelect con specificità massima.
+   
+   Mantenuti come riferimento ma commentati.
+   
+   ========================================
+   
 /* Fix per rimuovere frecce Bootstrap sui select con Slim Select */
+/*
 #tipologia_evento_id.form-control,
 #ente_id.form-control {
-    /* Rimuovi completamente la freccia Bootstrap */
     background-image: none !important;
     background-position: unset !important;
     background-repeat: unset !important;
     background-size: unset !important;
-    
-    /* Rimuovi padding destro per freccia */
     padding-right: 12px !important;
 }
+*/
 
 /* Fix per container Slim Select - rimuovi spazio extra */
+/*
 .ss-main .ss-single-selected {
-    padding-right: 35px !important; /* Spazio solo per freccia Slim Select */
+    padding-right: 35px !important;
 }
+*/
 
 /* Fix per dropdown con scrollbar - rimuovi spazio extra a destra */
+/*
 .ss-content .ss-list {
     padding-right: 0 !important;
     margin-right: 0 !important;
 }
+*/
 
 /* Fix specifico per spazio dopo scrollbar nei dropdown */
+/*
 .ss-content .ss-list .ss-option {
     padding: 8px 12px !important;
     margin-right: 0 !important;
     width: 100% !important;
     box-sizing: border-box !important;
 }
+*/
 
 /* Assicura che non ci sia spazio extra nel container dropdown */
+/*
 .ss-content {
     padding: 0 !important;
     overflow-x: hidden !important;
     box-sizing: border-box !important;
 }
+*/
 
 /* Fix per assicurare che la scrollbar non crei spazio extra */
+/*
 .ss-content .ss-list::-webkit-scrollbar {
     width: 8px;
 }
@@ -554,3 +570,4 @@ textarea:focus,
 .ss-content .ss-list::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
+*/

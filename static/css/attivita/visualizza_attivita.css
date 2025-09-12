@@ -23,6 +23,101 @@ body {
 
 
 /* ========================================
+   BADGE MODALITÀ
+   ======================================== */
+
+.section-title {
+    position: relative;
+}
+
+/* Container per i badge con flexbox */
+.badges-container {
+    position: absolute;
+    top: 28px;
+    right: 25px;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 10px; /* ESATTAMENTE 10px di distanza tra i badge */
+    align-items: center;
+}
+
+.modalita-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: white;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.modalita-badge-ordinaria {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.modalita-badge-nazionale {
+    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.modalita-badge-teatro {
+    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+/* Badge SAC Pianificazione */
+.sac-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: white;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.sac-badge-pianificata {
+    background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+    box-shadow: 0 2px 8px rgba(32, 201, 151, 0.3);
+}
+
+.sac-badge-non-pianificata {
+    background: linear-gradient(135deg, #ffc107 0%, #ff6b6b 100%);
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+/* Responsive per schermi piccoli */
+@media (max-width: 768px) {
+    .section-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .badges-container {
+        position: static;
+        transform: none;
+        margin-left: auto;
+        gap: 10px; /* Mantiene 10px anche su mobile */
+    }
+    
+    .modalita-badge,
+    .sac-badge {
+        font-size: 0.75rem;
+        padding: 5px 12px;
+    }
+}
+
+/* ========================================
    CONTAINER PRINCIPALE
    ======================================== */
 
@@ -186,40 +281,6 @@ body {
     font-style: italic;
 }
 
-/* ========================================
-   GRIGLIA PERSONALE
-   ======================================== */
-
-.personnel-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 15px;
-    margin: 15px 0;
-}
-
-.personnel-item {
-    text-align: center;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 4px;
-    border: 1px solid #e9ecef;
-}
-
-.personnel-number {
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: #0d6efd;
-    display: block;
-    margin-bottom: 5px;
-}
-
-.personnel-label {
-    font-size: 0.85rem;
-    color: #6c757d;
-    text-transform: uppercase;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-}
 
 /* ========================================
    SEZIONE AZIONI
@@ -324,9 +385,6 @@ body {
         gap: 15px;
     }
     
-    .personnel-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
     
     .btn-group {
         flex-direction: column;
@@ -341,13 +399,7 @@ body {
 
 /* Mobile (fino a 480px) */
 @media (max-width: 480px) {
-    .personnel-grid {
-        grid-template-columns: 1fr;
-    }
     
-    .personnel-item {
-        margin-bottom: 10px;
-    }
     
     .attivita-title {
         font-size: 1.2rem;
@@ -651,39 +703,6 @@ body {
     word-wrap: break-word;
 }
 
-/* Grid speciale per il personale */
-.personnel-grid {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-}
-
-.personnel-item {
-    text-align: center;
-    background: #f8f9fa;
-    border-radius: 6px;
-    padding: 20px 15px;
-    border: 1px solid #dee2e6;
-}
-
-.personnel-item dt {
-    font-size: 0.85rem;
-    margin-bottom: 12px;
-}
-
-.personnel-count {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #495057;
-}
-
-.personnel-total {
-    background: #e9ecef;
-    border-color: #adb5bd;
-}
-
-.personnel-total .personnel-count.total {
-    color: #212529;
-    font-size: 2.2rem;
-}
 
 /* Grid per i dettagli specifici */
 .details-grid {
@@ -724,6 +743,49 @@ body {
 }
 
 /* ========================================
+   LAYOUT INFORMAZIONI GENERALI A DUE RIGHE
+   ======================================== */
+
+.info-grid-container {
+    padding: 25px;  /* Stesso padding della responsive-grid */
+}
+
+.info-row {
+    display: grid;
+    gap: 25px;      /* Stesso gap della responsive-grid */
+    margin-bottom: 25px;
+}
+
+.info-row:last-child {
+    margin-bottom: 0;
+}
+
+/* Prima e seconda riga con larghezze uniformi per distanze uguali */
+.info-row-first,
+.info-row-second {
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+}
+
+/* Riga singola per il personale */
+.personnel-single-row {
+    grid-template-columns: repeat(5, minmax(120px, 1fr));
+}
+
+/* Centratura valori personale */
+.personnel-single-row .grid-item {
+    text-align: center;
+}
+
+.personnel-single-row .grid-item dt {
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.personnel-single-row .grid-item dd {
+    text-align: center;
+}
+
+/* ========================================
    MEDIA QUERIES RESPONSIVE
    ======================================== */
 
@@ -733,12 +795,17 @@ body {
         grid-template-columns: repeat(5, 1fr);
     }
     
-    .personnel-grid {
-        grid-template-columns: repeat(5, 1fr);
-    }
     
     .details-grid {
         grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Tablet landscape (992px - 1199px): 5 colonne compatte */
+@media (max-width: 1199px) {
+    .personnel-single-row {
+        grid-template-columns: repeat(5, minmax(100px, 1fr));
+        gap: 15px;
     }
 }
 
@@ -748,9 +815,6 @@ body {
         grid-template-columns: repeat(4, 1fr);
     }
     
-    .personnel-grid {
-        grid-template-columns: repeat(5, 1fr);
-    }
     
     .details-grid {
         grid-template-columns: repeat(3, 1fr);
@@ -763,12 +827,17 @@ body {
         grid-template-columns: repeat(3, 1fr);
     }
     
-    .personnel-grid {
-        grid-template-columns: repeat(5, 1fr);
-    }
     
     .details-grid {
         grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Tablet portrait (768px - 991px): layout 3+2 */
+@media (max-width: 991px) {
+    .personnel-single-row {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
     }
 }
 
@@ -780,9 +849,17 @@ body {
         padding: 20px;
     }
     
-    .personnel-grid {
-        grid-template-columns: repeat(3, 1fr);
+    /* Layout a due righe diventa 2x2 su tablet */
+    .info-row-first,
+    .info-row-second {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
     }
+    
+    .info-grid-container {
+        padding: 20px;
+    }
+    
     
     .details-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -801,9 +878,23 @@ body {
         padding: 15px;
     }
     
-    .personnel-grid {
-        grid-template-columns: repeat(2, 1fr);
+    /* Layout mobile: tutto in una colonna */
+    .info-row-first,
+    .info-row-second {
+        grid-template-columns: 1fr;
+        gap: 15px;
     }
+    
+    /* Mobile grande (576px - 767px): layout 2+2+1 */
+    .personnel-single-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    
+    .info-grid-container {
+        padding: 15px;
+    }
+    
     
     .details-grid {
         grid-template-columns: 1fr;
@@ -819,16 +910,40 @@ body {
         font-size: 1rem;
         text-align: left !important;
     }
-    
-    .personnel-item {
-        padding: 15px 10px;
+}
+
+/* Mobile piccolo (<576px): layout a colonna singola con stile orizzontale */
+@media (max-width: 575px) {
+    .personnel-single-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
     }
     
-    .personnel-count {
-        font-size: 1.8rem;
+    .personnel-single-row .grid-item {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #e9ecef;
+        text-align: left; /* Override center alignment for mobile */
     }
     
-    .personnel-total .personnel-count.total {
-        font-size: 2rem;
+    .personnel-single-row .grid-item:last-child {
+        border-bottom: none;
+        font-weight: bold;
+        border-top: 2px solid #dee2e6;
+        padding-top: 12px;
+        margin-top: 5px;
+    }
+    
+    .personnel-single-row .grid-item dt {
+        margin-bottom: 0;
+        text-align: left;
+    }
+    
+    .personnel-single-row .grid-item dd {
+        text-align: right;
+        font-weight: 600;
     }
 }

@@ -78,53 +78,80 @@ Dettaglio {{ attivita.tipologia_nome }}
 
             <!-- Informazioni generali - Layout responsive a colonne -->
             <div class="info-section">
-                <h3 class="section-title">INFORMAZIONI GENERALI</h3>
-                <div class="responsive-grid">
-                    <div class="grid-item">
-                        <dt>Ente Svolgimento</dt>
-                        <dd>{{ attivita.ente_nome }}</dd>
-                    </div>
-                    <div class="grid-item">
-                        <dt>Data Inizio</dt>
-                        <dd>{{ attivita.data_inizio.strftime('%d/%m/%Y') if attivita.data_inizio else 'Non specificata' }}</dd>
-                    </div>
-                    <div class="grid-item">
-                        <dt>Data Fine</dt>
-                        <dd>
-                            {% if attivita.data_fine %}
-                                {{ attivita.data_fine.strftime('%d/%m/%Y') }}
-                                {% if attivita.data_inizio and attivita.data_fine != attivita.data_inizio %}
-                                    <span class="text-muted">({{ (attivita.data_fine - attivita.data_inizio).days + 1 }} giorni)</span>
-                                {% elif attivita.data_inizio and attivita.data_fine == attivita.data_inizio %}
-                                    <span class="text-muted">(1 giorno)</span>
-                                {% endif %}
-                            {% elif attivita.data_inizio %}
-                                {{ attivita.data_inizio.strftime('%d/%m/%Y') }}
-                                <span class="text-muted">(1 giorno)</span>
-                            {% else %}
-                                <span class="text-muted">Non specificata</span>
+                <h3 class="section-title">
+                    INFORMAZIONI GENERALI
+                    <div class="badges-container">
+                        {% if attivita.modalita_effettuazione == 'ordinaria' %}
+                            <span class="modalita-badge modalita-badge-ordinaria">Attività ordinaria</span>
+                        {% elif attivita.modalita_effettuazione == 'squadra_contatto_nazionale' %}
+                            <span class="modalita-badge modalita-badge-nazionale">Squadra a Contatto su Territorio Nazionale</span>
+                        {% elif attivita.modalita_effettuazione == 'squadra_contatto_teatro' %}
+                            <span class="modalita-badge modalita-badge-teatro">Squadra a Contatto in Teatro Operativo</span>
+                        {% endif %}
+                        
+                        {# Badge SAC Pianificazione - Solo per squadre a contatto #}
+                        {% if attivita.modalita_effettuazione in ['squadra_contatto_nazionale', 'squadra_contatto_teatro'] %}
+                            {% if attivita.sac_pianificata == true %}
+                                <span class="sac-badge sac-badge-pianificata">Pianificata</span>
+                            {% elif attivita.sac_pianificata == false %}
+                                <span class="sac-badge sac-badge-non-pianificata">Non Pianificata</span>
                             {% endif %}
-                        </dd>
+                        {% endif %}
                     </div>
-                    <div class="grid-item">
-                        <dt>Operazione</dt>
-                        <dd>{{ attivita.operazione_nome if attivita.operazione_nome else 'NAZIONALE' }}</dd>
+                </h3>
+                <div class="info-grid-container">
+                    <!-- Prima riga: Ente, Descrizione, Operazione, Esercitazione -->
+                    <div class="info-row info-row-first">
+                        <div class="grid-item">
+                            <dt>Ente Svolgimento</dt>
+                            <dd>{{ attivita.ente_nome }}</dd>
+                        </div>
+                        <div class="grid-item grid-item-description">
+                            <dt>Descrizione</dt>
+                            <dd>{{ attivita.descrizione if attivita.descrizione else 'Nessuna descrizione disponibile' }}</dd>
+                        </div>
+                        <div class="grid-item">
+                            <dt>Operazione</dt>
+                            <dd>{{ attivita.operazione_nome if attivita.operazione_nome else 'NAZIONALE' }}</dd>
+                        </div>
+                        <div class="grid-item">
+                            <dt>Esercitazione</dt>
+                            <dd>{{ attivita.esercitazione_nome if attivita.esercitazione_nome else 'NON SPECIFICATA' }}</dd>
+                        </div>
                     </div>
-                    <div class="grid-item grid-item-wide">
-                        <dt>Descrizione</dt>
-                        <dd>{{ attivita.descrizione if attivita.descrizione else 'Nessuna descrizione disponibile' }}</dd>
-                    </div>
-                    <div class="grid-item">
-                        <dt>Luogo Partenza</dt>
-                        <dd>{{ partenza if partenza else 'Non specificato' }}</dd>
-                    </div>
-                    <div class="grid-item">
-                        <dt>Luogo Destinazione</dt>
-                        <dd>{{ destinazione if destinazione else 'Non specificato' }}</dd>
-                    </div>
-                    <div class="grid-item">
-                        <dt>Esercitazione</dt>
-                        <dd>{{ attivita.esercitazione_nome if attivita.esercitazione_nome else 'NON SPECIFICATA' }}</dd>
+                    
+                    <!-- Seconda riga: Date e Luoghi -->
+                    <div class="info-row info-row-second">
+                        <div class="grid-item">
+                            <dt>Data Inizio</dt>
+                            <dd>{{ attivita.data_inizio.strftime('%d/%m/%Y') if attivita.data_inizio else 'Non specificata' }}</dd>
+                        </div>
+                        <div class="grid-item">
+                            <dt>Data Fine</dt>
+                            <dd>
+                                {% if attivita.data_fine %}
+                                    {{ attivita.data_fine.strftime('%d/%m/%Y') }}
+                                    {% if attivita.data_inizio and attivita.data_fine != attivita.data_inizio %}
+                                        <span class="text-muted">({{ (attivita.data_fine - attivita.data_inizio).days + 1 }} giorni)</span>
+                                    {% elif attivita.data_inizio and attivita.data_fine == attivita.data_inizio %}
+                                        <span class="text-muted">(1 giorno)</span>
+                                    {% endif %}
+                                {% elif attivita.data_inizio %}
+                                    {{ attivita.data_inizio.strftime('%d/%m/%Y') }}
+                                    <span class="text-muted">(1 giorno)</span>
+                                {% else %}
+                                    <span class="text-muted">Non specificata</span>
+                                {% endif %}
+                            </dd>
+                        </div>
+                        <div class="grid-item">
+                            <dt>Luogo Partenza</dt>
+                            <dd>{{ (partenza if partenza else 'NON SPECIFICATO') | upper }}</dd>
+                        </div>
+                        <div class="grid-item">
+                            <dt>Luogo Destinazione</dt>
+                            <dd>{{ (destinazione if destinazione else 'NON SPECIFICATO') | upper }}</dd>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -133,93 +160,104 @@ Dettaglio {{ attivita.tipologia_nome }}
             <!-- Personale impiegato -->
             <div class="info-section">
                 <h3 class="section-title">PERSONALE IMPIEGATO</h3>
-                <div class="responsive-grid personnel-grid">
-                    <div class="grid-item personnel-item">
-                        <dt>Ufficiali</dt>
-                        <dd class="personnel-count">{{ attivita.personale_ufficiali or 0 }}</dd>
-                    </div>
-                    <div class="grid-item personnel-item">
-                        <dt>Sottufficiali</dt>
-                        <dd class="personnel-count">{{ attivita.personale_sottufficiali or 0 }}</dd>
-                    </div>
-                    <div class="grid-item personnel-item">
-                        <dt>Graduati/VFP</dt>
-                        <dd class="personnel-count">{{ attivita.personale_graduati or 0 }}</dd>
-                    </div>
-                    <div class="grid-item personnel-item">
-                        <dt>Civili</dt>
-                        <dd class="personnel-count">{{ attivita.personale_civili or 0 }}</dd>
-                    </div>
-                    <div class="grid-item personnel-item personnel-total">
-                        <dt>Totale</dt>
-                        <dd class="personnel-count total">{{ (attivita.personale_ufficiali or 0) + (attivita.personale_sottufficiali or 0) + (attivita.personale_graduati or 0) + (attivita.personale_civili or 0) }}</dd>
+                <div class="info-grid-container">
+                    <div class="info-row personnel-single-row">
+                        <div class="grid-item">
+                            <dt>Ufficiali</dt>
+                            <dd>{{ attivita.personale_ufficiali or 0 }}</dd>
+                        </div>
+                        <div class="grid-item">
+                            <dt>Sottufficiali</dt>
+                            <dd>{{ attivita.personale_sottufficiali or 0 }}</dd>
+                        </div>
+                        <div class="grid-item">
+                            <dt>Graduati/VFP</dt>
+                            <dd>{{ attivita.personale_graduati or 0 }}</dd>
+                        </div>
+                        <div class="grid-item">
+                            <dt>Civili</dt>
+                            <dd>{{ attivita.personale_civili or 0 }}</dd>
+                        </div>
+                        <div class="grid-item">
+                            <dt>Totale Personale</dt>
+                            <dd><strong>{{ (attivita.personale_ufficiali or 0) + (attivita.personale_sottufficiali or 0) + (attivita.personale_graduati or 0) + (attivita.personale_civili or 0) }}</strong></dd>
+                        </div>
                     </div>
                 </div>
             </div>
             {% endif %}
 
-            {% if dettagli_specifici and dettagli_specifici|length > 0 %}
-            <!-- Dettagli specifici -->
-            <div class="info-section">
-                <h3 class="section-title">DETTAGLI SPECIFICI</h3>
-                <div class="responsive-grid details-grid">
-                        <!-- Gestione dinamica dei dettagli basata sul tipo attività -->
-                        {% for key, value in dettagli_specifici.items() %}
-                            {% if value and value != '' %}
-                                <div class="grid-item {% if key in ['descrizione_esercitazione', 'descrizione', 'motivo_sgombero'] %}grid-item-wide{% endif %}">
-                                    <dt>
-                                        {% if key == 'tipo_vettore' %}Tipo Vettore
-                                        {% elif key == 'seriale_vettore' %}Seriale Vettore
-                                        {% elif key == 'numero_personale' %}Numero Personale
-                                        {% elif key == 'numero_mezzi' %}Numero Mezzi
-                                        {% elif key == 'volume' %}Volume
-                                        {% elif key == 'nome_esercitazione' %}Nome Esercitazione
-                                        {% elif key == 'tipo_esercitazione' %}Tipo Esercitazione
-                                        {% elif key == 'descrizione_esercitazione' %}Descrizione
-                                        {% elif key == 'nome_corso' %}Nome Corso
-                                        {% elif key == 'tipo_formazione' %}Tipo Formazione
-                                        {% elif key == 'tipo_training' %}Tipo Training
-                                        {% elif key == 'num_interventi' %}Numero Interventi
-                                        {% elif key == 'a_favore' %}A Favore di
-                                        {% elif key == 'tipo_intervento' %}Tipo Intervento
-                                        {% elif key == 'priorita' %}Priorità
-                                        {% elif key == 'motivo_sgombero' %}Motivo Sgombero
-                                        {% elif key == 'forza_armata' %}Forza Armata
-                                        {% elif key == 'num_unita' %}Numero Unità
-                                        {% elif key == 'grado' %}Grado
-                                        {% elif key == 'ente_appartenenza' %}Ente di Appartenenza
-                                        {% elif key == 'trasporto_a_cura' %}Trasporto a Cura di
-                                        {% elif key == 'attivita_svolta' %}Attività Svolta
-                                        {% elif key == 'piattaforma_materiale' %}Piattaforma/Materiale
-                                        {% elif key == 'tipologia_rifornimento' %}Tipologia Rifornimento
-                                        {% elif key == 'dettaglio_materiale' %}Dettaglio Materiale
-                                        {% elif key == 'quantita' %}Quantità
-                                        {% elif key == 'unita_di_misura' %}Unità di Misura
-                                        {% elif key == 'tipologia_carico' %}Tipologia Carico
-                                        {% elif key == 'mezzo_impiegato' %}Mezzo Impiegato
-                                        {% else %}{{ key|title }}{% endif %}
-                                    </dt>
-                                    <dd>
-                                        {% if key == 'tipo_vettore' and dettagli_specifici.seriale_vettore %}
-                                            {{ value }} {{ dettagli_specifici.seriale_vettore }}
-                                            <div class="vettore-decoded" id="vettore-decode-{{ value }}" style="font-size: 0.85em; margin-top: 5px; color: #6c757d;">
-                                                <span class="decode-eng"></span><br>
-                                                <span class="decode-ita"></span>
-                                            </div>
-                                        {% elif key == 'quantita' and dettagli_specifici.unita_di_misura %}
-                                            {{ value|int }} {{ dettagli_specifici.unita_di_misura }}
-                                        {% elif key == 'volume' and dettagli_specifici.unita_di_misura %}
-                                            {{ value }} {{ dettagli_specifici.unita_di_misura }}
-                                        {% elif key not in ['seriale_vettore', 'unita_di_misura'] %}
-                                            {{ value }}
-                                        {% endif %}
-                                    </dd>
-                                </div>
-                            {% endif %}
-                        {% endfor %}
+            {% if dettagli_specifici %}
+                {% set has_valid_fields = namespace(value=false) %}
+                {% for key, value in dettagli_specifici.items() %}
+                    {% if value and value != '' and key not in ['id', 'attivita_id', 'data_creazione', 'data_modifica', 'created_at', 'updated_at', 'deleted_at', 'creato_da', 'modificato_da', 'creato_il', 'modificato_il', 'created_by', 'updated_by', 'unita_di_misura', 'seriale_vettore'] %}
+                        {% set has_valid_fields.value = true %}
+                    {% endif %}
+                {% endfor %}
+                
+                {% if has_valid_fields.value %}
+                <!-- Dettagli specifici -->
+                <div class="info-section">
+                    <h3 class="section-title">DETTAGLI SPECIFICI</h3>
+                    <div class="responsive-grid details-grid">
+                            <!-- Gestione dinamica dei dettagli basata sul tipo attività -->
+                            {% for key, value in dettagli_specifici.items() %}
+                                {% if value and value != '' and key not in ['id', 'attivita_id', 'data_creazione', 'data_modifica', 'created_at', 'updated_at', 'deleted_at', 'creato_da', 'modificato_da', 'creato_il', 'modificato_il', 'created_by', 'updated_by', 'unita_di_misura', 'seriale_vettore'] %}
+                                    <div class="grid-item {% if key in ['descrizione_esercitazione', 'descrizione', 'motivo_sgombero'] %}grid-item-wide{% endif %}">
+                                        <dt>
+                                            {% if key == 'tipo_vettore' %}Tipo Vettore
+                                            {% elif key == 'seriale_vettore' %}Seriale Vettore
+                                            {% elif key == 'numero_personale' %}Numero Personale
+                                            {% elif key == 'numero_mezzi' %}Numero Mezzi
+                                            {% elif key == 'volume' %}Volume
+                                            {% elif key == 'nome_esercitazione' %}Nome Esercitazione
+                                            {% elif key == 'tipo_esercitazione' %}Tipo Esercitazione
+                                            {% elif key == 'descrizione_esercitazione' %}Descrizione
+                                            {% elif key == 'nome_corso' %}Nome Corso
+                                            {% elif key == 'tipo_formazione' %}Tipo Formazione
+                                            {% elif key == 'tipo_training' %}Tipo Training
+                                            {% elif key == 'num_interventi' %}Numero Interventi
+                                            {% elif key == 'a_favore' %}A Favore di
+                                            {% elif key == 'tipo_intervento' %}Tipo Intervento
+                                            {% elif key == 'priorita' %}Priorità
+                                            {% elif key == 'motivo_sgombero' %}Motivo Sgombero
+                                            {% elif key == 'forza_armata' %}Forza Armata
+                                            {% elif key == 'num_unita' %}Numero Unità
+                                            {% elif key == 'grado' %}Grado
+                                            {% elif key == 'ente_appartenenza' %}Ente di Appartenenza
+                                            {% elif key == 'trasporto_a_cura' %}Trasporto a Cura di
+                                            {% elif key == 'attivita_svolta' %}Attività Svolta
+                                            {% elif key == 'piattaforma_materiale' %}Piattaforma/Materiale
+                                            {% elif key == 'tipologia_rifornimento' %}Tipologia Rifornimento
+                                            {% elif key == 'dettaglio_materiale' %}Dettaglio Materiale
+                                            {% elif key == 'quantita' %}Quantità
+                                            {% elif key == 'unita_di_misura' %}Unità di Misura
+                                            {% elif key == 'tipologia_carico' %}Tipologia Carico
+                                            {% elif key == 'mezzo_impiegato' %}Mezzo Impiegato
+                                            {% else %}{{ key|title }}{% endif %}
+                                        </dt>
+                                        <dd>
+                                            {% if key == 'tipo_vettore' and dettagli_specifici.seriale_vettore %}
+                                                {{ value }} {{ dettagli_specifici.seriale_vettore }}
+                                                <div class="vettore-decoded" id="vettore-decode-{{ value }}" style="font-size: 0.85em; margin-top: 5px; color: #6c757d;">
+                                                    <span class="decode-eng"></span><br>
+                                                    <span class="decode-ita"></span>
+                                                </div>
+                                            {% elif key == 'quantita' and dettagli_specifici.unita_di_misura %}
+                                                {{ value|int }} {{ dettagli_specifici.unita_di_misura }}
+                                            {% elif key == 'volume' and dettagli_specifici.unita_di_misura %}
+                                                {{ value }} {{ dettagli_specifici.unita_di_misura }}
+                                            {% elif key not in ['seriale_vettore', 'unita_di_misura'] %}
+                                                {{ value }}
+                                            {% endif %}
+                                        </dd>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                    </div>
                 </div>
-            </div>
-    {% endif %}
+                {% endif %}
+            {% endif %}
 
             {% if attivita.note %}
             <!-- Note -->
@@ -303,7 +341,6 @@ document.getElementById('back-to-drilldown-btn').addEventListener('click', funct
     
     // Stato drilldown incorporato direttamente nel JavaScript
     const drilldownState = {{ drilldown_state | tojson | safe }};
-    console.log('[Activity] Ricostruzione stato drilldown:', drilldownState);
     
     // Salva stato nel sessionStorage per recuperarlo nella dashboard
     sessionStorage.setItem('drilldown_restore_state', JSON.stringify(drilldownState));

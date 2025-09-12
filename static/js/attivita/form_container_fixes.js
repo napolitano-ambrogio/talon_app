@@ -24,9 +24,16 @@
             // Assicura z-index corretto
             section.style.zIndex = 100 - index;
             
-            // Fix per sezioni nascoste che occupano spazio
-            if (section.style.display === 'none' || 
-                section.getAttribute('data-active') === 'false') {
+            // Fix per sezioni in base al loro stato di attivazione
+            if (section.getAttribute('data-active') === 'true') {
+                // Sezione attiva: ripristina visibilità normale
+                section.style.visibility = 'visible';
+                section.style.height = 'auto';
+                section.style.margin = '';
+                section.style.padding = '';
+                section.style.overflow = '';
+            } else if (section.style.display === 'none') {
+                // Sezione effettivamente nascosta: applica fix per spazio
                 section.style.visibility = 'hidden';
                 section.style.height = '0';
                 section.style.margin = '0';
@@ -243,6 +250,7 @@
                         
                         setTimeout(() => {
                             // Ricalcola layout dopo cambio visibilità
+                            fixOverlappingContainers();
                             fixFormRows();
                             fixInputAlignment();
                         }, 100);
@@ -309,7 +317,6 @@
      * Inizializzazione dei fix
      */
     function initFormFixes() {
-        console.log('[Form Fixes] Inizializzazione fix container form...');
         
         // Applica tutti i fix
         fixInputAlignment();
@@ -322,7 +329,6 @@
         // Setup event listeners
         handleResize();
         
-        console.log('[Form Fixes] Fix applicati con successo');
     }
     
     /**

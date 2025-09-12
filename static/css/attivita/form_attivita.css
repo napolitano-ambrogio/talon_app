@@ -106,6 +106,7 @@
     gap: 10px;
 }
 
+/* DISABILITATO: Freccia prima del titolo - non coerente con template eventi
 .section-title::before {
     content: "▶";
     color: #667eea;
@@ -116,6 +117,7 @@
 .form-section.expanded .section-title::before {
     transform: rotate(90deg);
 }
+*/
 
 /* Sezioni dettaglio (nascoste dinamicamente) */
 .detail-section {
@@ -664,7 +666,7 @@ textarea.is-invalid ~ .invalid-feedback {
     .btn,
     .form-modified-indicator,
     .autosave-badge {
-        display: none !important;
+        display: none;
     }
     
     .form-section {
@@ -674,7 +676,7 @@ textarea.is-invalid ~ .invalid-feedback {
     }
     
     .detail-section[data-active="false"] {
-        display: none !important;
+        display: none;
     }
 }
 

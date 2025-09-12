@@ -1,0 +1,294 @@
+/**
+ * ========================================
+ * TALON - Attività SlimSelect Override
+ * File: static/css/components/attivita-slimselect-override.css
+ * 
+ * Versione: 2.0.0
+ * Descrizione: CSS unificato per risolvere conflitti SlimSelect nelle attività
+ * ========================================
+ */
+
+/* ===== RESET COMPLETO SLIMSELECT PER ATTIVITÀ ===== */
+
+/* Container principale - dimensioni controllate */
+.attivita-form .ss-main,
+.form-section .ss-main {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 42px !important;
+    max-height: 42px !important; /* Forza altezza fissa quando chiuso */
+    overflow: hidden !important; /* Previene testo che fuoriesce */
+    border: 1px solid #ced4da !important;
+    border-radius: 5px !important;
+    background: white !important;
+    position: relative !important;
+    font-size: 0.95rem !important;
+}
+
+/* Input principale - testo controllato */
+.attivita-form .ss-single,
+.form-section .ss-single {
+    height: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    padding: 10px 35px 10px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    line-height: 1 !important;
+    color: #495057 !important;
+}
+
+/* Placeholder specifico */
+.attivita-form .ss-single .placeholder,
+.form-section .ss-single .placeholder {
+    color: #6c757d !important;
+    font-style: italic !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* Dropdown container - controllo visibilità */
+.attivita-form .ss-content,
+.form-section .ss-content {
+    display: none !important; /* Nascosto di default - CRITICO */
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: white !important;
+    border: 1px solid #ced4da !important;
+    border-top: none !important;
+    border-radius: 0 0 5px 5px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    z-index: 1050 !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+}
+
+/* Dropdown visibile solo quando aperto */
+.attivita-form .ss-main.ss-open-below .ss-content,
+.attivita-form .ss-main.ss-open-above .ss-content,
+.form-section .ss-main.ss-open-below .ss-content,
+.form-section .ss-main.ss-open-above .ss-content {
+    display: block !important; /* Visibile solo quando aperto */
+}
+
+/* Container principale quando aperto - permette overflow */
+.attivita-form .ss-main.ss-open-below,
+.attivita-form .ss-main.ss-open-above,
+.form-section .ss-main.ss-open-below,
+.form-section .ss-main.ss-open-above {
+    max-height: none !important; /* Rimuove limite altezza quando aperto */
+    overflow: visible !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+
+/* Lista opzioni - altezza corretta */
+.attivita-form .ss-list,
+.form-section .ss-list {
+    min-height: 100px !important; /* Minimo per vedere opzioni */
+    max-height: 300px !important; /* Limite ragionevole */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Opzioni individuali */
+.attivita-form .ss-option,
+.form-section .ss-option {
+    padding: 12px !important;
+    font-size: 0.95rem !important;
+    line-height: 1.4 !important;
+    cursor: pointer !important;
+    border-bottom: 1px solid #f1f3f4 !important;
+    box-sizing: border-box !important;
+    min-height: 45px !important; /* Assicura altezza minima per ogni opzione */
+}
+
+.attivita-form .ss-option:hover,
+.form-section .ss-option:hover {
+    background-color: #f8f9fa !important;
+}
+
+.attivita-form .ss-option.ss-highlighted,
+.form-section .ss-option.ss-highlighted {
+    background-color: #007bff !important;
+    color: white !important;
+}
+
+.attivita-form .ss-option.ss-selected,
+.form-section .ss-option.ss-selected {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+/* Input di ricerca */
+.attivita-form .ss-search,
+.form-section .ss-search {
+    padding: 8px !important;
+    border-bottom: 1px solid #dee2e6 !important;
+}
+
+.attivita-form .ss-search input,
+.form-section .ss-search input {
+    width: 100% !important;
+    padding: 6px 10px !important;
+    border: none !important;
+    font-size: 0.9rem !important;
+    box-sizing: border-box !important;
+}
+
+/* Arrow icon */
+.attivita-form .ss-arrow,
+.form-section .ss-arrow {
+    position: absolute !important;
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    border-left: 5px solid transparent !important;
+    border-right: 5px solid transparent !important;
+    border-top: 6px solid #6c757d !important;
+    transition: transform 0.2s ease !important;
+}
+
+.attivita-form .ss-main.ss-open-below .ss-arrow,
+.attivita-form .ss-main.ss-open-above .ss-arrow,
+.form-section .ss-main.ss-open-below .ss-arrow,
+.form-section .ss-main.ss-open-above .ss-arrow {
+    transform: translateY(-50%) rotate(180deg) !important;
+}
+
+/* ===== STILI PER OPZIONI CON DETTAGLI (Enti) ===== */
+
+.attivita-form .ss-option .ente-nome,
+.form-section .ss-option .ente-nome,
+.attivita-form .ss-option div[style*="font-size: 15px"],
+.form-section .ss-option div[style*="font-size: 15px"] {
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    line-height: 1.3 !important;
+    margin-bottom: 4px !important;
+    color: #343a40 !important;
+    text-transform: uppercase !important;
+}
+
+.attivita-form .ss-option .ente-dettagli,
+.form-section .ss-option .ente-dettagli,
+.attivita-form .ss-option div[style*="font-size: 11px"],
+.form-section .ss-option div[style*="font-size: 11px"] {
+    font-size: 11px !important;
+    font-weight: 400 !important;
+    font-style: italic !important;
+    line-height: 1.2 !important;
+    color: #6c757d !important;
+    opacity: 0.85 !important;
+}
+
+/* Stati speciali per enti con dettagli */
+.attivita-form .ss-option:hover .ente-nome,
+.attivita-form .ss-option:hover div[style*="font-size: 15px"],
+.form-section .ss-option:hover .ente-nome,
+.form-section .ss-option:hover div[style*="font-size: 15px"] {
+    color: #212529 !important;
+}
+
+.attivita-form .ss-option.ss-highlighted .ente-nome,
+.attivita-form .ss-option.ss-highlighted .ente-dettagli,
+.attivita-form .ss-option.ss-highlighted div[style*="font-size"],
+.form-section .ss-option.ss-highlighted .ente-nome,
+.form-section .ss-option.ss-highlighted .ente-dettagli,
+.form-section .ss-option.ss-highlighted div[style*="font-size"] {
+    color: white !important;
+}
+
+.attivita-form .ss-option.ss-selected .ente-nome,
+.attivita-form .ss-option.ss-selected .ente-dettagli,
+.attivita-form .ss-option.ss-selected div[style*="font-size"],
+.form-section .ss-option.ss-selected .ente-nome,
+.form-section .ss-option.ss-selected .ente-dettagli,
+.form-section .ss-option.ss-selected div[style*="font-size"] {
+    color: white !important;
+}
+
+/* ===== SCROLLBAR STYLING ===== */
+
+.attivita-form .ss-list::-webkit-scrollbar,
+.form-section .ss-list::-webkit-scrollbar {
+    width: 6px !important;
+}
+
+.attivita-form .ss-list::-webkit-scrollbar-track,
+.form-section .ss-list::-webkit-scrollbar-track {
+    background: #f1f3f4 !important;
+}
+
+.attivita-form .ss-list::-webkit-scrollbar-thumb,
+.form-section .ss-list::-webkit-scrollbar-thumb {
+    background: #ced4da !important;
+    border-radius: 3px !important;
+}
+
+.attivita-form .ss-list::-webkit-scrollbar-thumb:hover,
+.form-section .ss-list::-webkit-scrollbar-thumb:hover {
+    background: #adb5bd !important;
+}
+
+/* Firefox scrollbar */
+.attivita-form .ss-list,
+.form-section .ss-list {
+    scrollbar-width: thin !important;
+    scrollbar-color: #ced4da #f1f3f4 !important;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .attivita-form .ss-content,
+    .form-section .ss-content {
+        max-height: 250px !important;
+    }
+    
+    .attivita-form .ss-list,
+    .form-section .ss-list {
+        max-height: 200px !important;
+    }
+}
+
+/* ===== OVERRIDE DI SICUREZZA ===== */
+
+/* Forza nascondere dropdown quando non dovrebbe essere visibile */
+.attivita-form .ss-main:not(.ss-open-below):not(.ss-open-above) .ss-content,
+.form-section .ss-main:not(.ss-open-below):not(.ss-open-above) .ss-content {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+/* Assicura che il testo non esca mai dal container principale */
+.attivita-form .ss-main,
+.form-section .ss-main,
+.attivita-form .ss-single,
+.form-section .ss-single {
+    box-sizing: border-box !important;
+}
+
+/* DEBUG: Uncomment per debug visuale */
+/*
+.attivita-form .ss-main {
+    border: 2px solid red !important;
+}
+.attivita-form .ss-content {
+    border: 2px solid blue !important;
+}
+.attivita-form .ss-list {
+    border: 2px solid green !important;
+}
+*/

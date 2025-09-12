@@ -287,20 +287,6 @@
                         </div>
                     </div>
                 </div>
-                {% elif prot_data %}
-                <div class="form-group">
-                    <label>Debug Dati JSONB</label>
-                    <div class="seguiti-container">
-                        <div class="no-seguiti">
-                            <i class="fas fa-bug"></i> prot_data debug
-                            <br><small class="text-muted">Contenuto prot_data: {{ prot_data }}</small>
-                            <br><small class="text-muted">Tipo: {{ prot_data.__class__.__name__ }}</small>
-                            {% if prot_data.keys %}
-                            <br><small class="text-muted">Chiavi: {{ prot_data.keys() | list }}</small>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
                 {% endif %}
             </div>
 
@@ -314,7 +300,7 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('[Visualizza Evento] Evento {{ evento.id }} caricato');
+    console.log('[Visualizza Evento] Evento caricato');
     
     // Inizializza gestione seguiti eventi JSONB
     initSeguiti();
@@ -331,14 +317,6 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('[SEGUITI] Nessun dato seguiti disponibile');
     {% endif %}
     
-    // Debug additional info
-    console.log('[EVENTI] Debug info:', {
-        'evento_id': {{ evento.id }},
-        'rife_evento_presente': {{ 'true' if evento.rife_evento else 'false' }},
-        'prot_data_presente': {{ 'true' if prot_data else 'false' }},
-        'prot_data_tipo': '{{ prot_data.__class__.__name__ if prot_data else 'None' }}',
-        'prot_data_keys': {{ prot_data.keys() | list | tojson | safe if prot_data and prot_data.keys else '[]' }}
-    });
 });
 
 // Funzione per inizializzare la gestione dei seguiti eventi
@@ -370,9 +348,6 @@ function debugRifeEvento(data) {
             
             if (parsed.seguiti_eventi && Array.isArray(parsed.seguiti_eventi)) {
                 console.log(`Eventi seguiti trovati: ${parsed.seguiti_eventi.length}`);
-                parsed.seguiti_eventi.forEach((seguito, index) => {
-                    console.log(`[${index}] Evento #${seguito.evento_id}:`, seguito);
-                });
             }
         } catch (e) {
             console.error('Errore parsing JSON:', e);
@@ -380,9 +355,6 @@ function debugRifeEvento(data) {
     } else if (typeof data === 'object') {
         if (data.seguiti_eventi && Array.isArray(data.seguiti_eventi)) {
             console.log(`Eventi seguiti trovati: ${data.seguiti_eventi.length}`);
-            data.seguiti_eventi.forEach((seguito, index) => {
-                console.log(`[${index}] Evento #${seguito.evento_id}:`, seguito);
-            });
         }
     }
     

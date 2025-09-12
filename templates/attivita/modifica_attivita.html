@@ -3,112 +3,535 @@
 {% block title %}Modifica {{ attivita.tipologia_nome }} - TALON{% endblock %}
 
 {% block additional_css %}
-<!-- CSS specifico per form attività -->
-<link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/form_attivita.css') }}?v={{ cache_buster }}">
-<!-- CSS per opzioni "Aggiungi nuovo..." nei dropdown -->
-<link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown_add_new.css') }}?v={{ cache_buster }}">
-<!-- CSS fix per problemi visualizzazione form -->
-<link rel="stylesheet" href="{{ url_for('static', filename='css/attivita/form_fixes.css') }}?v={{ cache_buster }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/advanced-table.css') }}?v=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/attivita-inserisci-styles.css') }}?v={{ cache_buster }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/components/slim-searchable-select.css') }}?v={{ cache_buster }}">
+{% endblock %}
+
+{% block extra_css %}
 <style>
-/* OVERRIDE FINALE - PRIORITÀ MASSIMA */
-body .form-container,
-body .attivita-form-container,
-#modifica-attivita-container {
-    display: block !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding: 20px !important;
-    margin: 0 auto !important;
-    width: 100% !important;
-    max-width: 1200px !important;
-    box-sizing: border-box !important;
-    background: transparent !important;
-    min-height: calc(100vh - 120px) !important;
+/* ===== CSS PERSONALIZZAZIONI ATTIVITA TEMPLATE ===== */
+
+/* Integrazione con form-group esistenti */
+.form-group .talon-slim-select {
+    margin-top: 5px;
 }
 
-/* SEZIONI FORM SEMPRE VISIBILI */
-body .form-section {
-    background: white !important;
-    border-radius: 10px !important;
-    padding: 25px !important;
-    margin-bottom: 20px !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
-    display: block !important;
-    overflow: visible !important;
+/* ===== TOGGLE SLIDER MODALITÀ ===== */
+.modalita-toggle-slider {
+    margin-top: 10px;
+    width: 100%;
+    max-width: none; /* Rimuovi max-width per utilizzare tutta la larghezza del form-control */
 }
 
-/* INPUT STANDARDIZZATI */
-body .form-control,
-body input[type="text"],
-body input[type="number"],
-body input[type="date"],
-body input[type="email"],
-body select,
-#modifica-attivita-container input,
-#modifica-attivita-container select,
-.attivita-form input,
-.attivita-form select {
-    height: 42px !important;
-    min-height: 42px !important;
-    padding: 10px 12px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-    border: 1px solid #ced4da !important;
-    border-radius: 5px !important;
-    font-size: 0.95rem !important;
+.slider-track {
+    position: relative;
+    display: flex;
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 4px;
+    height: 60px;
 }
 
-/* TEXTAREA SPECIFICHE */
-body textarea,
-#modifica-attivita-container textarea,
-.attivita-form textarea {
-    height: auto !important;
-    min-height: 80px !important;
-    padding: 10px 12px !important;
+.slider-indicator {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: calc(33.333% - 4px);
+    height: calc(100% - 8px);
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%); /* Default verde */
+    border-radius: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    z-index: 1;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
 }
 
-/* SEARCHABLE SELECT */
-body .searchable-select-input,
-.searchable-select input {
-    height: 42px !important;
-    min-height: 42px !important;
-    padding: 10px 35px 10px 12px !important;
+.slider-option {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 2;
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    padding: 8px 12px;
 }
 
-/* DROPDOWN SCROLLABILI */
-body .searchable-select-dropdown {
-    max-height: 300px !important;
-    overflow-y: auto !important;
-    background: white !important;
-    border: 1px solid #667eea !important;
-    z-index: 1001 !important;
-}
-</style>
-<style>
-/* Fix altezza campi per allinearli */
-/* Searchable select del tipo vettore */
-.searchable-select[data-select-id="tipo_vettore_stratevac"] .searchable-select-input {
-    height: 42px !important;
-    padding: 9px 12px !important;
+.slider-option:hover {
+    transform: scale(1.02);
 }
 
-/* Campo seriale per allinearlo con tipo vettore */
-#dettagli-stratevac input#seriale_vettore_stratevac.form-control {
-    height: 42px !important;
-    padding: 9px 12px !important;
-    box-sizing: border-box !important;
+.slider-option.active {
+    color: white;
 }
 
-/* OVERRIDE FINALE PER SEZIONI DETTAGLI */
-.dettagli-forzato-visibile {
+.slider-option:not(.active) {
+    color: #6c757d;
+}
+
+.option-text {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    line-height: 1.2;
+    margin-bottom: 2px;
+    letter-spacing: 0.3px;
+}
+
+.option-desc {
+    font-size: 9px;
+    font-weight: 400;
+    line-height: 1.1;
+    opacity: 0.85;
+}
+
+/* Posizioni e colori indicator per le tre modalità */
+.modalita-toggle-slider[data-active="ordinaria"] .slider-indicator {
+    transform: translateX(0);
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%); /* Verde per Missione Ordinaria */
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
+}
+
+.modalita-toggle-slider[data-active="squadra_contatto_nazionale"] .slider-indicator {
+    transform: translateX(calc(100% + 4px));
+    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%); /* Blu per Squadra Nazionale */
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4);
+}
+
+.modalita-toggle-slider[data-active="squadra_contatto_teatro"] .slider-indicator {
+    transform: translateX(calc(200% + 8px));
+    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%); /* Rosso/Arancione per Teatro Operativo */
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+    .slider-track {
+        height: 50px;
+        border-radius: 10px;
+    }
+    
+    .option-text {
+        font-size: 10px;
+    }
+    
+    .option-desc {
+        font-size: 8px;
+    }
+    
+    .slider-option {
+        padding: 6px 8px;
+    }
+}
+
+/* Accessibility */
+.slider-option:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* ===== SAC TOGGLE SLIDER - DUE POSIZIONI ===== */
+.sac-toggle-slider {
+    margin-top: 10px;
+    width: 100%;
+    max-width: none; /* Stessa larghezza del toggle modalità */
+}
+
+.sac-slider-track {
+    position: relative;
+    background: #e9ecef;
+    border-radius: 12px;
+    padding: 4px;
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Due colonne uguali */
+    gap: 4px;
+    height: 60px; /* Stessa altezza del toggle modalità */
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.sac-slider-indicator {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: calc(50% - 6px); /* Metà larghezza meno gap */
+    height: calc(100% - 8px);
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%); /* Verde per pianificata */
+    border-radius: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
+}
+
+.sac-slider-option {
+    position: relative;
+    z-index: 1;
+    background: none;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+.sac-slider-option .option-text {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    transition: color 0.3s ease;
+    text-align: center;
+}
+
+.sac-slider-option.active .option-text {
+    color: white;
+}
+
+/* Posizioni e colori indicator per le due modalità SAC */
+.sac-toggle-slider[data-active="true"] .sac-slider-indicator {
+    transform: translateX(0);
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%); /* Verde per pianificata */
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4);
+}
+
+.sac-toggle-slider[data-active="false"] .sac-slider-indicator {
+    transform: translateX(calc(100% + 4px));
+    background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); /* Arancione per non pianificata */
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.4);
+}
+
+/* Responsive per SAC toggle */
+@media (max-width: 576px) {
+    .sac-slider-track {
+        height: 50px;
+        border-radius: 10px;
+    }
+    
+    .sac-slider-option .option-text {
+        font-size: 10px;
+    }
+    
+    .sac-slider-option {
+        padding: 6px 8px;
+    }
+}
+
+/* Accessibility per SAC toggle */
+.sac-slider-option:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+.form-group label + .talon-slim-select {
+    margin-top: 5px;
+}
+
+/* Altezza consistente con altri input del form */
+.talon-slim-select .ss-main {
+    min-height: 50px;
+    border-radius: 6px;
+}
+
+.talon-slim-select .ss-single {
+    min-height: 48px;
+    font-size: 0.95rem;
+}
+
+/* Coerenza con toggle switches esistenti */
+.form-group .talon-slim-select .ss-main {
+    background: white;
+    transition: all 0.2s ease;
+}
+
+/* Supporto per campi required */
+.form-group .required + .talon-slim-select .ss-main::before {
+    content: '';
+    position: absolute;
+    right: 35px;
+    top: 12px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #dc3545;
+    z-index: 2;
+}
+
+/* Styling specifico per optgroup in tipologie */
+.talon-slim-select .ss-optgroup-label {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 8px 16px;
+    border-radius: 4px 4px 0 0;
+    margin-bottom: 4px;
+}
+
+/* Evidenziazione opzioni add-new */
+.talon-slim-select .ss-option[data-action*="new"] {
+    background: linear-gradient(90deg, #e3f2fd 0%, #f3e5f5 100%);
+    border-left: 3px solid #2196f3;
+    font-weight: 600;
+    color: #1565c0;
+}
+
+.talon-slim-select .ss-option[data-action*="new"]:hover {
+    background: linear-gradient(90deg, #bbdefb 0%, #e1bee7 100%);
+    transform: translateX(2px);
+}
+
+/* Styling per opzioni temporanee */
+.talon-slim-select .ss-option[data-temp="true"] {
+    background: linear-gradient(90deg, #fff3e0 0%, #fce4ec 100%);
+    border-left: 3px solid #ff9800;
+    color: #e65100;
+}
+
+/* ===== OTTIMIZZAZIONE DROPDOWN SLIM SELECT ===== */
+
+/* Z-index per dropdown visibili sopra altri elementi */
+.talon-slim-select .ss-content {
+    z-index: 9999 !important;
+}
+
+/* Responsive adjustments leggeri */
+@media (max-width: 768px) {
+    .talon-slim-select .ss-content {
+        max-height: 60vh;
+    }
+}
+
+/* Loading state durante inizializzazione */
+.talon-slim-select-loading {
+    position: relative;
+    opacity: 0.7;
+}
+
+.talon-slim-select-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: translateY(-50%) rotate(0deg); }
+    100% { transform: translateY(-50%) rotate(360deg); }
+}
+
+/* Focus states per accessibilità */
+.talon-slim-select .ss-main:focus-within {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .talon-slim-select .ss-main {
+        border-width: 2px;
+    }
+    
+    .talon-slim-select .ss-option:hover,
+    .talon-slim-select .ss-option.ss-highlighted {
+        border-left-width: 4px;
+    }
+}
+
+
+/* ===== MODALITÀ EFFETTUAZIONE - RADIO BUTTON CARDS (PROTEZIONE MASSIMA) ===== */
+
+body #form-modifica-attivita .modalita-section[data-protected-component="modalita-effettuazione"] {
+    margin-bottom: 1.5rem !important;
     display: block !important;
     visibility: visible !important;
-    height: auto !important;
-    margin: 0 0 20px 0 !important;
-    padding: 25px !important;
-    overflow: visible !important;
     opacity: 1 !important;
-    transition: none !important;
+    position: relative !important;
+    z-index: 100 !important;
+}
+
+body #form-modifica-attivita .modalita-section .modalita-radio-group {
+    display: flex !important;
+    gap: 15px !important;
+    flex-wrap: wrap !important;
+    margin-top: 8px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+body #form-modifica-attivita .modalita-section .modalita-option {
+    flex: 1 !important;
+    min-width: 220px !important;
+    cursor: pointer !important;
+    margin-bottom: 0 !important;
+    font-weight: normal !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+body #form-modifica-attivita .modalita-section .modalita-option input[type="radio"] {
+    display: none !important;
+}
+
+body #form-modifica-attivita .modalita-section .modalita-card {
+    border: 2px solid #dee2e6 !important;
+    border-radius: 8px !important;
+    padding: 15px 12px !important;
+    text-align: center !important;
+    transition: all 0.3s ease !important;
+    background: white !important;
+    height: 85px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    position: relative !important;
+    overflow: hidden !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+.modalita-option:hover .modalita-card {
+    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102,126,234,0.15);
+}
+
+.modalita-option.active .modalita-card {
+    border-color: #667eea;
+    background: linear-gradient(135deg, rgba(102,126,234,0.08) 0%, rgba(118,75,162,0.08) 100%);
+    box-shadow: 0 4px 12px rgba(102,126,234,0.2);
+}
+
+.modalita-option.active .modalita-card::before {
+    content: '✓';
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    color: #667eea;
+    font-weight: bold;
+    font-size: 14px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(102,126,234,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Arial, sans-serif;
+}
+
+.modalita-card i {
+    font-size: 20px;
+    color: #667eea;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.modalita-title {
+    display: block;
+    font-weight: 600;
+    font-size: 12px;
+    color: #333;
+    margin-bottom: 3px;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.modalita-desc {
+    display: block;
+    font-size: 10px;
+    color: #6c757d;
+    line-height: 1.1;
+    font-weight: 400;
+}
+
+/* Responsive per modalità */
+@media (max-width: 768px) {
+    .modalita-radio-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .modalita-option {
+        min-width: 100%;
+    }
+    
+    .modalita-card {
+        height: 70px;
+        padding: 10px;
+    }
+    
+    .modalita-card i {
+        font-size: 16px;
+        margin-bottom: 4px;
+    }
+    
+    .modalita-title {
+        font-size: 11px;
+        margin-bottom: 2px;
+    }
+    
+    .modalita-desc {
+        font-size: 9px;
+    }
+}
+
+@media (max-width: 576px) {
+    .modalita-radio-group {
+        gap: 8px;
+    }
+    
+    .modalita-card {
+        height: 65px;
+        padding: 8px;
+    }
+    
+    .modalita-title {
+        font-size: 10px;
+    }
+}
+
+/* Print friendly */
+@media print {
+    .talon-slim-select .ss-content {
+        display: none !important;
+    }
+    
+    .modalita-radio-group {
+        display: block !important;
+    }
+    
+    .modalita-option {
+        display: inline-block !important;
+        width: auto !important;
+        margin-right: 20px;
+    }
+    
+    .modalita-card {
+        border: 1px solid #000 !important;
+        background: transparent !important;
+        height: auto !important;
+        padding: 5px !important;
+    }
 }
 </style>
 {% endblock %}
@@ -119,20 +542,17 @@ body .searchable-select-dropdown {
 <a href="{{ url_for('attivita.visualizza_attivita', id=attivita.id) }}" class="btn btn-secondary">
     <i class="fas fa-arrow-left"></i> Torna al Dettaglio
 </a>
-<button type="submit" form="form-modifica-attivita" class="btn btn-success">
+<button type="submit" form="form-modifica-attivita" class="btn btn-primary">
     <i class="fas fa-save"></i> Salva Modifiche
-</button>
-<button type="button" class="btn btn-warning" id="btn-reset-header">
-    <i class="fas fa-undo"></i> Reset Form
 </button>
 {% endblock %}
 
 {% block content %}
 <main class="dashboard__content-wrapper" role="main">
-    <section class="dashboard__scroll-content" aria-label="Contenuto principale modifica attivita">
-        <div class="form-container attivita-form-container" id="modifica-attivita-container">
-    
-    <form action="{{ url_for('attivita.aggiorna_attivita', id=attivita.id) }}" method="POST" id="form-modifica-attivita" class="attivita-form">
+    <section class="dashboard__scroll-content" aria-label="Form nuova attività">
+        
+        <div class="form-container">
+            <form action="{{ url_for('attivita.aggiorna_attivita', id=attivita.id) }}" method="POST" id="form-modifica-attivita">
         
         <!-- Sezione Dati Principali -->
         <div class="form-section">
@@ -140,53 +560,97 @@ body .searchable-select-dropdown {
             
             <div class="form-group">
                 <label for="ente_svolgimento_id">Ente che svolge l'attività <span class="required">*</span></label>
-                <div class="searchable-select" data-select-id="ente_svolgimento_id"></div>
-                <select name="ente_svolgimento_id" id="ente_svolgimento_id" style="display: none;" required>
-                    <option value="" disabled>-- Seleziona un ente --</option>
+                <select name="ente_svolgimento_id" id="ente_svolgimento_id" class="form-control" required aria-label="Seleziona ente che svolge l'attività" autocomplete="organization">
+                    <option value="" disabled {% if not attivita.ente_svolgimento_id %}selected{% endif %}>-- Seleziona un ente --</option>
                     {% for ente in enti_militari %}
                         <option value="{{ ente.id }}"
                                 data-codice="{{ ente.codice or '' }}"
                                 data-indirizzo="{{ ente.indirizzo or '' }}"
                                 data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}"
-                                {% if ente.id == attivita.ente_svolgimento_id %}selected{% endif %}>
+                                {% if attivita.ente_svolgimento_id == ente.id %}selected{% endif %}>
                             {{ ente.nome }}
                         </option>
                     {% endfor %}
                 </select>
             </div>
 
+
             <div class="form-group">
                 <label for="tipologia_id">Tipo di Attività <span class="required">*</span></label>
-                <div class="searchable-select" data-select-id="tipologia_id"></div>
-                <select name="tipologia_id" id="tipologia_id" style="display: none;" required>
-                    <option value="" disabled>-- Seleziona una tipologia --</option>
+                <select name="tipologia_id" id="tipologia_id" class="form-control" required aria-label="Seleziona tipologia attività" autocomplete="off">
+                    <option value="" disabled {% if not attivita.tipologia_id %}selected{% endif %}>-- Seleziona una tipologia --</option>
                     {% for categoria, sottocategorie in tipologie.items() %}
                         <optgroup label="{{ categoria }}">
                             {% for sub in sottocategorie %}
-                                <option value="{{ sub.id }}" {% if sub.id == attivita.tipologia_id %}selected{% endif %}>
-                                    {{ sub.nome }}
-                                </option>
+                                <option value="{{ sub.id }}" {% if attivita.tipologia_id == sub.id %}selected{% endif %}>{{ sub.nome }}</option>
                             {% endfor %}
                         </optgroup>
                     {% endfor %}
                 </select>
             </div>
 
+            <!-- MODALITÀ DI EFFETTUAZIONE - DOPO TIPO ATTIVITÀ -->
+            <div class="form-group" id="modalita-effettuazione-container">
+                <label>Modalità di Effettuazione <span class="required">*</span></label>
+                
+                <!-- Radio inputs nascosti per compatibilità form -->
+                <input type="radio" name="modalita_effettuazione" value="ordinaria" id="radio_ordinaria" {% if attivita.modalita_effettuazione == 'ordinaria' %}checked{% endif %} required style="display: none;">
+                <input type="radio" name="modalita_effettuazione" value="squadra_contatto_nazionale" id="radio_nazionale" {% if attivita.modalita_effettuazione == 'squadra_contatto_nazionale' %}checked{% endif %} required style="display: none;">
+                <input type="radio" name="modalita_effettuazione" value="squadra_contatto_teatro" id="radio_teatro" {% if attivita.modalita_effettuazione == 'squadra_contatto_teatro' %}checked{% endif %} required style="display: none;">
+                
+                <!-- Toggle slider a tre posizioni -->
+                <div class="modalita-toggle-slider" id="modalitaToggle">
+                    <div class="slider-track">
+                        <div class="slider-indicator" id="sliderIndicator"></div>
+                        <button type="button" class="slider-option {% if attivita.modalita_effettuazione == 'ordinaria' or not attivita.modalita_effettuazione %}active{% endif %}" data-value="ordinaria" id="btn_ordinaria">
+                            <span class="option-text">MISSIONE ORDINARIA</span>
+                        </button>
+                        <button type="button" class="slider-option {% if attivita.modalita_effettuazione == 'squadra_contatto_nazionale' %}active{% endif %}" data-value="squadra_contatto_nazionale" id="btn_nazionale">
+                            <span class="option-text">SQUADRA A CONTATTO NAZIONALE</span>
+                        </button>
+                        <button type="button" class="slider-option {% if attivita.modalita_effettuazione == 'squadra_contatto_teatro' %}active{% endif %}" data-value="squadra_contatto_teatro" id="btn_teatro">
+                            <span class="option-text">SQUADRA A CONTATTO IN TE.OP.</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PIANIFICAZIONE SAC - Visibile solo per squadre a contatto -->
+            <div class="form-group" id="sac-pianificata-container" style="display: {% if attivita.modalita_effettuazione in ['squadra_contatto_nazionale', 'squadra_contatto_teatro'] %}block{% else %}none{% endif %};">
+                <label>Pianificazione SAC</label>
+                
+                <!-- Radio inputs nascosti per compatibilità form -->
+                <input type="radio" name="sac_pianificata" value="true" id="radio_pianificata" {% if attivita.sac_pianificata == true or attivita.sac_pianificata is none %}checked{% endif %} style="display: none;">
+                <input type="radio" name="sac_pianificata" value="false" id="radio_non_pianificata" {% if attivita.sac_pianificata == false %}checked{% endif %} style="display: none;">
+                
+                <!-- Toggle slider a due posizioni -->
+                <div class="sac-toggle-slider" id="sacToggle">
+                    <div class="sac-slider-track">
+                        <div class="sac-slider-indicator" id="sacSliderIndicator"></div>
+                        <button type="button" class="sac-slider-option {% if attivita.sac_pianificata != false %}active{% endif %}" data-value="true" id="btn_pianificata">
+                            <span class="option-text">PIANIFICATA</span>
+                        </button>
+                        <button type="button" class="sac-slider-option {% if attivita.sac_pianificata == false %}active{% endif %}" data-value="false" id="btn_non_pianificata">
+                            <span class="option-text">NON PIANIFICATA</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-group">
-                <div style="margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="font-weight: 600; color: #333;">Operazione</span>
-                        <div style="position: relative; display: inline-block; width: 50px; height: 24px; background-color: #ccc; border-radius: 24px; cursor: pointer;" onclick="toggleSwitch('operazione')">
-                            <input type="checkbox" id="toggle-operazione" style="display: none;">
-                            <div id="operazione-slider-button" style="position: absolute; height: 18px; width: 18px; left: 3px; top: 3px; background-color: white; transition: transform 0.3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+                <div class="toggle-operazione-container">
+                    <div class="toggle-operazione-wrapper">
+                        <span class="toggle-operazione-label">Operazione</span>
+                        <div class="toggle-operazione-switch" onclick="toggleSwitch('operazione')">
+                            <input type="checkbox" id="toggle-operazione" {% if attivita.operazione_id %}checked{% endif %} style="display: none;">
+                            <div id="operazione-slider-button" class="toggle-operazione-button"></div>
                         </div>
                     </div>
                 </div>
-                <div id="operazione-container" style="display: none;">
-                    <div class="searchable-select" data-select-id="operazione_id"></div>
-                    <select name="operazione_id" id="operazione_id" style="display: none;">
+                <div id="operazione-container" class="operazione-dropdown-container" style="display: {% if attivita.operazione_id %}block{% else %}none{% endif %};">
+                    <select name="operazione_id" id="operazione_id" class="form-control" aria-label="Seleziona operazione" autocomplete="off">
                         <option value="">-- Seleziona un'operazione (opzionale) --</option>
-                        <option value="new" data-action="new-operazione" style="font-style: italic; color: #007bff; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 8px;">
+                        <option value="new" data-action="new-operazione" class="add-new-option">
                             ➕ Aggiungi nuova operazione...
                         </option>
                         {% for op in operazioni %}
@@ -196,7 +660,7 @@ body .searchable-select-dropdown {
                                     data-teatro-operativo="{{ op.teatro_operativo or '' }}"
                                     data-nazione="{{ op.nazione or '' }}"
                                     data-details="{% if op.nome_breve %}{{ op.nome_breve }} • {% endif %}{% if op.teatro_operativo %}{{ op.teatro_operativo }}{% endif %}{% if op.nazione %} • {{ op.nazione }}{% endif %}"
-                                    {% if op.id == attivita.operazione_id %}selected{% endif %}>
+                                    {% if attivita.operazione_id == op.id %}selected{% endif %}>
                                 {{ op.nome_missione }}
                             </option>
                         {% endfor %}
@@ -207,8 +671,7 @@ body .searchable-select-dropdown {
                                     data-nome-breve="{{ op_temp.nome_breve or '' }}"
                                     data-teatro-operativo="{{ op_temp.teatro_operativo or '' }}"
                                     data-nazione="{{ op_temp.nazione or '' }}"
-                                    data-details="[NON VALIDATA] {% if op_temp.nome_breve %}{{ op_temp.nome_breve }} • {% endif %}{% if op_temp.teatro_operativo %}{{ op_temp.teatro_operativo }}{% endif %}{% if op_temp.nazione %} • {{ op_temp.nazione }}{% endif %}"
-                                    {% if ('temp_' + op_temp.id|string) == attivita.operazione_temp_value %}selected{% endif %}>
+                                    data-details="[NON VALIDATA] {% if op_temp.nome_breve %}{{ op_temp.nome_breve }} • {% endif %}{% if op_temp.teatro_operativo %}{{ op_temp.teatro_operativo }}{% endif %}{% if op_temp.nazione %} • {{ op_temp.nazione }}{% endif %}">
                                 [TEMP] {{ op_temp.nome_missione }}
                             </option>
                         {% endfor %}
@@ -217,20 +680,19 @@ body .searchable-select-dropdown {
             </div>
 
             <div class="form-group">
-                <div style="margin-bottom: 15px; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="font-weight: 600; color: #333;">Esercitazione</span>
-                        <div style="position: relative; display: inline-block; width: 50px; height: 24px; background-color: #ccc; border-radius: 24px; cursor: pointer;" onclick="toggleSwitch('esercitazione')">
-                            <input type="checkbox" id="toggle-esercitazione" style="display: none;">
-                            <div id="esercitazione-slider-button" style="position: absolute; height: 18px; width: 18px; left: 3px; top: 3px; background-color: white; transition: transform 0.3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+                <div class="toggle-esercitazione-container">
+                    <div class="toggle-esercitazione-wrapper">
+                        <span class="toggle-esercitazione-label">Esercitazione</span>
+                        <div class="toggle-esercitazione-switch" onclick="toggleSwitch('esercitazione')">
+                            <input type="checkbox" id="toggle-esercitazione" {% if attivita.esercitazione_id %}checked{% endif %} style="display: none;">
+                            <div id="esercitazione-slider-button" class="toggle-esercitazione-button"></div>
                         </div>
                     </div>
                 </div>
-                <div id="esercitazione-container" style="display: none;">
-                    <div class="searchable-select" data-select-id="esercitazione_id"></div>
-                    <select name="esercitazione_id" id="esercitazione_id" style="display: none;">
+                <div id="esercitazione-container" class="esercitazione-dropdown-container" style="display: {% if attivita.esercitazione_id %}block{% else %}none{% endif %};">
+                    <select name="esercitazione_id" id="esercitazione_id" class="form-control" aria-label="Seleziona esercitazione" autocomplete="off">
                         <option value="">-- Seleziona un'esercitazione (opzionale) --</option>
-                        <option value="new" data-action="new-esercitazione" style="font-style: italic; color: #007bff; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 8px;">
+                        <option value="new" data-action="new-esercitazione" class="add-new-option">
                             ➕ Aggiungi nuova esercitazione...
                         </option>
                         {% for eserc in esercitazioni %}
@@ -239,7 +701,7 @@ body .searchable-select-dropdown {
                                     data-nome-breve="{{ eserc.nome_breve or '' }}"
                                     data-anno="{{ eserc.anno or '' }}"
                                     data-details="{% if eserc.nome_breve %}{{ eserc.nome_breve }} • {% endif %}{% if eserc.anno %}{{ eserc.anno }}{% endif %}"
-                                    {% if eserc.id == attivita.esercitazione_id %}selected{% endif %}>
+                                    {% if attivita.esercitazione_id == eserc.id %}selected{% endif %}>
                                 {{ eserc.nome }}
                             </option>
                         {% endfor %}
@@ -249,8 +711,7 @@ body .searchable-select-dropdown {
                                     data-nome="{{ eserc_temp.nome }}"
                                     data-nome-breve="{{ eserc_temp.nome_breve or '' }}"
                                     data-anno="{{ eserc_temp.anno or '' }}"
-                                    data-details="[NON VALIDATA] {% if eserc_temp.nome_breve %}{{ eserc_temp.nome_breve }} • {% endif %}{% if eserc_temp.anno %}{{ eserc_temp.anno }}{% endif %}"
-                                    {% if ('temp_' + eserc_temp.id|string) == attivita.esercitazione_temp_value %}selected{% endif %}>
+                                    data-details="[NON VALIDATA] {% if eserc_temp.nome_breve %}{{ eserc_temp.nome_breve }} • {% endif %}{% if eserc_temp.anno %}{{ eserc_temp.anno }}{% endif %}">
                                 [TEMP] {{ eserc_temp.nome }}
                             </option>
                         {% endfor %}
@@ -261,13 +722,11 @@ body .searchable-select-dropdown {
             <div class="form-row">
                 <div class="form-group">
                     <label for="data_inizio">Data Inizio <span class="required">*</span></label>
-                    <input type="date" id="data_inizio" name="data_inizio" class="form-control" 
-                           value="{{ attivita.data_inizio.strftime('%Y-%m-%d') if attivita.data_inizio else '' }}" required>
+                    <input type="date" id="data_inizio" name="data_inizio" class="form-control" value="{{ attivita.data_inizio.strftime('%Y-%m-%d') if attivita.data_inizio else '' }}" required>
                 </div>
                 <div class="form-group">
                     <label for="data_fine">Data Fine</label>
-                    <input type="date" id="data_fine" name="data_fine" class="form-control"
-                           value="{{ attivita.data_fine.strftime('%Y-%m-%d') if attivita.data_fine else '' }}">
+                    <input type="date" id="data_fine" name="data_fine" class="form-control" value="{{ attivita.data_fine.strftime('%Y-%m-%d') if attivita.data_fine else '' }}">
                 </div>
             </div>
 
@@ -275,458 +734,6 @@ body .searchable-select-dropdown {
                 <label for="descrizione">Descrizione <span class="required">*</span></label>
                 <textarea id="descrizione" name="descrizione" rows="3" class="form-control" required 
                           placeholder="Inserire una descrizione dell'attività">{{ attivita.descrizione or '' }}</textarea>
-            </div>
-        </div>
-
-        <!-- SEZIONE DETTAGLI TRASPORTI -->
-        <div id="dettagli-trasporti" class="form-section detail-section" style="display: none;" data-active="false">
-            <h4 class="section-title">DETTAGLI MOVIMENTI E TRASPORTI</h4>
-            
-            <div class="form-group">
-                <label for="tipologia_carico">Tipologia di Carico</label>
-                <input type="text" id="tipologia_carico" name="tipologia_carico" class="form-control"
-                       value="{{ dettagli_trasporti.tipologia_carico or '' }}">
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group flex-grow">
-                    <label for="quantita">Quantità</label>
-                    <input type="number" step="any" id="quantita" name="quantita" class="form-control"
-                           value="{{ dettagli_trasporti.quantita or '' }}">
-                </div>
-                <div class="form-group">
-                    <label for="unita_di_misura">Unità di Misura</label>
-                    <select id="unita_di_misura" name="unita_di_misura" class="form-control">
-                        <option value="" {% if not dettagli_trasporti.unita_di_misura %}selected{% endif %}>-- Seleziona --</option>
-                        <option value="UNITÀ" {% if dettagli_trasporti.unita_di_misura == 'UNITÀ' %}selected{% endif %}>Unità</option>
-                        <option value="LITRI" {% if dettagli_trasporti.unita_di_misura == 'LITRI' %}selected{% endif %}>Litri</option>
-                        <option value="KG" {% if dettagli_trasporti.unita_di_misura == 'KG' %}selected{% endif %}>Kg</option>
-                        <option value="M3" {% if dettagli_trasporti.unita_di_misura == 'M3' %}selected{% endif %}>m³</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="mezzo_impiegato">Mezzo Impiegato (Targa/Matricola)</label>
-                <input type="text" id="mezzo_impiegato" name="mezzo_impiegato" class="form-control"
-                       value="{{ dettagli_trasporti.mezzo_impiegato or '' }}">
-            </div>
-        </div>
-        
-        <!-- SEZIONE DETTAGLI MANTENIMENTO -->
-        <div id="dettagli-mantenimento" class="form-section detail-section" style="display: none;" data-active="false">
-            <h4 class="section-title">DETTAGLI MANTENIMENTO E SQUADRE A CONTATTO</h4>
-            
-            <div class="form-group">
-                <label for="tipo_intervento">Tipo Intervento</label>
-                <select id="tipo_intervento" name="tipo_intervento" class="form-control">
-                    <option value="" {% if not dettagli_mantenimento.tipo_intervento %}selected{% endif %}>-- Seleziona --</option>
-                    <option value="INTERVENTO PRESSO LA FASCIA LOGISTICA DEL SOSTEGNO" {% if dettagli_mantenimento.tipo_intervento == 'INTERVENTO PRESSO LA FASCIA LOGISTICA DEL SOSTEGNO' %}selected{% endif %}>Intervento presso la fascia logistica del sostegno</option>
-                    <option value="SQUADRA A CONTATTO SUL TERRITORIO NAZIONALE" {% if dettagli_mantenimento.tipo_intervento == 'SQUADRA A CONTATTO SUL TERRITORIO NAZIONALE' %}selected{% endif %}>Squadra a contatto sul territorio nazionale</option>
-                    <option value="SQUADRA A CONTATTO IN TE.OP." {% if dettagli_mantenimento.tipo_intervento == 'SQUADRA A CONTATTO IN TE.OP.' %}selected{% endif %}>Squadra a contatto in TE.OP.</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="attivita_svolta">Attività Svolta</label>
-                <select id="attivita_svolta" name="attivita_svolta" class="form-control">
-                    <option value="" {% if not dettagli_mantenimento.attivita_svolta %}selected{% endif %}>-- Seleziona --</option>
-                    <option value="CONTROLLI E VERIFICHE TECNICHE" {% if dettagli_mantenimento.attivita_svolta == 'CONTROLLI E VERIFICHE TECNICHE' %}selected{% endif %}>Controlli e verifiche tecniche</option>
-                    <option value="MANUTENZIONE PREVENTIVA" {% if dettagli_mantenimento.attivita_svolta == 'MANUTENZIONE PREVENTIVA' %}selected{% endif %}>Manutenzione preventiva</option>
-                    <option value="MANUTENZIONE CORRETTIVA" {% if dettagli_mantenimento.attivita_svolta == 'MANUTENZIONE CORRETTIVA' %}selected{% endif %}>Manutenzione correttiva</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="piattaforma_materiale">Piattaforma/Sistema/Materiale</label>
-                <input type="text" id="piattaforma_materiale" name="piattaforma_materiale" class="form-control"
-                       value="{{ dettagli_mantenimento.piattaforma_materiale or '' }}"
-                       placeholder="Su cui si è intervenuti">
-            </div>
-        </div>
-
-        <!-- SEZIONE DETTAGLI RIFORNIMENTI -->
-        <div id="dettagli-rifornimenti" class="form-section detail-section" style="display: none;" data-active="false">
-            <h4 class="section-title">DETTAGLI RIFORNIMENTI</h4>
-            
-            <div class="form-group">
-                <label for="tipologia_rifornimento">Tipologia di Rifornimento</label>
-                <select id="tipologia_rifornimento" name="tipologia_rifornimento" class="form-control">
-                    <option value="" {% if not dettagli_rifornimenti.tipologia_rifornimento %}selected{% endif %}>-- Seleziona --</option>
-                    <option value="CARBURANTE" {% if dettagli_rifornimenti.tipologia_rifornimento == 'CARBURANTE' %}selected{% endif %}>Carburante</option>
-                    <option value="ASSEGNAZIONE MEZZI" {% if dettagli_rifornimenti.tipologia_rifornimento == 'ASSEGNAZIONE MEZZI' %}selected{% endif %}>Assegnazione mezzi</option>
-                    <option value="ASSEGNAZIONE MATERIALE" {% if dettagli_rifornimenti.tipologia_rifornimento == 'ASSEGNAZIONE MATERIALE' %}selected{% endif %}>Assegnazione materiale</option>
-                    <option value="RAZIONI VIVERI DA COMBATTIMENTO" {% if dettagli_rifornimenti.tipologia_rifornimento == 'RAZIONI VIVERI DA COMBATTIMENTO' %}selected{% endif %}>Razioni viveri da combattimento</option>
-                    <option value="ALTRO" {% if dettagli_rifornimenti.tipologia_rifornimento == 'ALTRO' %}selected{% endif %}>Altro</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="dettaglio_materiale">Dettaglio Materiale</label>
-                <input type="text" id="dettaglio_materiale" name="dettaglio_materiale" class="form-control"
-                       value="{{ dettagli_rifornimenti.dettaglio_materiale or '' }}"
-                       placeholder="Tipo carburante, mezzo, materiale, altro">
-            </div>
-            
-            <div class="form-row">
-                <div class="form-group flex-grow">
-                    <label for="quantita_rifornimento">Quantità</label>
-                    <input type="number" id="quantita_rifornimento" name="quantita_rifornimento" class="form-control" min="0" step="1"
-                           value="{{ dettagli_rifornimenti.quantita|int if dettagli_rifornimenti.quantita else '' }}">
-                </div>
-                <div class="form-group">
-                    <label for="unita_di_misura_rifornimento">Unità di Misura</label>
-                    <select id="unita_di_misura_rifornimento" name="unita_di_misura_rifornimento" class="form-control">
-                        <option value="" {% if not dettagli_rifornimenti.unita_di_misura %}selected{% endif %}>-- Seleziona --</option>
-                        <option value="UNITÀ" {% if dettagli_rifornimenti.unita_di_misura == 'UNITÀ' %}selected{% endif %}>Unità</option>
-                        <option value="LITRI" {% if dettagli_rifornimenti.unita_di_misura == 'LITRI' %}selected{% endif %}>Litri</option>
-                        <option value="KG" {% if dettagli_rifornimenti.unita_di_misura == 'KG' %}selected{% endif %}>Kg</option>
-                        <option value="M3" {% if dettagli_rifornimenti.unita_di_misura == 'M3' %}selected{% endif %}>m³</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- SEZIONE DETTAGLI GETRA -->
-        <div id="dettagli-getra" class="form-section detail-section" style="display: none;" data-active="false">
-            <h4 class="section-title">DETTAGLI GESTIONE TRANSITO (GETRA)</h4>
-
-            <div class="form-group">
-                <label for="tipo_vettore">Tipo Vettore</label>
-                <div class="searchable-select" data-select-id="tipo_vettore"></div>
-                <select id="tipo_vettore" name="tipo_vettore" style="display: none;">
-                    <option value="">-- Seleziona Vettore --</option>
-                    {% include 'attivita/includes/_vettori_getra.html' %}
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="seriale_vettore">Seriale / Targa / Nominativo</label>
-                <input type="text" id="seriale_vettore" name="seriale_vettore" class="form-control"
-                       value="{{ dettagli_getra.seriale_vettore or '' }}">
-            </div>
-
-            <div class="form-row getra-row">
-                <div class="form-group">
-                    <label for="numero_personale">Personale Movimentato</label>
-                    <input type="number" id="numero_personale" name="numero_personale" min="0" class="form-control"
-                           value="{{ dettagli_getra.numero_personale or '' }}">
-                </div>
-
-                <div class="form-group">
-                    <label for="numero_mezzi">Mezzi Movimentati</label>
-                    <input type="number" id="numero_mezzi" name="numero_mezzi" min="0" class="form-control"
-                           value="{{ dettagli_getra.numero_mezzi or '' }}">
-                </div>
-
-                <div class="form-group">
-                    <label for="volume">Quantità/Volume</label>
-                    <input type="number" id="volume" name="volume" min="0" step="any" class="form-control"
-                           value="{{ dettagli_getra.volume or '' }}">
-                </div>
-
-                <div class="form-group">
-                    <label for="unita_di_misura_getra">Unità di Misura</label>
-                    <select id="unita_di_misura_getra" name="unita_di_misura_getra" class="form-control">
-                        <option value="" {% if not dettagli_getra.unita_di_misura %}selected{% endif %}>--</option>
-                        <option value="KG" {% if dettagli_getra.unita_di_misura == 'KG' %}selected{% endif %}>Kg</option>
-                        <option value="M_LIN" {% if dettagli_getra.unita_di_misura == 'M_LIN' %}selected{% endif %}>Metri lineari</option>
-                        <option value="M3" {% if dettagli_getra.unita_di_misura == 'M3' %}selected{% endif %}>Metri cubi</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- SEZIONE DETTAGLI TRAINING ON THE JOB -->
-        <div id="dettagli-training-on-the-job" class="form-section detail-section" style="display: none;" data-active="false">
-            <h4 class="section-title">DETTAGLI TRAINING ON THE JOB</h4>
-            
-            <div class="form-group">
-                <label for="tipo_training">Tipo di Training</label>
-                <select id="tipo_training" name="tipo_training" class="form-control">
-                    <option value="" {% if not dettagli_training_on_the_job.tipo_training %}selected{% endif %}>-- Seleziona --</option>
-                    <option value="ADDESTRAMENTO OPERATIVO" {% if dettagli_training_on_the_job.tipo_training == 'ADDESTRAMENTO OPERATIVO' %}selected{% endif %}>Addestramento Operativo</option>
-                    <option value="ADDESTRAMENTO OPERATIVO SUL CAMPO" {% if dettagli_training_on_the_job.tipo_training == 'ADDESTRAMENTO OPERATIVO SUL CAMPO' %}selected{% endif %}>Addestramento Operativo sul Campo</option>
-                    <option value="ADDESTRAMENTO TECNICO" {% if dettagli_training_on_the_job.tipo_training == 'ADDESTRAMENTO TECNICO' %}selected{% endif %}>Addestramento Tecnico</option>
-                    <option value="ADDESTRAMENTO TATTICO" {% if dettagli_training_on_the_job.tipo_training == 'ADDESTRAMENTO TATTICO' %}selected{% endif %}>Addestramento Tattico</option>
-                    <option value="SIMULAZIONE" {% if dettagli_training_on_the_job.tipo_training == 'SIMULAZIONE' %}selected{% endif %}>Simulazione</option>
-                    <option value="AFFIANCAMENTO" {% if dettagli_training_on_the_job.tipo_training == 'AFFIANCAMENTO' %}selected{% endif %}>Affiancamento</option>
-                    <option value="ALTRO" {% if dettagli_training_on_the_job.tipo_training == 'ALTRO' %}selected{% endif %}>Altro</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- SEZIONE DETTAGLI FORMAZIONE -->
-        <div id="dettagli-formazione" class="form-section detail-section" style="display: none;" data-active="false">
-            <h4 class="section-title">DETTAGLI FORMAZIONE</h4>
-            
-            <div class="form-group">
-                <label for="tipo_formazione">Tipo di Formazione</label>
-                <select id="tipo_formazione" name="tipo_formazione" class="form-control">
-                    <option value="" {% if not dettagli_formazione.tipo_formazione %}selected{% endif %}>-- Seleziona --</option>
-                    <option value="CORSO BASE" {% if dettagli_formazione.tipo_formazione == 'CORSO BASE' %}selected{% endif %}>Corso Base</option>
-                    <option value="CORSO AVANZATO" {% if dettagli_formazione.tipo_formazione == 'CORSO AVANZATO' %}selected{% endif %}>Corso Avanzato</option>
-                    <option value="CORSO SPECIALIZZAZIONE" {% if dettagli_formazione.tipo_formazione == 'CORSO SPECIALIZZAZIONE' %}selected{% endif %}>Corso Specializzazione</option>
-                    <option value="SEMINARIO" {% if dettagli_formazione.tipo_formazione == 'SEMINARIO' %}selected{% endif %}>Seminario</option>
-                    <option value="WORKSHOP" {% if dettagli_formazione.tipo_formazione == 'WORKSHOP' %}selected{% endif %}>Workshop</option>
-                    <option value="CONFERENZA" {% if dettagli_formazione.tipo_formazione == 'CONFERENZA' %}selected{% endif %}>Conferenza</option>
-                    <option value="E-LEARNING" {% if dettagli_formazione.tipo_formazione == 'E-LEARNING' %}selected{% endif %}>E-Learning</option>
-                    <option value="ALTRO" {% if dettagli_formazione.tipo_formazione == 'ALTRO' %}selected{% endif %}>Altro</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="nome_corso">Nome del Corso</label>
-                <input type="text" id="nome_corso" name="nome_corso" class="form-control"
-                       value="{{ dettagli_formazione.nome_corso or '' }}"
-                       placeholder="Inserisci il nome del corso">
-            </div>
-        </div>
-
-        <!-- SEZIONE DETTAGLI ESERCITAZIONE -->
-        <div id="dettagli-esercitazione" class="form-section detail-section" style="display: none;" data-active="false">
-            <h4 class="section-title">DETTAGLI ESERCITAZIONE</h4>
-            
-            <div class="form-group">
-                <label for="tipo_esercitazione">Tipo di Esercitazione</label>
-                <select id="tipo_esercitazione" name="tipo_esercitazione" class="form-control">
-                    <option value="" {% if not dettagli_esercitazione.tipo_esercitazione %}selected{% endif %}>-- Seleziona --</option>
-                    <option value="ESERCITAZIONE NAZIONALE" {% if dettagli_esercitazione.tipo_esercitazione == 'ESERCITAZIONE NAZIONALE' %}selected{% endif %}>Esercitazione Nazionale</option>
-                    <option value="ESERCITAZIONE INTERNAZIONALE" {% if dettagli_esercitazione.tipo_esercitazione == 'ESERCITAZIONE INTERNAZIONALE' %}selected{% endif %}>Esercitazione Internazionale</option>
-                    <option value="ESERCITAZIONE NATO" {% if dettagli_esercitazione.tipo_esercitazione == 'ESERCITAZIONE NATO' %}selected{% endif %}>Esercitazione NATO</option>
-                    <option value="ESERCITAZIONE BILATERALE" {% if dettagli_esercitazione.tipo_esercitazione == 'ESERCITAZIONE BILATERALE' %}selected{% endif %}>Esercitazione Bilaterale</option>
-                    <option value="ESERCITAZIONE MULTILATERALE" {% if dettagli_esercitazione.tipo_esercitazione == 'ESERCITAZIONE MULTILATERALE' %}selected{% endif %}>Esercitazione Multilaterale</option>
-                    <option value="CPX" {% if dettagli_esercitazione.tipo_esercitazione == 'CPX' %}selected{% endif %}>CPX - Command Post Exercise</option>
-                    <option value="FTX" {% if dettagli_esercitazione.tipo_esercitazione == 'FTX' %}selected{% endif %}>FTX - Field Training Exercise</option>
-                    <option value="LIVEX" {% if dettagli_esercitazione.tipo_esercitazione == 'LIVEX' %}selected{% endif %}>LIVEX - Live Exercise</option>
-                    <option value="CAX" {% if dettagli_esercitazione.tipo_esercitazione == 'CAX' %}selected{% endif %}>CAX - Computer Assisted Exercise</option>
-                    <option value="ALTRO" {% if dettagli_esercitazione.tipo_esercitazione == 'ALTRO' %}selected{% endif %}>Altro</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="nome_esercitazione">Nome dell'Esercitazione</label>
-                <input type="text" id="nome_esercitazione" name="nome_esercitazione" class="form-control"
-                       value="{{ dettagli_esercitazione.nome_esercitazione or '' }}"
-                       placeholder="Es: NOBLE JUMP 2024, STEADFAST DEFENDER, etc.">
-            </div>
-            
-            <div class="form-group">
-                <label for="descrizione_esercitazione">Descrizione dell'Esercitazione</label>
-                <textarea id="descrizione_esercitazione" name="descrizione_esercitazione" class="form-control" rows="3"
-                          placeholder="Descrivi brevemente gli obiettivi e le attività dell'esercitazione">{{ dettagli_esercitazione.descrizione_esercitazione or '' }}</textarea>
-            </div>
-        </div>
-
-        <!-- SEZIONE DETTAGLI MEDICINA CURATIVA (nascosta di default) -->
-        <div id="dettagli-med-curativa" class="form-section detail-section" style="display: none;" data-active="false">
-            <h4 class="section-title">DETTAGLI MEDICINA CURATIVA</h4>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="num_interventi">Numero Interventi</label>
-                    <input type="number" id="num_interventi" name="num_interventi" class="form-control" min="0" value="{{ dettagli_med_curativa.num_interventi or '' }}">
-                </div>
-                
-                <div class="form-group">
-                    <label for="a_favore">A Favore di</label>
-                    <select id="a_favore" name="a_favore" class="form-control">
-                        <option value="">-- Seleziona --</option>
-                        <option value="MILITARE" {% if dettagli_med_curativa.a_favore == 'MILITARE' %}selected{% endif %}>Militare</option>
-                        <option value="CIVILE AVENTE DIRITTO" {% if dettagli_med_curativa.a_favore == 'CIVILE AVENTE DIRITTO' %}selected{% endif %}>Civile avente diritto</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="tipo_intervento_med">Tipo Intervento</label>
-                <select id="tipo_intervento_med" name="tipo_intervento_med" class="form-control">
-                    <option value="">-- Seleziona --</option>
-                    <option value="CHIRURGIA GENERALE" {% if dettagli_med_curativa.tipo_intervento == 'CHIRURGIA GENERALE' %}selected{% endif %}>Chirurgia Generale</option>
-                    <option value="CHIRURGIA PLASTICA" {% if dettagli_med_curativa.tipo_intervento == 'CHIRURGIA PLASTICA' %}selected{% endif %}>Chirurgia Plastica</option>
-                    <option value="CHIRURGIA PROCTOLOGICA" {% if dettagli_med_curativa.tipo_intervento == 'CHIRURGIA PROCTOLOGICA' %}selected{% endif %}>Chirurgia Proctologica</option>
-                    <option value="CHIRURGIA VASCOLARE" {% if dettagli_med_curativa.tipo_intervento == 'CHIRURGIA VASCOLARE' %}selected{% endif %}>Chirurgia Vascolare</option>
-                    <option value="GINECOLOGIA" {% if dettagli_med_curativa.tipo_intervento == 'GINECOLOGIA' %}selected{% endif %}>Ginecologia</option>
-                    <option value="NEUROCHIRURGIA" {% if dettagli_med_curativa.tipo_intervento == 'NEUROCHIRURGIA' %}selected{% endif %}>Neurochirurgia</option>
-                    <option value="OCULISTICA" {% if dettagli_med_curativa.tipo_intervento == 'OCULISTICA' %}selected{% endif %}>Oculistica</option>
-                    <option value="ORTOPEDIA" {% if dettagli_med_curativa.tipo_intervento == 'ORTOPEDIA' %}selected{% endif %}>Ortopedia</option>
-                    <option value="OTORINOLARINGOIATRIA" {% if dettagli_med_curativa.tipo_intervento == 'OTORINOLARINGOIATRIA' %}selected{% endif %}>Otorinolaringoiatria</option>
-                    <option value="UROLOGIA" {% if dettagli_med_curativa.tipo_intervento == 'UROLOGIA' %}selected{% endif %}>Urologia</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- SEZIONE DETTAGLI STRATEVAC (nascosta di default) -->
-        <div id="dettagli-stratevac" class="form-section detail-section" style="display: none;" data-active="false">
-            <h4 class="section-title">DETTAGLI SGOMBERI SANITARI/VETERINARI</h4>
-            
-            <!-- Priorità e Forza Armata affiancate -->
-            <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 1rem;">
-                <div class="form-group" style="flex: 1;">
-                    <label for="priorita">Priorità <span class="required">*</span></label>
-                    <select id="priorita" name="priorita" class="form-control">
-                        <option value="" {% if not dettagli_stratevac.priorita %}selected{% endif %}>-- Seleziona --</option>
-                        <option value="PRIORITÀ 1" {% if dettagli_stratevac.priorita == 'PRIORITÀ 1' %}selected{% endif %}>Priorità 1</option>
-                        <option value="PRIORITÀ 2" {% if dettagli_stratevac.priorita == 'PRIORITÀ 2' %}selected{% endif %}>Priorità 2</option>
-                        <option value="PRIORITÀ 3" {% if dettagli_stratevac.priorita == 'PRIORITÀ 3' %}selected{% endif %}>Priorità 3</option>
-                    </select>
-                </div>
-                
-                <div class="form-group" style="flex: 1;">
-                    <label for="forza_armata">Forza Armata</label>
-                    <select id="forza_armata" name="forza_armata" class="form-control">
-                        <option value="" {% if not dettagli_stratevac.forza_armata %}selected{% endif %}>-- Seleziona --</option>
-                        <option value="ESERCITO ITALIANO" {% if dettagli_stratevac.forza_armata == 'ESERCITO ITALIANO' %}selected{% endif %}>Esercito Italiano</option>
-                        <option value="MARINA MILITARE" {% if dettagli_stratevac.forza_armata == 'MARINA MILITARE' %}selected{% endif %}>Marina Militare</option>
-                        <option value="AERONAUTICA MILITARE" {% if dettagli_stratevac.forza_armata == 'AERONAUTICA MILITARE' %}selected{% endif %}>Aeronautica Militare</option>
-                        <option value="ARMA DEI CARABINIERI" {% if dettagli_stratevac.forza_armata == 'ARMA DEI CARABINIERI' %}selected{% endif %}>Arma dei Carabinieri</option>
-                        <option value="GUARDIA DI FINANZA" {% if dettagli_stratevac.forza_armata == 'GUARDIA DI FINANZA' %}selected{% endif %}>Guardia di Finanza</option>
-                        <option value="ALTRO" {% if dettagli_stratevac.forza_armata == 'ALTRO' %}selected{% endif %}>Altro</option>
-                    </select>
-                </div>
-            </div>
-            
-            <!-- Ente di Appartenenza - Largo come i due campi sopra -->
-            <div class="form-group" id="ente_appartenenza_select_container" {% if dettagli_stratevac.forza_armata != 'ESERCITO ITALIANO' %}style="display: none;"{% endif %}>
-                <label for="ente_appartenenza">Ente di Appartenenza</label>
-                <div class="searchable-select" data-select-id="ente_appartenenza"></div>
-                <select name="ente_appartenenza" id="ente_appartenenza" style="display: none;">
-                    <option value="">-- Seleziona (opzionale) --</option>
-                    {% for ente in enti_militari %}
-                        <option value="militare-{{ ente.id }}"
-                                data-tipo="militare"
-                                data-codice="{{ ente.codice or '' }}"
-                                data-indirizzo="{{ ente.indirizzo or '' }}"
-                                data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}"
-                                {% if dettagli_stratevac.ente_appartenenza == 'militare-' + ente.id|string %}selected{% endif %}>
-                            {{ ente.nome }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="form-group" id="ente_appartenenza_text_container" {% if dettagli_stratevac.forza_armata == 'ESERCITO ITALIANO' %}style="display: none;"{% endif %}>
-                <label for="ente_appartenenza_testo">Ente di Appartenenza</label>
-                <input type="text" id="ente_appartenenza_testo" name="ente_appartenenza_testo" class="form-control" 
-                       placeholder="Inserisci il nome dell'ente di appartenenza"
-                       value="{% if dettagli_stratevac.forza_armata != 'ESERCITO ITALIANO' %}{{ dettagli_stratevac.ente_appartenenza or '' }}{% endif %}">
-            </div>
-            
-            <!-- Numero Unità e Grado affiancati -->
-            <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 1rem;">
-                <div class="form-group" style="flex: 1;">
-                    <label for="num_unita">Numero Unità</label>
-                    <input type="number" id="num_unita" name="num_unita" class="form-control" min="0"
-                           value="{{ dettagli_stratevac.num_unita or '' }}">
-                </div>
-                
-                <div class="form-group" style="flex: 1;">
-                    <label for="grado">Grado</label>
-                    <input type="text" id="grado" name="grado" class="form-control"
-                           value="{{ dettagli_stratevac.grado or '' }}">
-                </div>
-            </div>
-            
-            <!-- Tipo Vettore e Seriale affiancati -->
-            <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 1rem;">
-                <div class="form-group" style="flex: 1;">
-                    <label for="tipo_vettore_stratevac">Tipo Vettore <small class="text-muted">(o "volo civile")</small></label>
-                    <div class="searchable-select" data-select-id="tipo_vettore_stratevac"></div>
-                    <select id="tipo_vettore_stratevac" name="tipo_vettore_stratevac" style="display: none;">
-                        <option value="">-- Seleziona Vettore --</option>
-                        {% include 'attivita/includes/_vettori_getra.html' %}
-                    </select>
-                </div>
-                
-                <div class="form-group" style="flex: 1;">
-                    <label for="seriale_vettore_stratevac">Seriale</label>
-                    <input type="text" id="seriale_vettore_stratevac" name="seriale_vettore_stratevac" class="form-control"
-                           value="{{ dettagli_stratevac.seriale_vettore or '' }}">
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="motivo_sgombero">Motivo Sgombero</label>
-                <textarea id="motivo_sgombero" name="motivo_sgombero" class="form-control" rows="3"
-                          placeholder="Descrivi il motivo dello sgombero sanitario/veterinario">{{ dettagli_stratevac.motivo_sgombero or '' }}</textarea>
-            </div>
-            
-            <div class="form-group">
-                <label for="trasporto_a_cura">Trasporto a Cura di</label>
-                <select id="trasporto_a_cura" name="trasporto_a_cura" class="form-control">
-                    <option value="" {% if not dettagli_stratevac.trasporto_a_cura %}selected{% endif %}>-- Seleziona --</option>
-                    <option value="POLICLINICO MILITARE DI ROMA \"CELIO\"" {% if dettagli_stratevac.trasporto_a_cura == 'POLICLINICO MILITARE DI ROMA "CELIO"' %}selected{% endif %}>Policlinico Militare di Roma "CELIO"</option>
-                    <option value="COMANDO MOUNTING" {% if dettagli_stratevac.trasporto_a_cura == 'COMANDO MOUNTING' %}selected{% endif %}>Comando Mounting</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- Sezione Località -->
-        <div class="form-section">
-            <h4 class="section-title">LOCALITÀ</h4>
-            
-            <div class="form-group">
-                <label for="partenza_id">Luogo Partenza</label>
-                <div class="searchable-select" data-select-id="partenza_id"></div>
-                <select name="partenza_id" id="partenza_id" style="display: none;">
-                    <option value="">-- Seleziona (opzionale) --</option>
-                    <optgroup label="ENTI MILITARI">
-                        {% for ente in enti_militari %}
-                            <option value="militare-{{ ente.id }}"
-                                    data-tipo="militare"
-                                    data-codice="{{ ente.codice or '' }}"
-                                    data-indirizzo="{{ ente.indirizzo or '' }}"
-                                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}"
-                                    {% if ente.id == attivita.partenza_militare_id %}selected{% endif %}>
-                                {{ ente.nome }}
-                            </option>
-                        {% endfor %}
-                    </optgroup>
-                    <optgroup label="ENTI CIVILI">
-                        {% for ente in enti_civili %}
-                            <option value="civile-{{ ente.id }}"
-                                    data-tipo="civile"
-                                    data-indirizzo="{{ ente.indirizzo or '' }}"
-                                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
-                                    data-details="{{ ente.indirizzo or '' }}{% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}"
-                                    {% if ente.id == attivita.partenza_civile_id %}selected{% endif %}>
-                                {{ ente.nome }}
-                            </option>
-                        {% endfor %}
-                    </optgroup>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="destinazione_id">Luogo Destinazione</label>
-                <div class="searchable-select" data-select-id="destinazione_id"></div>
-                <select name="destinazione_id" id="destinazione_id" style="display: none;">
-                    <option value="">-- Seleziona (opzionale) --</option>
-                    <optgroup label="ENTI MILITARI">
-                        {% for ente in enti_militari %}
-                            <option value="militare-{{ ente.id }}"
-                                    data-tipo="militare"
-                                    data-codice="{{ ente.codice or '' }}"
-                                    data-indirizzo="{{ ente.indirizzo or '' }}"
-                                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}"
-                                    {% if ente.id == attivita.destinazione_militare_id %}selected{% endif %}>
-                                {{ ente.nome }}
-                            </option>
-                        {% endfor %}
-                    </optgroup>
-                    <optgroup label="ENTI CIVILI">
-                        {% for ente in enti_civili %}
-                            <option value="civile-{{ ente.id }}"
-                                    data-tipo="civile"
-                                    data-indirizzo="{{ ente.indirizzo or '' }}"
-                                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
-                                    data-details="{{ ente.indirizzo or '' }}{% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}"
-                                    {% if ente.id == attivita.destinazione_civile_id %}selected{% endif %}>
-                                {{ ente.nome }}
-                            </option>
-                        {% endfor %}
-                    </optgroup>
-                </select>
             </div>
         </div>
 
@@ -764,569 +771,107 @@ body .searchable-select-dropdown {
             </div>
         </div>
 
-    </form>
-</div>
+        <!-- Sezione Località -->
+        <div class="form-section">
+            <h4 class="section-title">LOCALITÀ</h4>
+            
+            <div class="form-group">
+                <label for="partenza_id">Luogo Partenza</label>
+                <select name="partenza_id" id="partenza_id" class="form-control" aria-label="Seleziona luogo partenza" autocomplete="off">
+                    <option value="">-- Seleziona (opzionale) --</option>
+                    <optgroup label="ENTI MILITARI">
+                        {% for ente in enti_militari %}
+                            <option value="militare-{{ ente.id }}"
+                                    data-tipo="militare"
+                                    data-codice="{{ ente.codice or '' }}"
+                                    data-indirizzo="{{ ente.indirizzo or '' }}"
+                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}"
+                                    {% if attivita.partenza_militare_id == ente.id %}selected{% endif %}>
+                                {{ ente.nome }}
+                            </option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="ENTI CIVILI">
+                        {% for ente in enti_civili %}
+                            <option value="civile-{{ ente.id }}"
+                                    data-tipo="civile"
+                                    data-indirizzo="{{ ente.indirizzo or '' }}"
+                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
+                                    data-details="{{ ente.indirizzo or '' }}{% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}"
+                                    {% if attivita.partenza_civile_id == ente.id %}selected{% endif %}>
+                                {{ ente.nome }}
+                            </option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="destinazione_id">Luogo Destinazione</label>
+                <select name="destinazione_id" id="destinazione_id" class="form-control" aria-label="Seleziona luogo destinazione" autocomplete="off">
+                    <option value="">-- Seleziona (opzionale) --</option>
+                    <optgroup label="ENTI MILITARI">
+                        {% for ente in enti_militari %}
+                            <option value="militare-{{ ente.id }}"
+                                    data-tipo="militare"
+                                    data-codice="{{ ente.codice or '' }}"
+                                    data-indirizzo="{{ ente.indirizzo or '' }}"
+                                    data-details="{% if ente.codice %}[{{ ente.codice }}] {% endif %}{{ ente.indirizzo or '' }}"
+                                    {% if attivita.destinazione_militare_id == ente.id %}selected{% endif %}>
+                                {{ ente.nome }}
+                            </option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="ENTI CIVILI">
+                        {% for ente in enti_civili %}
+                            <option value="civile-{{ ente.id }}"
+                                    data-tipo="civile"
+                                    data-indirizzo="{{ ente.indirizzo or '' }}"
+                                    data-nazione="{{ ente.nazione or 'ITALIA' }}"
+                                    data-details="{{ ente.indirizzo or '' }}{% if ente.nazione and ente.nazione != 'ITALIA' %} - {{ ente.nazione }}{% endif %}"
+                                    {% if attivita.destinazione_civile_id == ente.id %}selected{% endif %}>
+                                {{ ente.nome }}
+                            </option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+            </div>
+        </div>
 
-<!-- Indicatore modifiche non salvate (gestito da JS) -->
-<div id="modified-indicator" style="display: none;"></div>
-{% endblock %}
+        <!-- SEZIONI DETTAGLI SPECIFICI (include modulari) -->
+        <!-- SEZIONE DETTAGLI TRASPORTI (include modulare) -->
+        {% include 'attivita/includes/_dettagli_trasporti.html' %}
 
-{% block extra_js %}
-<!-- JavaScript fix per container form -->
-<script src="{{ url_for('static', filename='js/attivita/form_container_fixes.js') }}?v={{ cache_buster }}"></script>
+        <!-- SEZIONE DETTAGLI MANTENIMENTO (include modulare) -->
+        {% include 'attivita/includes/_dettagli_mantenimento.html' %}
 
-<!-- I file JavaScript delle attività sono già caricati da shared/_base.html:
-     - static/js/attivita/attivita_utils.js
-     - static/js/attivita/attivita_forms.js  
-     - static/js/attivita/modifica_attivita.js
-     Quindi non serve includerli nuovamente -->
-
-<script>
-// Funzione globale per gestire i toggle switch
-function toggleSwitch(type) {
-    const checkbox = document.getElementById('toggle-' + type);
-    const container = document.getElementById(type + '-container');
-    const button = document.getElementById(type + '-slider-button');
-    const switchDiv = button.parentElement;
-    const select = document.getElementById(type === 'operazione' ? 'operazione_id' : 'esercitazione_id');
-    
-    // Toggle lo stato
-    checkbox.checked = !checkbox.checked;
-    
-    if (checkbox.checked) {
-        // Attiva lo switch
-        switchDiv.style.backgroundColor = '#007bff';
-        button.style.transform = 'translateX(26px)';
-        container.style.display = 'block';
-    } else {
-        // Disattiva lo switch
-        switchDiv.style.backgroundColor = '#ccc';
-        button.style.transform = 'translateX(0)';
-        container.style.display = 'none';
-        // Pulisci la selezione
-        if (select) {
-            select.value = '';
-            // Pulisci anche il searchable select se presente
-            const searchableWrapper = container.querySelector('.searchable-select');
-            if (searchableWrapper) {
-                const searchableInput = searchableWrapper.querySelector('input');
-                if (searchableInput) {
-                    searchableInput.value = '';
-                }
-            }
-        }
-    }
-}
-
-// Attivazione automatica sezione dettagli basata su tipologia corrente
-function attivaSezioneDettagli() {
-    const tipologiaSelect = document.getElementById('tipologia_id');
-    
-    if (!tipologiaSelect) {
-        return;
-    }
-    
-    if (!tipologiaSelect.value) {
-        // Prova a leggere dal searchable-select
-        const searchableDiv = document.querySelector('.searchable-select[data-select-id="tipologia_id"]');
-        const searchableInput = searchableDiv ? searchableDiv.querySelector('.searchable-select-input') : null;
+        <!-- SEZIONE DETTAGLI RIFORNIMENTI (include modulare) -->
+        {% include 'attivita/includes/_dettagli_rifornimenti.html' %}
         
-        if (searchableInput && searchableInput.value) {
-            // Trova l'opzione corrispondente nel select nascosto
-            const options = Array.from(tipologiaSelect.options);
-            const matchingOption = options.find(opt => opt.text === searchableInput.value);
-            if (matchingOption) {
-                // Imposta il valore nel select nascosto
-                tipologiaSelect.value = matchingOption.value;
-            }
-        }
+        <!-- SEZIONE DETTAGLI GETRA (include modulare) -->
+        {% include 'attivita/includes/_dettagli_getra.html' %}
+
+        <!-- SEZIONE DETTAGLI TRAINING ON THE JOB (include modulare) -->
+        {% include 'attivita/includes/_dettagli_training.html' %}
+
+        <!-- SEZIONE DETTAGLI FORMAZIONE (include modulare) -->
+        {% include 'attivita/includes/_dettagli_formazione.html' %}
+
+        <!-- SEZIONE DETTAGLI ESERCITAZIONE (include modulare) -->
+        {% include 'attivita/includes/_dettagli_esercitazione.html' %}
+
+        <!-- SEZIONE DETTAGLI MEDICINA CURATIVA (include modulare) -->
+        {% include 'attivita/includes/_dettagli_medicina.html' %}
+
+        <!-- SEZIONE DETTAGLI STRATEVAC (include modulare) -->
+        {% include 'attivita/includes/_dettagli_stratevac.html' %}
+
+
+            </form>
+        </div>
         
-        if (!tipologiaSelect.value) {
-            return;
-        }
-    }
-    
-    const tipologiaId = tipologiaSelect.value;
-    const tipologiaText = tipologiaSelect.options[tipologiaSelect.selectedIndex].text;
-    
-    // Mapping tipologie -> sezioni dettagli
-    const mappingDettagli = {
-        'GESTIONE TRANSITO': 'dettagli-getra',
-        'MEDICINA CURATIVA': 'dettagli-med-curativa', 
-        'TRASPORTI': 'dettagli-trasporti',
-        'MOVIMENTI': 'dettagli-trasporti',
-        'MANTENIMENTO': 'dettagli-mantenimento',
-        'RIFORNIMENTI': 'dettagli-rifornimenti',
-        'TRAINING ON THE JOB': 'dettagli-training-on-the-job',
-        'FORMAZIONE': 'dettagli-formazione',
-        'ESERCITAZIONE': 'dettagli-esercitazione',
-        'SGOMBERO NEVE': 'dettagli-sgombero-neve',
-        'STRATEVAC': 'dettagli-stratevac'
-    };
-    
-    // Trova la sezione appropriata
-    let sezioneId = null;
-    for (const [keyword, sectionId] of Object.entries(mappingDettagli)) {
-        if (tipologiaText.toUpperCase().includes(keyword)) {
-            sezioneId = sectionId;
-            break;
-        }
-    }
-    
-    if (sezioneId) {
-        const sezione = document.getElementById(sezioneId);
-        if (sezione) {
-            // Forza tutte le proprietà CSS per rendere la sezione visibile
-            sezione.style.display = 'block';
-            sezione.style.visibility = 'visible';
-            sezione.style.height = 'auto';
-            sezione.style.margin = '';
-            sezione.style.padding = '';
-            sezione.style.overflow = 'visible';
-            sezione.style.opacity = '1';
-            sezione.style.transition = '';
-            sezione.setAttribute('data-active', 'true');
-            
-            // Aggiungi anche una classe CSS per override
-            sezione.classList.add('dettagli-forzato-visibile');
-            
-            console.log(`[Modifica Attività] ✅ Attivata sezione dettagli: ${sezioneId} per tipologia: ${tipologiaText}`);
-            
-            // Re-applica gli stili dopo 500ms nel caso vengano sovrascritti
-            setTimeout(function() {
-                sezione.style.display = 'block';
-                sezione.style.visibility = 'visible';
-                sezione.style.height = 'auto';
-                sezione.style.opacity = '1';
-                sezione.classList.add('dettagli-forzato-visibile');
-            }, 500);
-        }
-    }
-}
-
-// Inizializzazione specifica per questa vista
-document.addEventListener('DOMContentLoaded', function() {
-    // Il modulo TalonModificaAttivita si auto-inizializza
-    console.log('[Modifica Attività] Pagina pronta per attività #{{ attivita.id }}');
-    
-    // Attiva sezione dettagli appropriata
-    setTimeout(attivaSezioneDettagli, 100);
-    
-    // Attiva gli switch se ci sono valori preselezionati
-    const operazioneSelect = document.getElementById('operazione_id');
-    const esercitazioneSelect = document.getElementById('esercitazione_id');
-    
-    // Attiva switch operazione se c'è un valore
-    if (operazioneSelect && operazioneSelect.value) {
-        setTimeout(function() {
-            toggleSwitch('operazione');
-        }, 100);
-    }
-    
-    // Attiva switch esercitazione se c'è un valore
-    if (esercitazioneSelect && esercitazioneSelect.value) {
-        setTimeout(function() {
-            toggleSwitch('esercitazione');
-        }, 100);
-    }
-    
-    // Mostra sezione dettagli corretta basata sulla tipologia corrente
-    setTimeout(function() {
-        if (window.TalonAttivitaForms) {
-            window.TalonAttivitaForms.toggleActivityDetails('tipologia_id');
-            console.log('[Modifica Attività] Sezioni dettagli inizializzate per tipologia: {{ attivita.tipologia_nome }}');
-            
-            // Debug: verifica se i dettagli training sono presenti
-            var trainingDetails = {{ dettagli_training_on_the_job|tojson }};
-            console.log('[Modifica Attività] Dettagli training on the job:', trainingDetails);
-            
-            // Verifica visibilità sezione
-            var trainingSection = document.getElementById('dettagli-training-on-the-job');
-            if (trainingSection) {
-                console.log('[Modifica Attività] Sezione training trovata, display:', trainingSection.style.display, 'data-active:', trainingSection.getAttribute('data-active'));
-            }
-        }
-    }, 300);
-    
-    // Gestione pulsante Reset Form (ora nell'header)
-    const btnResetHeader = document.getElementById('btn-reset-header');
-    if (btnResetHeader) {
-        btnResetHeader.addEventListener('click', function() {
-            if (confirm('Sei sicuro di voler annullare tutte le modifiche e ripristinare i valori originali?')) {
-                // Usa la funzione del modulo TalonModificaAttivita se disponibile
-                if (window.TalonModificaAttivita && window.TalonModificaAttivita.resetToOriginal) {
-                    window.TalonModificaAttivita.resetToOriginal();
-                } else {
-                    // Fallback: ricarica la pagina
-                    window.location.reload();
-                }
-            }
-        });
-    }
-    
-    // Gestione forza_armata e ente_appartenenza per stratevac
-    const forzaArmataSelect = document.getElementById('forza_armata');
-    const enteAppartenenzaSelectContainer = document.getElementById('ente_appartenenza_select_container');
-    const enteAppartenenzaTextContainer = document.getElementById('ente_appartenenza_text_container');
-    
-    if (forzaArmataSelect && enteAppartenenzaSelectContainer && enteAppartenenzaTextContainer) {
-        forzaArmataSelect.addEventListener('change', function() {
-            if (this.value === 'ESERCITO ITALIANO') {
-                // Mostra select enti militari, nascondi campo libero
-                enteAppartenenzaSelectContainer.style.display = 'block';
-                enteAppartenenzaTextContainer.style.display = 'none';
-                // Pulisci campo testo
-                document.getElementById('ente_appartenenza_testo').value = '';
-            } else {
-                // Nascondi select enti militari, mostra campo libero
-                enteAppartenenzaSelectContainer.style.display = 'none';
-                enteAppartenenzaTextContainer.style.display = 'block';
-                // Pulisci select
-                document.getElementById('ente_appartenenza').value = '';
-            }
-        });
-    }
-    
-    // Forza tutti i campi di testo in MAIUSCOLO
-    const textInputs = document.querySelectorAll('input[type="text"], textarea');
-    textInputs.forEach(function(input) {
-        // Escludi campi numerici o di data
-        if (input.type === 'number' || input.type === 'date' || input.id.includes('quantita') || input.id.includes('numero_') || input.id.includes('volume')) {
-            return;
-        }
-        
-        // Aggiungi stile CSS per indicare conversione maiuscolo
-        input.style.textTransform = 'uppercase';
-        
-        input.addEventListener('input', function() {
-            const start = this.selectionStart;
-            const end = this.selectionEnd;
-            this.value = this.value.toUpperCase();
-            this.setSelectionRange(start, end);
-        });
-        
-        // Converti anche il valore iniziale se presente
-        if (input.value) {
-            input.value = input.value.toUpperCase();
-        }
-    });
-    
-    // Fix altezze campi STRATEVAC dopo che searchable-select è stato inizializzato
-    setTimeout(function() {
-        // Trova l'input del searchable-select per tipo_vettore_stratevac
-        var tipoVettoreWrapper = document.querySelector('.searchable-select[data-select-id="tipo_vettore_stratevac"]');
-        if (tipoVettoreWrapper) {
-            var searchableInput = tipoVettoreWrapper.querySelector('input');
-            if (searchableInput) {
-                // Forza l'altezza dell'input searchable
-                searchableInput.style.height = '42px';
-                searchableInput.style.minHeight = '42px';
-                searchableInput.style.padding = '9px 12px';
-                searchableInput.style.boxSizing = 'border-box';
-                console.log('Altezza tipo vettore impostata a 42px');
-            }
-        }
-        
-        // Forza l'altezza del campo seriale
-        var serialeInput = document.getElementById('seriale_vettore_stratevac');
-        if (serialeInput) {
-            serialeInput.style.height = '42px';
-            serialeInput.style.minHeight = '42px';
-            serialeInput.style.padding = '9px 12px';
-            serialeInput.style.boxSizing = 'border-box';
-            console.log('Altezza seriale impostata a 42px');
-        }
-    }, 1000); // Attendi 1 secondo per essere sicuri che tutto sia caricato
-});
-
-
-// Dati attività per JavaScript (se necessario)
-window.currentAttivita = {
-    id: {{ attivita.id }},
-    tipologia_id: {{ attivita.tipologia_id or 'null' }},
-    ente_svolgimento_id: {{ attivita.ente_svolgimento_id or 'null' }}
-};
-
-// Dati dettagli specifici per preselezionare i valori
-window.dettagliAttivita = {
-    getra: {
-        tipo_vettore: '{{ dettagli_getra.tipo_vettore or '' }}'
-    },
-    stratevac: {
-        tipo_vettore: '{{ dettagli_stratevac.tipo_vettore or '' }}'
-    }
-};
-
-// Gestione preselezzione tipo vettore GETRA  
-setTimeout(function() {
-    if (window.dettagliAttivita.getra.tipo_vettore) {
-        const selectVettore = document.getElementById('tipo_vettore');
-        if (selectVettore) {
-            selectVettore.value = window.dettagliAttivita.getra.tipo_vettore;
-            // Trigger change per aggiornare searchable select se necessario
-            selectVettore.dispatchEvent(new Event('change'));
-        }
-    }
-    
-    // Gestione preselezzione tipo vettore STRATEVAC
-    if (window.dettagliAttivita.stratevac.tipo_vettore) {
-        const selectVettoreStratevac = document.getElementById('tipo_vettore_stratevac');
-        if (selectVettoreStratevac) {
-            selectVettoreStratevac.value = window.dettagliAttivita.stratevac.tipo_vettore;
-            // Trigger change per aggiornare searchable select se necessario
-            selectVettoreStratevac.dispatchEvent(new Event('change'));
-        }
-    }
-}, 500); // Aspetta che i componenti searchable select siano inizializzati
-
-// ====== GESTIONE MODAL OPERAZIONI/ESERCITAZIONI TEMPORANEE ======
-
-// Gestione selezione "Aggiungi nuovo..."
-const operazioneSelect = document.getElementById('operazione_id');
-const esercitazioneSelect = document.getElementById('esercitazione_id');
-
-if (operazioneSelect) {
-    operazioneSelect.addEventListener('change', function() {
-        if (this.value === 'new') {
-            openModal('modal-nuova-operazione');
-            this.value = ''; // Reset selezione
-        }
-    });
-}
-
-if (esercitazioneSelect) {
-    esercitazioneSelect.addEventListener('change', function() {
-        if (this.value === 'new') {
-            openModal('modal-nuova-esercitazione');
-            this.value = ''; // Reset selezione
-        }
-    });
-}
-
-// Funzioni per gestire i modal
-function openModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'block';
-    }
-}
-
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'none';
-        // Reset form nel modal
-        const form = modal.querySelector('form');
-        if (form) {
-            form.reset();
-        }
-    }
-}
-
-// Funzione per salvare operazione temporanea
-function salvaOperazioneTemp() {
-    const nome = document.getElementById('new-op-nome').value.toUpperCase();
-    const nomeBreve = document.getElementById('new-op-nome-breve').value.toUpperCase();
-    const teatro = document.getElementById('new-op-teatro').value.toUpperCase();
-    const nazione = document.getElementById('new-op-nazione').value.toUpperCase();
-    const note = document.getElementById('new-op-note').value.toUpperCase();
-    
-    if (!nome) {
-        alert('Il nome missione è obbligatorio!');
-        return;
-    }
-    
-    // Chiamata AJAX per salvare
-    fetch('/api/operazioni_temp', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            nome_missione: nome,
-            nome_breve: nomeBreve,
-            teatro_operativo: teatro,
-            nazione: nazione,
-            note: note
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Aggiungi la nuova opzione al select
-            const select = document.getElementById('operazione_id');
-            const option = new Option(
-                '[TEMP] ' + nome,
-                'temp_' + data.id,
-                false,
-                true // Seleziona automaticamente
-            );
-            option.setAttribute('data-temp', 'true');
-            option.setAttribute('data-nome-missione', nome);
-            option.setAttribute('data-nome-breve', nomeBreve);
-            option.setAttribute('data-teatro-operativo', teatro);
-            option.setAttribute('data-nazione', nazione);
-            
-            // Inserisci dopo l'opzione "Aggiungi nuovo..." (che ora è in cima)
-            const newOption = select.querySelector('option[value="new"]');
-            const nextElement = newOption.nextElementSibling;
-            if (nextElement) {
-                select.insertBefore(option, nextElement);
-            } else {
-                select.appendChild(option);
-            }
-            
-            // Chiudi modal
-            closeModal('modal-nuova-operazione');
-            
-            // Mostra messaggio di successo
-            alert('Operazione temporanea salvata con successo!');
-        } else {
-            alert('Errore nel salvataggio: ' + (data.error || 'Errore sconosciuto'));
-        }
-    })
-    .catch(error => {
-        console.error('Errore:', error);
-        alert('Errore di connessione al server');
-    });
-}
-
-// Funzione per salvare esercitazione temporanea
-function salvaEsercitazioneTemp() {
-    const nome = document.getElementById('new-eserc-nome').value.toUpperCase();
-    const nomeBreve = document.getElementById('new-eserc-nome-breve').value.toUpperCase();
-    const anno = document.getElementById('new-eserc-anno').value;
-    const note = document.getElementById('new-eserc-note').value.toUpperCase();
-    
-    if (!nome) {
-        alert('Il nome esercitazione è obbligatorio!');
-        return;
-    }
-    
-    // Chiamata AJAX per salvare
-    fetch('/api/esercitazioni_temp', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            nome: nome,
-            nome_breve: nomeBreve,
-            anno: parseInt(anno) || null,
-            note: note
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Aggiungi la nuova opzione al select
-            const select = document.getElementById('esercitazione_id');
-            const option = new Option(
-                '[TEMP] ' + nome,
-                'temp_' + data.id,
-                false,
-                true // Seleziona automaticamente
-            );
-            option.setAttribute('data-temp', 'true');
-            option.setAttribute('data-nome', nome);
-            option.setAttribute('data-nome-breve', nomeBreve);
-            option.setAttribute('data-anno', anno);
-            
-            // Inserisci dopo l'opzione "Aggiungi nuovo..." (che ora è in cima)
-            const newOption = select.querySelector('option[value="new"]');
-            const nextElement = newOption.nextElementSibling;
-            if (nextElement) {
-                select.insertBefore(option, nextElement);
-            } else {
-                select.appendChild(option);
-            }
-            
-            // Chiudi modal
-            closeModal('modal-nuova-esercitazione');
-            
-            // Mostra messaggio di successo
-            alert('Esercitazione temporanea salvata con successo!');
-        } else {
-            alert('Errore nel salvataggio: ' + (data.error || 'Errore sconosciuto'));
-        }
-    })
-    .catch(error => {
-        console.error('Errore:', error);
-        alert('Errore di connessione al server');
-    });
-}
-
-// Chiudi modal cliccando fuori
-window.onclick = function(event) {
-    if (event.target.classList.contains('modal')) {
-        event.target.style.display = 'none';
-    }
-}
-
-// CORREZIONE: Assicura che l'ultimo elemento del dropdown sia sempre visibile
-function fixDropdownScrolling() {
-    // Trova tutti i dropdown searchable-select
-    const dropdowns = document.querySelectorAll('.searchable-select-dropdown');
-    
-    dropdowns.forEach(dropdown => {
-        if (dropdown.style.display !== 'none') {
-            const optionsContainer = dropdown.querySelector('.searchable-select-options');
-            if (optionsContainer) {
-                // Assicura che l'altezza sia corretta
-                const options = optionsContainer.querySelectorAll('.searchable-select-option');
-                if (options.length > 0) {
-                    // Calcola l'altezza totale necessaria
-                    let totalHeight = 0;
-                    options.forEach(option => {
-                        totalHeight += option.offsetHeight;
-                    });
-                    
-                    // Se l'altezza totale è maggiore del max-height, assicura lo scroll
-                    if (totalHeight > 380) {
-                        optionsContainer.style.maxHeight = '380px';
-                        optionsContainer.style.overflowY = 'auto';
-                        optionsContainer.style.paddingBottom = '8px';
-                        
-                        // Verifica se il dropdown è tagliato dalla finestra
-                        const dropdownRect = dropdown.getBoundingClientRect();
-                        const windowHeight = window.innerHeight;
-                        
-                        if (dropdownRect.bottom > windowHeight - 20) {
-                            // Posiziona il dropdown sopra il campo
-                            dropdown.classList.add('dropdown-above');
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Applica la correzione quando si aprono i dropdown
-document.addEventListener('DOMContentLoaded', function() {
-    // Observer per rilevare quando i dropdown vengono aperti
-    const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                const target = mutation.target;
-                if (target.classList.contains('searchable-select-dropdown')) {
-                    if (target.style.display === 'block') {
-                        // Dropdown aperto, applica le correzioni
-                        setTimeout(fixDropdownScrolling, 100);
-                    }
-                }
-            }
-        });
-    });
-    
-    // Osserva tutti i dropdown
-    const dropdowns = document.querySelectorAll('.searchable-select-dropdown');
-    dropdowns.forEach(dropdown => {
-        observer.observe(dropdown, { attributes: true, attributeFilter: ['style'] });
-    });
-});
-
-</script>
+    </section>
+</main>
 
 <!-- Modal per nuova operazione -->
 <div id="modal-nuova-operazione" class="modal" style="display: none;">
@@ -1336,29 +881,29 @@ document.addEventListener('DOMContentLoaded', function() {
             <span class="modal-close" onclick="closeModal('modal-nuova-operazione')">&times;</span>
         </div>
         <div class="modal-body">
-            <p style="color: #856404; background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+            <p class="modal-notice">
                 <strong>Nota:</strong> Questa operazione sarà salvata come temporanea e dovrà essere validata dall'amministratore.
             </p>
             <form id="form-nuova-operazione">
                 <div class="form-group">
                     <label for="new-op-nome">Nome Missione <span class="required">*</span></label>
-                    <input type="text" id="new-op-nome" class="form-control" required style="text-transform: uppercase;">
+                    <input type="text" id="new-op-nome" class="form-control text-uppercase" required>
                 </div>
                 <div class="form-group">
                     <label for="new-op-nome-breve">Nome Breve</label>
-                    <input type="text" id="new-op-nome-breve" class="form-control" style="text-transform: uppercase;">
+                    <input type="text" id="new-op-nome-breve" class="form-control text-uppercase">
                 </div>
                 <div class="form-group">
                     <label for="new-op-teatro">Teatro Operativo</label>
-                    <input type="text" id="new-op-teatro" class="form-control" style="text-transform: uppercase;">
+                    <input type="text" id="new-op-teatro" class="form-control text-uppercase">
                 </div>
                 <div class="form-group">
                     <label for="new-op-nazione">Nazione</label>
-                    <input type="text" id="new-op-nazione" class="form-control" style="text-transform: uppercase;">
+                    <input type="text" id="new-op-nazione" class="form-control text-uppercase">
                 </div>
                 <div class="form-group">
                     <label for="new-op-note">Note</label>
-                    <textarea id="new-op-note" class="form-control" rows="2" style="text-transform: uppercase;"></textarea>
+                    <textarea id="new-op-note" class="form-control text-uppercase" rows="2"></textarea>
                 </div>
             </form>
         </div>
@@ -1377,17 +922,17 @@ document.addEventListener('DOMContentLoaded', function() {
             <span class="modal-close" onclick="closeModal('modal-nuova-esercitazione')">&times;</span>
         </div>
         <div class="modal-body">
-            <p style="color: #856404; background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+            <p class="modal-notice">
                 <strong>Nota:</strong> Questa esercitazione sarà salvata come temporanea e dovrà essere validata dall'amministratore.
             </p>
             <form id="form-nuova-esercitazione">
                 <div class="form-group">
                     <label for="new-eserc-nome">Nome Esercitazione <span class="required">*</span></label>
-                    <input type="text" id="new-eserc-nome" class="form-control" required style="text-transform: uppercase;">
+                    <input type="text" id="new-eserc-nome" class="form-control text-uppercase" required>
                 </div>
                 <div class="form-group">
                     <label for="new-eserc-nome-breve">Nome Breve</label>
-                    <input type="text" id="new-eserc-nome-breve" class="form-control" style="text-transform: uppercase;">
+                    <input type="text" id="new-eserc-nome-breve" class="form-control text-uppercase">
                 </div>
                 <div class="form-group">
                     <label for="new-eserc-anno">Anno</label>
@@ -1395,7 +940,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="form-group">
                     <label for="new-eserc-note">Note</label>
-                    <textarea id="new-eserc-note" class="form-control" rows="2" style="text-transform: uppercase;"></textarea>
+                    <textarea id="new-eserc-note" class="form-control text-uppercase" rows="2"></textarea>
                 </div>
             </form>
         </div>
@@ -1406,73 +951,250 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
-<!-- Stili per i modal -->
-<style>
-.modal {
-    position: fixed;
-    z-index: 9999;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.4);
+{% endblock %}
+
+{% block extra_js %}
+<!-- CORE DEPENDENCIES -->
+<script src="{{ url_for('static', filename='js/components/advanced-table.js') }}?v={{ cache_buster }}"></script>
+
+<!-- ATTIVITA BUNDLE - Sistema modulare con initializer dedicato -->
+<script>window.ATTIVITA_CACHE_VERSION = '{{ cache_buster }}';</script>
+<script src="{{ url_for('static', filename='js/components/attivita-bundle.js') }}?v={{ cache_buster }}"></script>
+
+<!-- Fallback container fixes solo se necessario -->
+<script src="{{ url_for('static', filename='js/attivita/form_container_fixes.js') }}?v={{ cache_buster }}"></script>
+
+<script>
+// NUOVO APPROCCIO SEMPLICE - Modalità Isolate  
+let modalitaRetryCount = 0;
+const MAX_MODALITA_RETRIES = 10;
+
+function initializeModalitaToggle() {
+    console.log('🎯 Inizializzazione toggle slider modalità...');
+    
+    const container = document.getElementById('modalita-effettuazione-container');
+    if (!container) {
+        if (modalitaRetryCount < MAX_MODALITA_RETRIES) {
+            modalitaRetryCount++;
+            console.warn(`⚠️ Container modalità non trovato, retry ${modalitaRetryCount}/${MAX_MODALITA_RETRIES} tra 500ms...`);
+            setTimeout(() => initializeModalitaToggle(), 500);
+            return;
+        } else {
+            console.error('❌ Container modalità non trovato dopo ' + MAX_MODALITA_RETRIES + ' tentativi');
+            return;
+        }
+    }
+    
+    const toggleSlider = container.querySelector('#modalitaToggle');
+    const sliderOptions = container.querySelectorAll('.slider-option');
+    
+    if (!toggleSlider || sliderOptions.length === 0) {
+        if (modalitaRetryCount < MAX_MODALITA_RETRIES) {
+            modalitaRetryCount++;
+            console.warn(`⚠️ Toggle slider non trovato, retry ${modalitaRetryCount}/${MAX_MODALITA_RETRIES} tra 300ms...`);
+            setTimeout(() => initializeModalitaToggle(), 300);
+            return;
+        } else {
+            console.error('❌ Toggle slider non trovato dopo ' + MAX_MODALITA_RETRIES + ' tentativi');
+            return;
+        }
+    }
+    
+    console.log('📊 Toggle slider trovato con', sliderOptions.length, 'opzioni');
+    
+    // Reset retry count quando trova gli elementi
+    modalitaRetryCount = 0;
+    
+    // Imposta stato iniziale dal valore dell'attività esistente
+    const currentModalita = '{{ attivita.modalita_effettuazione or "ordinaria" }}';
+    toggleSlider.setAttribute('data-active', currentModalita);
+    
+    // Imposta anche l'opzione attiva visivamente
+    sliderOptions.forEach(opt => {
+        opt.classList.remove('active');
+        if (opt.getAttribute('data-value') === currentModalita) {
+            opt.classList.add('active');
+        }
+    });
+    
+    // Aggiungi event listeners per ogni opzione del toggle
+    sliderOptions.forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const selectedValue = this.getAttribute('data-value');
+            console.log('🎯 Opzione toggle cliccata:', selectedValue);
+            
+            // Aggiorna stato visuale
+            sliderOptions.forEach(opt => opt.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Aggiorna posizione indicator
+            toggleSlider.setAttribute('data-active', selectedValue);
+            
+            // Aggiorna radio button corrispondente
+            const radioElement = container.querySelector(`input[value="${selectedValue}"]`);
+            if (radioElement) {
+                radioElement.checked = true;
+                console.log('✅ Radio button aggiornato:', selectedValue);
+            }
+            
+            // Event personalizzato per notificare il cambiamento
+            const changeEvent = new CustomEvent('modalitaChanged', {
+                detail: { selectedValue: selectedValue }
+            });
+            container.dispatchEvent(changeEvent);
+        });
+    });
+    
+    console.log('✅ Toggle slider modalità inizializzato con successo');
+    
+    // Aggiungi listener per mostrare/nascondere SAC toggle
+    container.addEventListener('modalitaChanged', function(e) {
+        const sacContainer = document.getElementById('sac-pianificata-container');
+        if (sacContainer) {
+            if (e.detail.selectedValue === 'squadra_contatto_nazionale' || 
+                e.detail.selectedValue === 'squadra_contatto_teatro') {
+                sacContainer.style.display = 'block';
+                initializeSacToggle();
+            } else {
+                sacContainer.style.display = 'none';
+            }
+        }
+    });
 }
 
-.modal-content {
-    background-color: #fefefe;
-    margin: 5% auto;
-    border: 1px solid #888;
-    width: 90%;
-    max-width: 600px;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+function initializeSacToggle() {
+    console.log('🎯 Inizializzazione toggle slider SAC...');
+    
+    const sacContainer = document.getElementById('sac-pianificata-container');
+    if (!sacContainer) {
+        console.warn('⚠️ Container SAC non trovato');
+        return;
+    }
+    
+    const sacToggle = sacContainer.querySelector('#sacToggle');
+    const sacOptions = sacContainer.querySelectorAll('.sac-slider-option');
+    
+    if (!sacToggle || sacOptions.length === 0) {
+        console.warn('⚠️ Toggle SAC o opzioni non trovate');
+        return;
+    }
+    
+    console.log('📊 Toggle SAC trovato con', sacOptions.length, 'opzioni');
+    
+    // Imposta stato iniziale dal valore dell'attività esistente
+    const currentSacValue = '{{ attivita.sac_pianificata|lower }}';
+    const isPlanned = currentSacValue === 'true' || currentSacValue === 'none';
+    sacToggle.setAttribute('data-active', isPlanned ? 'true' : 'false');
+    
+    // Imposta anche l'opzione attiva visualmente
+    sacOptions.forEach(opt => {
+        opt.classList.remove('active');
+        if (opt.getAttribute('data-value') === (isPlanned ? 'true' : 'false')) {
+            opt.classList.add('active');
+        }
+    });
+    
+    // Aggiungi event listeners per ogni opzione del toggle SAC
+    sacOptions.forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const selectedValue = this.getAttribute('data-value');
+            console.log('🎯 Opzione SAC cliccata:', selectedValue);
+            
+            // Aggiorna stato visuale
+            sacOptions.forEach(opt => opt.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Aggiorna posizione indicator
+            sacToggle.setAttribute('data-active', selectedValue);
+            
+            // Aggiorna radio button corrispondente
+            const radioElement = sacContainer.querySelector(`input[value="${selectedValue}"]`);
+            if (radioElement) {
+                radioElement.checked = true;
+                console.log('✅ Radio button SAC aggiornato:', selectedValue);
+            }
+        });
+    });
+    
+    console.log('✅ Toggle slider SAC inizializzato con successo');
 }
 
-.modal-header {
-    padding: 20px;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
-    border-radius: 10px 10px 0 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+/**
+ * ATTIVITA TEMPLATE - JavaScript essenziale
+ * La maggior parte della logica è ora gestita dai componenti modulari nel bundle
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Inizializzazione toggle slider modalità
+    console.log('✨ Inizializzazione toggle slider modalità');
+    initializeModalitaToggle();
+    
+    // Ascolta quando i componenti bundle sono pronti
+    window.addEventListener('attivitaBundle:ready', function(e) {
+        console.log('📦 Bundle pronto - re-inizializzazione toggle modalità');
+        // Re-inizializza dopo il bundle
+        setTimeout(() => initializeModalitaToggle(), 200);
+    });
+    
+    // Fallback per compatibilità legacy se bundle fallisce
+    setTimeout(function() {
+        if (!window.TalonAttivitaFormManager) {
+            console.warn('⚠️ Bundle non caricato, inizializzazione fallback...');
+            initializeLegacyFallback();
+        }
+        // Re-controlla toggle modalità
+        initializeModalitaToggle();
+    }, 2000);
+});
+
+function initializeTemplateSpecificFeatures() {
+    // Slim Select è gestito dal componente dedicato attivita-slim-select-initializer.js
+    // Caricato dal bundle attività
+    
+    // Re-inizializza toggle modalità
+    initializeModalitaToggle();
 }
 
-.modal-header h3 {
-    margin: 0;
-    color: #333;
+function initializeLegacyFallback() {
+    // Fallback minimo per funzionalità critiche
+    console.log('🔄 Modalità compatibilità attivata');
+    
+    // Solo le funzioni assolutamente essenziali
+    setupBasicUppercase();
+    setupBasicToggleSwitches();
 }
 
-.modal-close {
-    color: #aaa;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
+function setupBasicUppercase() {
+    const textInputs = document.querySelectorAll('input[type="text"], textarea');
+    textInputs.forEach(input => {
+        if (input.type === 'number' || input.type === 'date') return;
+        
+        input.style.textTransform = 'uppercase';
+        input.addEventListener('input', function() {
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            this.value = this.value.toUpperCase();
+            this.setSelectionRange(start, end);
+        });
+    });
 }
 
-.modal-close:hover,
-.modal-close:focus {
-    color: #000;
+function setupBasicToggleSwitches() {
+    // Versione base dei toggle switch se bundle non disponibile
+    window.toggleSwitch = window.toggleSwitch || function(type) {
+        const checkbox = document.getElementById('toggle-' + type);
+        const container = document.getElementById(type + '-container');
+        if (checkbox && container) {
+            checkbox.checked = !checkbox.checked;
+            container.style.display = checkbox.checked ? 'block' : 'none';
+        }
+    };
 }
-
-.modal-body {
-    padding: 20px;
-}
-
-.modal-footer {
-    padding: 15px 20px;
-    background-color: #f8f9fa;
-    border-top: 1px solid #dee2e6;
-    border-radius: 0 0 10px 10px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-</style>
-
-        </div>
-    </section>
-</main>
-
+</script>
 {% endblock %}
