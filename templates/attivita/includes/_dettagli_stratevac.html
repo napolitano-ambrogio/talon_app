@@ -69,8 +69,7 @@
     <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 1rem;">
         <div class="form-group" style="flex: 1;">
             <label for="tipo_vettore_stratevac">Tipo Vettore <small class="text-muted">(o "volo civile")</small></label>
-            <div class="searchable-select" data-select-id="tipo_vettore_stratevac"></div>
-            <select id="tipo_vettore_stratevac" name="tipo_vettore_stratevac" style="display: none;">
+            <select id="tipo_vettore_stratevac" name="tipo_vettore_stratevac" class="form-control">
                 <option value="">-- Seleziona Vettore --</option>
                 {% include 'attivita/includes/_vettori_getra.html' %}
             </select>

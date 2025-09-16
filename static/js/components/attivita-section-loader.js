@@ -132,13 +132,56 @@ class AttivitaSectionLoader {
                 }
             });
         }
+        
+        // Setup per tipo vettore STRATEVAC
+        const vettoreStratevacSelect = section.querySelector('#tipo_vettore_stratevac');
+        if (vettoreStratevacSelect) {
+            console.log('🚁 Setup listener per tipo_vettore_stratevac in sezione STRATEVAC');
+            
+            // Inizializza SlimSelect per il vettore STRATEVAC se non già fatto
+            if (window.TalonAttivitaSlimSelect && !window.TalonAttivitaSlimSelect.getInstance('tipo_vettore_stratevac')) {
+                window.TalonAttivitaSlimSelect.initializeSelect(vettoreStratevacSelect);
+                console.log('✅ SlimSelect inizializzato per tipo_vettore_stratevac nella sezione STRATEVAC');
+            }
+            
+            // Integrazione con VettoreDecoder
+            if (window.VettoreDecoder) {
+                vettoreStratevacSelect.addEventListener('change', function(e) {
+                    if (e.target.value) {
+                        const decoded = window.VettoreDecoder.decode(e.target.value);
+                        if (decoded) {
+                            console.log('🔍 Vettore STRATEVAC decodificato:', decoded);
+                        }
+                    }
+                });
+            }
+        }
     }
 
     setupGetraListeners(section) {
-        // Setup specifici per GETRA se necessari
+        // Setup specifici per GETRA
         const vettoreSelect = section.querySelector('#tipo_vettore');
         if (vettoreSelect) {
-            // Logica specifica per GETRA
+            console.log('🚁 Setup listener per tipo_vettore in sezione GETRA');
+            
+            // Inizializza SlimSelect per il vettore se non già fatto
+            if (window.TalonAttivitaSlimSelect && !window.TalonAttivitaSlimSelect.getInstance('tipo_vettore')) {
+                window.TalonAttivitaSlimSelect.initializeSelect(vettoreSelect);
+                console.log('✅ SlimSelect inizializzato per tipo_vettore nella sezione GETRA');
+            }
+            
+            // Integrazione con VettoreDecoder
+            if (window.VettoreDecoder) {
+                vettoreSelect.addEventListener('change', function(e) {
+                    if (e.target.value) {
+                        const decoded = window.VettoreDecoder.decode(e.target.value);
+                        if (decoded) {
+                            console.log('🔍 Vettore GETRA decodificato:', decoded);
+                            // Potremmo aggiungere qui feedback visuale per l'utente
+                        }
+                    }
+                });
+            }
         }
     }
 

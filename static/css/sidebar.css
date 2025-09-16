@@ -205,7 +205,9 @@
     flex-shrink: 0; 
     width: 28px !important;
     height: 28px !important;
-    transition: none !important;
+    opacity: 1;
+    transform: translateX(0);
+    transition: all 0.4s var(--transition-easing), filter 0.3s ease;
     stroke: white;
     fill: none;
     color: white;
@@ -230,6 +232,11 @@
 .sidebar.pinned .menu-text { 
     opacity: 1; 
     transform: translateX(0);
+}
+
+/* Animazione di slide-in quando la sidebar si espande (no animation quando pinnata) */
+.sidebar.expanded .sidebar-menu svg {
+    animation: slideInIcon 0.4s var(--transition-easing) forwards;
 }
 
 /* ========================================
@@ -362,7 +369,7 @@ body[data-user-role="VISUALIZZATORE"] .sidebar li[data-visualizzatore-hidden] {
     flex-shrink: 0;
     width: 28px !important;
     height: 28px !important;
-    transition: none !important;
+    transition: filter 0.3s ease;
 }
 
 .logout-btn:hover svg {
@@ -429,7 +436,18 @@ body[data-user-role="VISUALIZZATORE"] .sidebar li[data-visualizzatore-hidden] {
     }
 }
 
-/* Stagger animation menu items */
+@keyframes slideInIcon {
+    from {
+        transform: translateX(-10px);
+        opacity: 0.7;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Stagger animation menu items - Testo */
 .sidebar.expanded .sidebar-menu li:nth-child(1) .menu-text { transition-delay: 0.1s; }
 .sidebar.expanded .sidebar-menu li:nth-child(2) .menu-text { transition-delay: 0.15s; }
 .sidebar.expanded .sidebar-menu li:nth-child(3) .menu-text { transition-delay: 0.2s; }
@@ -437,6 +455,21 @@ body[data-user-role="VISUALIZZATORE"] .sidebar li[data-visualizzatore-hidden] {
 .sidebar.expanded .sidebar-menu li:nth-child(5) .menu-text { transition-delay: 0.3s; }
 .sidebar.expanded .sidebar-menu li:nth-child(6) .menu-text { transition-delay: 0.35s; }
 .sidebar.expanded .sidebar-menu li:nth-child(7) .menu-text { transition-delay: 0.4s; }
+.sidebar.expanded .sidebar-menu li:nth-child(8) .menu-text { transition-delay: 0.45s; }
+.sidebar.expanded .sidebar-menu li:nth-child(9) .menu-text { transition-delay: 0.5s; }
+.sidebar.expanded .sidebar-menu li:nth-child(10) .menu-text { transition-delay: 0.55s; }
+
+/* Stagger animation menu items - Icone SVG (leggermente anticipate) */
+.sidebar.expanded .sidebar-menu li:nth-child(1) svg { animation-delay: 0.05s; }
+.sidebar.expanded .sidebar-menu li:nth-child(2) svg { animation-delay: 0.1s; }
+.sidebar.expanded .sidebar-menu li:nth-child(3) svg { animation-delay: 0.15s; }
+.sidebar.expanded .sidebar-menu li:nth-child(4) svg { animation-delay: 0.2s; }
+.sidebar.expanded .sidebar-menu li:nth-child(5) svg { animation-delay: 0.25s; }
+.sidebar.expanded .sidebar-menu li:nth-child(6) svg { animation-delay: 0.3s; }
+.sidebar.expanded .sidebar-menu li:nth-child(7) svg { animation-delay: 0.35s; }
+.sidebar.expanded .sidebar-menu li:nth-child(8) svg { animation-delay: 0.4s; }
+.sidebar.expanded .sidebar-menu li:nth-child(9) svg { animation-delay: 0.45s; }
+.sidebar.expanded .sidebar-menu li:nth-child(10) svg { animation-delay: 0.5s; }
 
 .sidebar.expanded .logout-text { transition-delay: 0.25s; }
 
@@ -445,7 +478,7 @@ body[data-user-role="VISUALIZZATORE"] .sidebar li[data-visualizzatore-hidden] {
     transition: none !important;
 }
 
-.sidebar.pinned *:not(.menu-toggle):not(.menu-toggle *) {
+.sidebar.pinned *:not(.menu-toggle):not(.menu-toggle *):not(svg) {
     animation: none !important;
     transition: none !important;
 }
@@ -460,6 +493,37 @@ body[data-user-role="VISUALIZZATORE"] .sidebar li[data-visualizzatore-hidden] {
 
 .sidebar.pinned .logout-btn {
     transition: all 0.3s ease !important;
+}
+
+.sidebar.pinned svg {
+    transition: filter 0.3s ease !important;
+}
+
+/* Assicura che TUTTE le icone del menu abbiano l'animazione drop-shadow */
+.sidebar-menu li a:hover svg,
+.sidebar li[data-menu-id] a:hover svg,
+.sidebar li[data-menu-id="enti_civili"] a:hover svg,
+.sidebar li[data-menu-id="geocoding"] a:hover svg {
+    filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.3)) !important;
+}
+
+/* Regole specifiche per garantire animazioni di espansione */
+.sidebar.expanded li[data-menu-id="enti_civili"] svg,
+.sidebar.expanded li[data-menu-id="geocoding"] svg,
+.sidebar.expanded li[data-menu-id="panoramica_attivita"] svg,
+.sidebar.expanded li[data-menu-id="analisi"] svg,
+.sidebar.expanded li[data-menu-id="enti_militari"] svg {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+}
+
+.sidebar.pinned li[data-menu-id="enti_civili"] svg,
+.sidebar.pinned li[data-menu-id="geocoding"] svg,
+.sidebar.pinned li[data-menu-id="panoramica_attivita"] svg,
+.sidebar.pinned li[data-menu-id="analisi"] svg,
+.sidebar.pinned li[data-menu-id="enti_militari"] svg {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
 }
 
 /* ========================================
@@ -597,7 +661,7 @@ span[data-role],
     flex-shrink: 0;
     width: 28px !important;
     height: 28px !important;
-    transition: none !important;
+    transition: filter 0.3s ease;
 }
 
 .sistema-btn:hover svg {
@@ -646,7 +710,6 @@ nav.sidebar svg,
     max-width: 28px !important;
     max-height: 28px !important;
     transform: none !important;
-    transition: none !important;
     flex-shrink: 0 !important;
 }
 

@@ -19,7 +19,8 @@
         'attivita-form-manager.js',           // Base - gestione form generale
         'attivita-section-loader.js',         // Caricamento dinamico sezioni dettagli
         'attivita-modal-manager.js',          // Gestione modal (operazioni/esercitazioni)
-        'attivita-slim-select.js'             // Inizializzazione Slim Select per select (ORIGINALE)
+        'attivita-slim-select.js',            // Inizializzazione Slim Select per select (ORIGINALE)
+        '../attivita/vettore_decoder.js'      // Decoder per codici vettore GETRA
         // 'attivita-slim-select-initializer.js' // DISABILITATO - causava conflitto
     ];
     

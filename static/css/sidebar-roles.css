@@ -373,11 +373,15 @@ body[data-user-role="OPERATORE"] .sidebar li:hover .quick-actions {
 
 /* Effetto hover migliorato per voci menu con restrizioni */
 .sidebar li[data-min-role] a {
-    transition: all 0.3s ease, filter 0.3s ease;
+    transition: all 0.3s ease;
 }
 
-.sidebar li[data-min-role] a:hover {
-    filter: brightness(1.1);
+.sidebar li[data-min-role] svg {
+    transition: filter 0.3s ease;
+}
+
+.sidebar li[data-min-role] a:hover svg {
+    filter: drop-shadow(0 2px 4px rgba(255, 255, 255, 0.3));
 }
 
 /* Loading state per cambio ruolo */

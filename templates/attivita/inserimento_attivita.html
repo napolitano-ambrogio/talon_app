@@ -1114,6 +1114,9 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('📦 Bundle pronto - re-inizializzazione toggle modalità');
         // Re-inizializza dopo il bundle
         setTimeout(() => initializeModalitaToggle(), 200);
+        
+        // Debug dei selettori vettore dopo il caricamento
+        setTimeout(() => debugVettoreSelectors(), 1000);
     });
     
     // Fallback per compatibilità legacy se bundle fallisce
@@ -1133,6 +1136,54 @@ function initializeTemplateSpecificFeatures() {
     
     // Re-inizializza toggle modalità
     initializeModalitaToggle();
+}
+
+// Funzione di debug per verificare l'inizializzazione dei selettori vettore
+function debugVettoreSelectors() {
+    console.log('🔍 DEBUG: Verifica inizializzazione selettori vettore');
+    
+    // Verifica tipo_vettore
+    const tipoVettore = document.getElementById('tipo_vettore');
+    if (tipoVettore) {
+        console.log('✅ Elemento tipo_vettore trovato:', tipoVettore);
+        console.log('📄 Opzioni disponibili:', tipoVettore.options.length);
+        
+        if (window.TalonAttivitaSlimSelect) {
+            const instance = window.TalonAttivitaSlimSelect.getInstance('tipo_vettore');
+            console.log('🎯 SlimSelect instance per tipo_vettore:', instance ? 'TROVATA' : 'NON TROVATA');
+        }
+    } else {
+        console.warn('⚠️ Elemento tipo_vettore NON trovato');
+    }
+    
+    // Verifica tipo_vettore_stratevac
+    const tipoVettoreStratevac = document.getElementById('tipo_vettore_stratevac');
+    if (tipoVettoreStratevac) {
+        console.log('✅ Elemento tipo_vettore_stratevac trovato:', tipoVettoreStratevac);
+        console.log('📄 Opzioni disponibili:', tipoVettoreStratevac.options.length);
+        
+        if (window.TalonAttivitaSlimSelect) {
+            const instance = window.TalonAttivitaSlimSelect.getInstance('tipo_vettore_stratevac');
+            console.log('🎯 SlimSelect instance per tipo_vettore_stratevac:', instance ? 'TROVATA' : 'NON TROVATA');
+        }
+    } else {
+        console.log('ℹ️ Elemento tipo_vettore_stratevac non trovato (normale se sezione non visibile)');
+    }
+    
+    // Verifica VettoreDecoder
+    if (window.VettoreDecoder) {
+        console.log('✅ VettoreDecoder disponibile');
+        const testDecode = window.VettoreDecoder.decode('SAFOPS');
+        console.log('🧪 Test decodifica SAFOPS:', testDecode);
+    } else {
+        console.warn('⚠️ VettoreDecoder NON disponibile');
+    }
+    
+    // Verifica stato SlimSelect
+    if (window.TalonAttivitaSlimSelect) {
+        const status = window.TalonAttivitaSlimSelect.getInstancesStatus();
+        console.log('📊 Stato SlimSelect:', status);
+    }
 }
 
 function initializeLegacyFallback() {

@@ -63,7 +63,9 @@ class AttivitaSlimSelect {
             '#operazione_id',
             '#esercitazione_id',
             '#partenza_id',
-            '#destinazione_id'
+            '#destinazione_id',
+            '#tipo_vettore',
+            '#tipo_vettore_stratevac'
         ];
         
         let initializedCount = 0;
@@ -204,6 +206,15 @@ class AttivitaSlimSelect {
             case 'tipo_vettore_stratevac':
                 baseSettings.searchPlaceholder = 'Cerca tipo vettore...';
                 baseSettings.placeholderText = 'Seleziona tipo vettore';
+                customEvents.afterChange = (newVal) => {
+                    // Integrazione con VettoreDecoder se disponibile
+                    if (window.VettoreDecoder && newVal && newVal[0]?.value) {
+                        const decoded = window.VettoreDecoder.decode(newVal[0].value);
+                        if (decoded) {
+                            console.log('🚁 Vettore decodificato:', decoded);
+                        }
+                    }
+                };
                 break;
         }
 
@@ -393,7 +404,9 @@ class AttivitaSlimSelect {
             '#operazione_id',
             '#esercitazione_id',
             '#partenza_id',
-            '#destinazione_id'
+            '#destinazione_id',
+            '#tipo_vettore',
+            '#tipo_vettore_stratevac'
         ];
         
         selectsToInitialize.forEach(selector => {
